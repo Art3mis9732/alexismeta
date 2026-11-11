@@ -102,10 +102,23 @@
     return out;
   }
 
-  function sessionVwap(c) {       // anchored at 00:00 UTC each day (05:30 IST), typical price x volume
+  /* Timeframe settings from the candle spacing. 5m and 15m: trend from 1-hour candles, VWAP resets
+   * every day at 00:00 UTC (05:30 IST). 4h: trend from daily candles, VWAP resets every Monday 00:00 UTC. */
+  var WEEK = 7 * DAY;
+  function tfOf(c) {
+    var bar = M15;
+    if (c.length > 2) { var d = []; for (var i = 1; i < Math.min(c.length, 60); i++) d.push(c[i].t - c[i - 1].t); d.sort(function (a, b) { return a - b; }); bar = d[Math.floor(d.length / 2)]; }
+    var big = bar >= 4 * H1;
+    return { bar: bar, trendMs: big ? DAY : H1, trendLabel: big ? "Daily trend" : "1-hour trend", sessMs: big ? WEEK : DAY, sessOff: big ? 4 * DAY : 0,
+             vwapLabel: big ? "this week's VWAP" : "today's VWAP" };
+  }
+  function sessKey(t, cfg) { return Math.floor((t - cfg.sessOff) / cfg.sessMs); }
+
+  function sessionVwap(c, cfg) {  // typical price x volume, reset each session (see tfOf)
+    cfg = cfg || tfOf(c);
     var out = new Array(c.length), day = null, pv = 0, vv = 0;
     for (var i = 0; i < c.length; i++) {
-      var d = Math.floor(c[i].t / DAY);
+      var d = sessKey(c[i].t, cfg);
       if (d !== day) { day = d; pv = 0; vv = 0; }
       var tp = (c[i].h + c[i].l + c[i].c) / 3;
       pv += tp * c[i].v; vv += c[i].v;
@@ -116,14 +129,16 @@
 
   /* 1-hour trend from the 15m bars themselves. Only fully closed hours are used, and the
    * value at 15m bar i comes from the last hour that had closed by the end of bar i. */
-  function hourTrend(c) {
+  function hourTrend(c, cfg) {
+    cfg = cfg || tfOf(c);
+    var per = Math.round(cfg.trendMs / cfg.bar);
     var hours = [], cur = null;
     for (var i = 0; i < c.length; i++) {
-      var hs = Math.floor(c[i].t / H1) * H1;
+      var hs = Math.floor(c[i].t / cfg.trendMs) * cfg.trendMs;
       if (!cur || cur.t !== hs) { cur = { t: hs, n: 0, c: 0, last: -1 }; hours.push(cur); }
       cur.n++; cur.c = c[i].c; cur.last = i;
     }
-    var full = hours.filter(function (h) { return h.n === 4; });
+    var full = hours.filter(function (h) { return h.n === per; });
     var closes = full.map(function (h) { return h.c; });
     var ef = ema(closes, P.emaFast), es = ema(closes, P.emaSlow);
     var out = new Array(c.length).fill(0), k = -1;
@@ -138,7 +153,7 @@
   }
 
   function analyze(c) {
-    var n = c.length, A = atr(c, P.atrLen), V = sessionVwap(c), T = hourTrend(c);
+    var n = c.length, cfg = tfOf(c), A = atr(c, P.atrLen), V = sessionVwap(c, cfg), T = hourTrend(c, cfg);
     var ev = [];
     function body(i) { return Math.abs(c[i].c - c[i].o); }
     function range(i) { return c[i].h - c[i].l; }
@@ -248,7 +263,7 @@
       // [A] SMB's rule is for US stocks ("up at least one daily ATR from the open"). Here: since
       // 00:00 UTC price has extended >= 3 x ATR(15m) from the session open and was >= 1 ATR away
       // from VWAP; then the first bar that touches VWAP and closes back on the trend side.
-      var dnum = Math.floor(c[i].t / DAY);
+      var dnum = sessKey(c[i].t, cfg);
       if (!sess || sess.d !== dnum) sess = { d: dnum, open: c[i].o, hi: c[i].h, lo: c[i].l, n: 0, awayUp: false, awayDn: false, doneUp: false, doneDn: false };
       if (a && sess.n >= P.vwapMinBars) {
         if (!sess.doneUp && sess.awayUp && sess.hi - sess.open >= P.vwapExt * a &&
@@ -268,12 +283,13 @@
       sess.n++;
     }
 
-    return { events: ev, atr: A, vwap: V, trend: T, watching: bo, session: sess, state: state(c, ev, A, V, T, bo, sess) };
+    return { events: ev, atr: A, vwap: V, trend: T, watching: bo, session: sess, tf: cfg, state: state(c, ev, A, V, T, bo, sess, cfg) };
   }
 
   /* The "right now" read at the last closed bar. A setup is only called when the 1-hour trend,
    * the side of VWAP and a fresh trigger all agree; otherwise the answer is WAIT or NO TRADE. */
-  function state(c, ev, A, V, T, bo, sess) {
+  function state(c, ev, A, V, T, bo, sess, cfg) {
+    cfg = cfg || tfOf(c);
     var n = c.length, i = n - 1;
     if (n < 60 || A[i] === null) return { verdict: "NO DATA", reasons: ["Not enough candles yet."] };
     var px = c[i].c, tr = T[i], above = px > V[i];
@@ -284,8 +300,8 @@
     var trig = null;
     recent.forEach(function (e) { if ((tr === 1 && TRIG_UP[e.code]) || (tr === -1 && TRIG_DN[e.code])) trig = e; });
     var verdict, reasons = [];
-    reasons.push("1-hour trend: " + (tr === 1 ? "UP" : tr === -1 ? "DOWN" : "FLAT / mixed"));
-    reasons.push("Price is " + (above ? "above" : "below") + " today's VWAP");
+    reasons.push(cfg.trendLabel + ": " + (tr === 1 ? "UP" : tr === -1 ? "DOWN" : "FLAT / mixed"));
+    reasons.push("Price is " + (above ? "above" : "below") + " " + cfg.vwapLabel);
     if (tr === 0) verdict = "NO TRADE";
     else if ((tr === 1) !== above) { verdict = "NO TRADE"; reasons.push("Trend and VWAP disagree"); }
     else if (trig) { verdict = tr === 1 ? "LONG SETUP" : "SHORT SETUP"; reasons.push("Trigger: " + trig.name); }
@@ -454,6 +470,6 @@
    * closing taker fee. */
   function liqDistance(lev, mmr, taker) { return 1 - (1 - 1 / lev) / (1 - mmr - taker); }
 
-  return { indicators: indicators, featureRows: featureRows, predict: predict, FEATURES: FEATURES, analyze: analyze, rangeScalp: rangeScalp, isSetup: isSetup, carefulCheck: carefulCheck, PROFILES: PROFILES, H1: H1, DAY: DAY, ema: ema, atr: atr, sessionVwap: sessionVwap, hourTrend: hourTrend,
+  return { tfOf: tfOf, sessionVwapCfg: sessionVwap, indicators: indicators, featureRows: featureRows, predict: predict, FEATURES: FEATURES, analyze: analyze, rangeScalp: rangeScalp, isSetup: isSetup, carefulCheck: carefulCheck, PROFILES: PROFILES, H1: H1, DAY: DAY, ema: ema, atr: atr, sessionVwap: sessionVwap, hourTrend: hourTrend,
            liqDistance: liqDistance, NAMES: NAMES, MEANING: MEANING, PARAMS: P, M15: M15 };
 });

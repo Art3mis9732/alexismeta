@@ -19,10 +19,12 @@ const HIST = process.argv[2] || path.join(ROOT, "data", "hist");
 const OUT = process.argv[3] || path.join(ROOT, "docs", "data", "model.json");
 const AHEAD = 16, SPLIT = 0.7, COST_BPS = 14, L2 = 1e-3, ITERS = 400, LR = 0.5, BAND = 0.05;
 
-function load(sym) {
-  return JSON.parse(fs.readFileSync(path.join(HIST, sym + "_15m.json"), "utf8"))
+function load(sym, tf) {
+  return JSON.parse(fs.readFileSync(path.join(HIST, `${sym}_${tf}.json`), "utf8"))
     .map(r => ({ t: r[0], o: r[1], h: r[2], l: r[3], c: r[4], v: r[5] }));
 }
+const TFS = { "5m": { ms: 300000, ahead: "80 minutes" }, "15m": { ms: 900000, ahead: "4 hours" }, "4H": { ms: 14400000, ahead: "about 2.7 days" } };
+const BANDS = [0.01, 0.02, 0.03, 0.05, 0.08, 0.1, 0.15];
 
 function fit(X, y) {
   const n = X.length, d = X[0].length, mean = new Array(d).fill(0), std = new Array(d).fill(0);
@@ -51,7 +53,8 @@ function fit(X, y) {
   return { w, bias: b, mean, std };
 }
 
-function evaluate(model, rows, trainUpRate) {
+function evaluate(model, rows, trainUpRate, band) {
+  band = band === undefined ? BAND : band;
   const r3 = v => Math.round(v * 1000) / 1000;
   let correct = 0, ll = 0, llBase = 0, up = 0;
   const buckets = [[0, 0.45], [0.45, 0.48], [0.48, 0.52], [0.52, 0.55], [0.55, 1.01]].map(([lo, hi]) => ({ lo, hi, n: 0, up: 0 }));
@@ -62,14 +65,14 @@ function evaluate(model, rows, trainUpRate) {
     ll -= yv ? Math.log(p) : Math.log(1 - p);
     llBase -= yv ? Math.log(trainUpRate) : Math.log(1 - trainUpRate);
     const bk = buckets.find(b => p >= b.lo && p < b.hi); bk.n++; bk.up += yv;
-    if (p > 0.5 + BAND) trades.push(r.ret - COST_BPS); else if (p < 0.5 - BAND) trades.push(-r.ret - COST_BPS);
+    if (p > 0.5 + band) trades.push(r.ret - COST_BPS); else if (p < 0.5 - band) trades.push(-r.ret - COST_BPS);
   });
   const n = rows.length, upRate = up / n;
   return {
     rows: n, accuracy: r3(correct / n), up_rate: r3(upRate), coin_flip_best: r3(Math.max(upRate, 1 - upRate)),
     log_loss: r3(ll / n), log_loss_no_model: r3(llBase / n),
     buckets: buckets.map(b => ({ range: `${Math.round(b.lo * 100)}-${Math.min(100, Math.round(b.hi * 100))}%`, cases: b.n, actually_up: b.n ? r3(b.up / b.n) : null })),
-    trade_rule: `long when the model says above ${50 + BAND * 100}%, short below ${50 - BAND * 100}%, hold 4h, ${COST_BPS} bps costs`,
+    trade_rule: `long when the model says above ${Math.round((0.5 + band) * 100)}%, short below ${Math.round((0.5 - band) * 100)}%, hold 16 candles, ${COST_BPS} bps costs`, band,
     trades: trades.length, avg_net_bps: trades.length ? r3(trades.reduce((a, v) => a + v, 0) / trades.length) : null,
     win_rate: trades.length ? r3(trades.filter(v => v > 0).length / trades.length) : null
   };
@@ -98,29 +101,28 @@ function indicatorSignals(c, res, ind) {
   return S;
 }
 
-function main() {
-  const syms = fs.readdirSync(HIST).filter(f => f.endsWith("_15m.json")).map(f => f.replace("_15m.json", "")).sort();
-  const data = {}, indRes = {};
+function trainTf(tf, syms) {
+  const ms = TFS[tf].ms, data = {}, indRes = {};
   let tMin = Infinity, tMax = -Infinity;
   syms.forEach(s => {
-    const c = load(s), res = Pt.analyze(c), ind = Pt.indicators(c), F = Pt.featureRows(c, res, ind), rows = [];
-    for (let i = 0; i + AHEAD < c.length; i++) if (F[i]) rows.push({ t: c[i].t, x: F[i], y: c[i + AHEAD].c > c[i].c ? 1 : 0, ret: (c[i + AHEAD].c / c[i].c - 1) * 1e4, sym: s });
+    const c = load(s, tf), res = Pt.analyze(c), ind = Pt.indicators(c), F = Pt.featureRows(c, res, ind), rows = [];
+    for (let i = 0; i + AHEAD < c.length; i++) if (F[i]) rows.push({ t: c[i].t, close: c[i].t + ms, x: F[i], y: c[i + AHEAD].c > c[i].c ? 1 : 0, ret: (c[i + AHEAD].c / c[i].c - 1) * 1e4, sym: s });
     data[s] = rows; indRes[s] = { c, res, ind };
     tMin = Math.min(tMin, c[0].t); tMax = Math.max(tMax, c[c.length - 1].t);
   });
   const cut = tMin + (tMax - tMin) * SPLIT;
-  const all = syms.flatMap(s => data[s]), train = all.filter(r => r.t < cut - AHEAD * 900000), test = all.filter(r => r.t >= cut);
+  const all = syms.flatMap(s => data[s]), train = all.filter(r => r.t < cut - AHEAD * ms), test = all.filter(r => r.t >= cut);
   const trainUp = train.reduce((a, r) => a + r.y, 0) / train.length;
-  console.log(`train ${train.length} rows, test ${test.length} rows, split ${new Date(cut).toISOString()}`);
   const m1 = fit(train.map(r => r.x), train.map(r => r.y));
-  const testAll = evaluate(m1, test, trainUp), testBy = {};
-  syms.forEach(s => testBy[s] = evaluate(m1, test.filter(r => r.sym === s), trainUp));
-  console.log("TEST (unseen):", JSON.stringify(testAll));
+  // pick the confidence band on TRAINING data only (needs >= 300 trades), then test it once
+  let best = null;
+  BANDS.forEach(b => { const e = evaluate(m1, train, trainUp, b); if (e.trades >= 300 && (!best || e.avg_net_bps > best.avg)) best = { b, avg: e.avg_net_bps, trades: e.trades }; });
+  const band = best ? best.b : BAND;
+  const testAll = evaluate(m1, test, trainUp, band), testBy = {};
+  syms.forEach(s => testBy[s] = evaluate(m1, test.filter(r => r.sym === s), trainUp, band));
+  console.log(`[${tf}] train ${train.length} test ${test.length}; band chosen on training data ${band} (train ${best && best.avg} bps); TEST acc ${testAll.accuracy} vs ${testAll.coin_flip_best}, trades ${testAll.trades}, net ${testAll.avg_net_bps} bps`);
   const final = fit(all.map(r => r.x), all.map(r => r.y));
   const weights = Pt.FEATURES.map((f, j) => ({ feature: f, weight: Math.round(final.w[j] * 1000) / 1000 })).sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight));
-  console.log("weights:", weights.slice(0, 6).map(w => w.feature + " " + w.weight).join(" | "));
-
-  // indicator report card
   const indOut = {};
   syms.forEach(s => {
     const { c, res, ind } = indRes[s], S = indicatorSignals(c, res, ind), o = {};
@@ -131,17 +133,56 @@ function main() {
       o[k] = Object.assign(agg(r), { first70: agg(r.filter(x => x.t < cut)), last30: agg(r.filter(x => x.t >= cut)) });
     });
     indOut[s] = o;
-    console.log(s, Object.entries(o).map(([k, v]) => `${k} n=${v.n} right=${v.right_4h} net=${v.avg_net_bps}bps (later ${v.last30.avg_net_bps})`).join(" | "));
   });
+  const hist = { from: new Date(tMin).toISOString(), to: new Date(tMax + ms).toISOString(), train_until: new Date(cut).toISOString() };
+  return { out: { ahead: TFS[tf].ahead, horizon_candles: AHEAD, history: hist, band, band_train_bps: best && best.avg,
+                  model: { w: final.w, bias: final.bias, mean: final.mean, std: final.std }, test: testAll, test_by_symbol: testBy, weights, indicators: indOut },
+           m1, test, cut };
+}
 
-  const out = {
-    generated_at_utc: new Date().toISOString().slice(0, 19).replace("T", " "),
-    what: "Chance that the price is higher 4 hours (16 x 15m candles) after the last closed candle",
-    method: { type: "logistic regression", features: Pt.FEATURES, train_until: new Date(cut).toISOString(), l2: L2, iterations: ITERS,
-      note: "Trained on the first 70% of 180 days of Bitget 15m candles (BTC, ETH, XRP together), tested once on the last 30%. Live model = same settings refit on all data." },
-    model: { w: final.w, bias: final.bias, mean: final.mean, std: final.std },
-    test: testAll, test_by_symbol: testBy, weights, indicators: indOut
-  };
+/* "All three agree": at each 15-minute close in the test period, take the 5m, 15m and 4h models'
+ * latest forecasts (each trained only on its own training period). Trade only when all three point
+ * the same way; hold 4 hours. Nothing here was tuned on the test period. */
+function agreement(R, syms) {
+  if (!R["5m"] || !R["15m"] || !R["4H"]) return null;
+  const cut = Math.max(R["5m"].cut, R["15m"].cut, R["4H"].cut);
+  const r3 = v => Math.round(v * 1000) / 1000, trades = [], one = [];
+  syms.forEach(s => {
+    const p5 = new Map(R["5m"].test.filter(r => r.sym === s).map(r => [r.close, Pt.predict(R["5m"].m1, r.x)]));
+    const t4 = R["4H"].test.filter(r => r.sym === s).sort((a, b) => a.close - b.close);
+    let k = -1;
+    R["15m"].test.filter(r => r.sym === s && r.t >= cut).sort((a, b) => a.close - b.close).forEach(r => {
+      while (k + 1 < t4.length && t4[k + 1].close <= r.close) k++;
+      const a = Pt.predict(R["15m"].m1, r.x), b = p5.get(r.close), c4 = k >= 0 ? Pt.predict(R["4H"].m1, t4[k].x) : undefined;
+      if (b === undefined || c4 === undefined) return;
+      one.push(1);
+      if (a > 0.5 && b > 0.5 && c4 > 0.5) trades.push(r.ret - COST_BPS);
+      else if (a < 0.5 && b < 0.5 && c4 < 0.5) trades.push(-r.ret - COST_BPS);
+    });
+  });
+  if (!trades.length) return { trades: 0 };
+  return { rule: "trade only when the 5m, 15m and 4h forecasts all point the same way; hold 4h; 14 bps costs", checked: one.length,
+           trades: trades.length, share_of_time: r3(trades.length / one.length), win_rate: r3(trades.filter(v => v > 0).length / trades.length),
+           avg_net_bps: r3(trades.reduce((a, v) => a + v, 0) / trades.length), from: new Date(cut).toISOString() };
+}
+
+function main() {
+  const files = fs.readdirSync(HIST);
+  const syms = [...new Set(files.filter(f => f.endsWith("_15m.json")).map(f => f.replace("_15m.json", "")))].sort();
+  const R = {}, out = { generated_at_utc: new Date().toISOString().slice(0, 19).replace("T", " "),
+    what: "Chance that the price is higher 16 candles after the last closed candle (5m: 80 minutes, 15m: 4 hours, 4h: about 2.7 days)",
+    method: { type: "logistic regression, one model per timeframe", features: Pt.FEATURES, l2: L2, iterations: ITERS,
+      note: "Each model trains on the first 70% of its history (BTC, ETH, XRP together); the confidence threshold for trading is chosen on that training part only; then it is tested once on the last 30%, which it never saw. Live models are refit on all data with the same settings." },
+    tfs: {} };
+  for (const tf of Object.keys(TFS)) {
+    if (!syms.every(s => files.includes(`${s}_${tf}.json`))) { console.log(`[${tf}] no history, skipped`); continue; }
+    R[tf] = trainTf(tf, syms); out.tfs[tf] = R[tf].out;
+  }
+  out.agreement = agreement(R, syms);
+  console.log("AGREEMENT:", JSON.stringify(out.agreement));
+  // keep the old top-level fields (15m) so older pages keep working
+  if (out.tfs["15m"]) Object.assign(out, { model: out.tfs["15m"].model, test: out.tfs["15m"].test, test_by_symbol: out.tfs["15m"].test_by_symbol,
+    weights: out.tfs["15m"].weights, indicators: out.tfs["15m"].indicators });
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   fs.writeFileSync(OUT, JSON.stringify(out));
   console.log("wrote " + OUT);

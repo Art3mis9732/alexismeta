@@ -259,3 +259,27 @@ test("features use no future data", () => {
   for (let i = 150; i < cut; i++) assert.deepStrictEqual(fb[i], fa[i]);
   assert.strictEqual(fb[800].length, Pt.FEATURES.length);
 });
+
+// ---------------- other timeframes ----------------
+test("timeframe settings: 5m and 15m use 1h trend + daily VWAP, 4h uses daily trend + weekly VWAP", () => {
+  const mk = (ms, n) => Array.from({ length: n }, (_, i) => ({ t: Date.UTC(2026, 0, 5) + i * ms, o: 100, h: 101, l: 99, c: 100, v: 1 }));
+  assert.strictEqual(Pt.tfOf(mk(300000, 50)).trendMs, 3600000);
+  assert.strictEqual(Pt.tfOf(mk(900000, 50)).sessMs, 86400000);
+  const f4 = Pt.tfOf(mk(14400000, 50));
+  assert.strictEqual(f4.trendMs, 86400000); assert.strictEqual(f4.sessMs, 7 * 86400000);
+  // weekly VWAP resets on Monday 00:00 UTC: 2026-01-05 is a Monday
+  const c = mk(14400000, 60); c.forEach((x, i) => { x.h = x.c = x.l = 100 + i; });
+  const v = Pt.sessionVwap(c);
+  assert.strictEqual(v[42], 142);                           // first bar of the next week = its own price
+});
+test("4h and 5m candles run through the full engine without look-ahead", () => {
+  for (const ms of [300000, 14400000]) {
+    let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const c = []; let p = 100;
+    for (let i = 0; i < 1500; i++) { const o = p, cl = p * (1 + (rnd() - 0.5) * 0.02);
+      c.push({ t: Date.UTC(2026, 0, 5) + i * ms, o, h: Math.max(o, cl) * 1.003, l: Math.min(o, cl) * 0.997, c: cl, v: 10 + rnd() * 90 }); p = cl; }
+    const a = Pt.analyze(c.slice(0, 1000)).events, b = Pt.analyze(c).events.filter(e => e.i < 1000);
+    assert.deepStrictEqual(b.map(e => [e.i, e.code, e.trend]), a.map(e => [e.i, e.code, e.trend]));
+    assert.ok(Pt.analyze(c).trend.some(t => t !== 0));
+  }
+});

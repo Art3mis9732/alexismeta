@@ -16,13 +16,13 @@ sys.path.insert(0, str(ROOT))
 from bgbot.bitget_public import BitgetPublic, gap_report  # noqa: E402
 from bgbot.config import load_config  # noqa: E402
 
-STEP = {"5m": 300_000, "15m": 900_000}
+STEP = {"5m": 300_000, "15m": 900_000, "4H": 14_400_000}
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=180)
-    ap.add_argument("--gran", default="15m", choices=["5m", "15m"])
+    ap.add_argument("--gran", default="15m", choices=["5m", "15m", "4H"])
     a = ap.parse_args()
     cfg = load_config()
     ex = cfg["exchange"]

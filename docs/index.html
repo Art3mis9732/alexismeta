@@ -709,8 +709,11 @@ function connectStream() {
   ws.onopen = () => {
     retries = 0;
     ws.send(JSON.stringify({ op: "subscribe", args: SYMS.flatMap(s => [
-      { instType: "USDT-FUTURES", channel: "candle15m", instId: s }, { instType: "USDT-FUTURES", channel: "candle5m", instId: s }, { instType: "USDT-FUTURES", channel: "candle4H", instId: s },
+      { instType: "USDT-FUTURES", channel: "candle15m", instId: s }, { instType: "USDT-FUTURES", channel: "candle5m", instId: s },
       { instType: "USDT-FUTURES", channel: "ticker", instId: s }]) }));
+    // 4h candles in their own message: if Bitget ever rejected this channel, the 5m/15m streams above are unaffected
+    // (the 4h chart also refreshes from the REST API every 5 minutes).
+    ws.send(JSON.stringify({ op: "subscribe", args: SYMS.map(s => ({ instType: "USDT-FUTURES", channel: "candle4H", instId: s })) }));
     pingT = setInterval(() => { if (ws && ws.readyState === 1) ws.send("ping"); }, 25000);
   };
   ws.onmessage = ev => {

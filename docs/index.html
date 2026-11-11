@@ -64,6 +64,7 @@
   <h1>Pattern Radar</h1><span class="sub">BTC · ETH · XRP USDT perpetuals on Bitget · research tool, not advice</span>
   <div class="bar2">
     <div class="seg" id="coins"><span class="on" data-sym="BTCUSDT">BTC</span><span data-sym="ETHUSDT">ETH</span><span data-sym="XRPUSDT">XRP</span></div>
+    <div class="seg" id="tfs" title="Chart timeframe"><span data-tf="5m">5m</span><span class="on" data-tf="15m">15m</span><span data-tf="4H">4h</span></div>
     <div class="seg" id="views"><span class="on" data-view="trade">Buy / Sell</span><span data-view="patterns">Patterns</span><span data-view="indicators">Indicators</span></div>
     <span class="sub" id="mode">connecting…</span>
   </div>
@@ -74,7 +75,7 @@
 <!-- ======================= BUY / SELL VIEW ======================= -->
 <section id="tradeView">
   <div class="profiles" id="profiles"></div>
-  <div class="card" id="modelCard"><h2>Model forecast — chance the price is higher 4 hours from now</h2><div id="modelBody" class="sub">Loading…</div></div>
+  <div class="card" id="modelCard"><h2>Model forecasts — chance the price is higher 16 candles from now, on 5m, 15m and 4h</h2><div id="modelBody" class="sub">Loading…</div></div>
   <div class="row">
     <div class="card">
       <h2>What to do now — <span id="tSym">BTCUSDT</span> · <span id="tProf">Neutral</span></h2>
@@ -186,6 +187,9 @@ const DIR = { DOJI:0, SPIN:0, MARU_UP:1, MARU_DN:-1, HAMMER:1, HANGING:-1, STAR_
 let MARKET = null, STATS = null, MODEL = null, JOURNAL = null, sym = "BTCUSDT", view = "trade";
 const live = {}, forming = {}, tick = {}, RES = {};          // per-symbol state, 15m
 const live5 = {}, forming5 = {}, RES5 = {};                  // per-symbol state, 5m (Aggressive)
+const live4 = {}, forming4 = {}, RES4 = {};                  // per-symbol state, 4h
+let tf = "15m";
+const TF_MS = { "5m": 300000, "15m": 900000, "4H": 14400000 }, TF_NAME = { "5m": "5-minute", "15m": "15-minute", "4H": "4-hour" };
 const PROFS = ["aggressive", "neutral", "careful"];
 let profile = (function () { try { const v = localStorage.getItem("radar.profile"); return PROFS.includes(v) ? v : "neutral"; } catch (e) { return "neutral"; } })();
 const posKey = (pf, s) => "radar.pos." + pf + "." + s;
@@ -207,7 +211,7 @@ function rowsOf(s) {
   return (live[s] && live[s].rows) || (MARKET && MARKET.symbols[s] && MARKET.symbols[s].candles15m) || [];
 }
 function candles(s) { return rowsOf(s).map(r => ({ t: +r[0], o: +r[1], h: +r[2], l: +r[3], c: +r[4], v: +r[5] })); }
-function hist(s, key) { const x = STATS && STATS.symbols && STATS.symbols[s]; return x && x.patterns[key] || null; }
+function hist(s, key) { if (tf !== "15m") return null; const x = STATS && STATS.symbols && STATS.symbols[s]; return x && x.patterns[key] || null; }
 function grade(h) {
   if (!h || h.trades < 50 || !h.last30 || h.last30.n < 15) return ["unknown", "too few cases"];
   if (h.exp_R_net > 0.05 && h.first70 && h.first70.exp_R_net > 0 && h.last30.exp_R_net > 0) return ["good", "held up so far"];
@@ -228,9 +232,16 @@ function liqPrice(entry, dir, lev, mmr, taker) {
 function analyze5(s) {
   const rows = (live5[s] && live5[s].rows) || [];
   const c = rows.map(r => ({ t: +r[0], o: +r[1], h: +r[2], l: +r[3], c: +r[4], v: +r[5] }));
-  RES5[s] = c.length >= 100 ? { c, rs: Patterns.rangeScalp(c) } : null;
+  RES5[s] = c.length >= 100 ? { c, rs: Patterns.rangeScalp(c), res: Patterns.analyze(c) } : null;
   return RES5[s];
 }
+function analyze4(s) {
+  const rows = (live4[s] && live4[s].rows) || [];
+  const c = rows.map(r => ({ t: +r[0], o: +r[1], h: +r[2], l: +r[3], c: +r[4], v: +r[5] }));
+  RES4[s] = c.length >= 100 ? { c, res: Patterns.analyze(c) } : null;
+  return RES4[s];
+}
+function resTf(t, s) { return t === "5m" ? RES5[s] : t === "4H" ? RES4[s] : RES[s]; }
 function analyze(s) {
   const c = candles(s);
   RES[s] = c.length >= 100 ? { c, res: Patterns.analyze(c) } : null;
@@ -306,23 +317,23 @@ function makeChart(el) {
 }
 const CH = {};
 function setChartData(key, s, keepRange, tf) {
-  const five = tf === "5m", A = five ? RES5[s] : RES[s]; if (!A) return;
-  const vw = five ? A.rs.vwap : A.res.vwap;
+  const five = tf === "5m", A = resTf(tf, s); if (!A) return;
+  const vw = A.res.vwap;
   const k = CH[key], d = dp(A.c[A.c.length - 1].c), tm = t => (t + IST_MS) / 1000;
   const pf = { type: "price", precision: d, minMove: Math.pow(10, -d) };
   k.cs.applyOptions({ priceFormat: pf }); k.vw.applyOptions({ priceFormat: pf });
   k.cs.setData(A.c.map(x => ({ time: tm(x.t), open: x.o, high: x.h, low: x.l, close: x.c })));
   k.vw.setData(A.c.map((x, i) => ({ time: tm(x.t), value: vw[i] })));
-  const sig = s + (five ? "5" : "15");
+  const sig = s + tf;
   if (!keepRange || k.sig !== sig) k.ch.timeScale().setVisibleLogicalRange({ from: A.c.length - (five ? 200 : 120), to: A.c.length + 8 });
-  k.sym = s; k.tf = five ? "5m" : "15m"; k.sig = sig;
-  if (!five) k.cs.setMarkers([]);
+  k.sym = s; k.tf = tf; k.sig = sig;
+  if (key === "t") k.cs.setMarkers([]);
   drawForming(key);
 }
 function drawForming(key) {
   const k = CH[key]; if (!k || !k.sym) return;
-  const five = k.tf === "5m", f = (five ? forming5 : forming)[k.sym];
-  const r = five ? ((live5[k.sym] && live5[k.sym].rows) || []) : rowsOf(k.sym), lastT = r.length ? +r[r.length - 1][0] : 0;
+  const f = (k.tf === "5m" ? forming5 : k.tf === "4H" ? forming4 : forming)[k.sym];
+  const r = k.tf === "5m" ? ((live5[k.sym] && live5[k.sym].rows) || []) : k.tf === "4H" ? ((live4[k.sym] && live4[k.sym].rows) || []) : rowsOf(k.sym), lastT = r.length ? +r[r.length - 1][0] : 0;
   if (f && f.t > lastT) k.cs.update({ time: (f.t + IST_MS) / 1000, open: f.o, high: f.h, low: f.l, close: f.c });
 }
 function setLines(key, list) {
@@ -348,12 +359,12 @@ function renderProfiles() {
   document.querySelectorAll("#profiles .pf").forEach(el => el.onclick = () => {
     profile = el.dataset.pf; try { localStorage.setItem("radar.profile", profile); } catch (e) {}
     $("tLev").value = String(Patterns.PROFILES[profile].lev);
-    renderAll(false);
+    setTf(Patterns.PROFILES[profile].tf);
   });
 }
 function renderTrade() {
   const s = sym, pf = profile, PR = Patterns.PROFILES[pf];
-  $("tSym").textContent = s; $("tProf").textContent = PR.name + " · " + PR.tf + " candles"; $("tTf").textContent = PR.tf + (pf === "aggressive" ? ", grey lines = today's first 4-hour range" : "");
+  $("tSym").textContent = s; $("tProf").textContent = PR.name + " · " + PR.tf + " candles"; $("tTf").textContent = (tf === "4H" ? "4h" : tf) + (pf === "aggressive" && tf === "5m" ? ", grey lines = today's first 4-hour range" : "") + (tf !== PR.tf ? ` — this profile trades on ${PR.tf}; lines still apply` : "");
   renderProfiles();
   const P = tradePlan(s, pf), px = livePrice(s), d = dp(px);
   const { mmr, taker } = contractOf(s);
@@ -476,13 +487,13 @@ function histCells(h) {
   return `<td class="r">${h.n}</td><td class="r">${pc(h.hit16)}</td><td class="r ${e > 0 ? "up" : "down"}">${rr(e)}</td><td class="r ${l > 0 ? "up" : "down"}">${rr(l)}</td><td><span class="pill ${g[0]}">${g[1]}</span></td>`;
 }
 function renderPatterns(keepRange) {
-  const s = sym, A = RES[s];
+  const s = sym, A = resTf(tf, s);
   $("symName").textContent = s + " perpetual";
   if (!A) { $("verdict").textContent = "NO DATA"; return; }
   const c = A.c, res = A.res, st = res.state, d = dp(st.price);
   const showCandle = $("showCandle").checked, showNeutral = $("showNeutral").checked;
   const vis = e => e.kind === "structure" || (showCandle && (e.dir !== 0 || showNeutral));
-  setChartData("p", s, keepRange);
+  setChartData("p", s, keepRange, tf);
   const tm = t => (t + IST_MS) / 1000;
   CH.p.cs.setMarkers(res.events.filter(vis).map(e => ({ time: tm(e.t), position: e.dir > 0 ? "belowBar" : "aboveBar",
     color: e.dir > 0 ? "#2fbf71" : e.dir < 0 ? "#e5484d" : "#8b93a3", shape: e.dir > 0 ? "arrowUp" : e.dir < 0 ? "arrowDown" : "circle",
@@ -500,7 +511,7 @@ function renderPatterns(keepRange) {
   const key = st.trend1h === 1 ? "SETUP_LONG" : st.trend1h === -1 ? "SETUP_SHORT" : "SETUP_ANY", h = hist(s, key);
   $("setupHist").innerHTML = h ? `<span class="pill ${grade(h)[0]}">${grade(h)[1]}</span> <span class="sub">History of ${key === "SETUP_ANY" ? "all full setups" : key === "SETUP_LONG" ? "the full long setup" : "the full short setup"} on ${s}: ${h.n} times; right side 4h later ${pc(h.hit16)}; after fees ${rr(h.exp_R_net)} per trade.</span>` : "";
 
-  const above = st.price > st.vwap, S = STATS && STATS.symbols && STATS.symbols[s], rg = S && S.regime;
+  const above = st.price > st.vwap, S = STATS && STATS.symbols && STATS.symbols[s], rg = tf === "15m" && S && S.regime;
   let lean, lh = "";
   if (st.trend1h === 1 && above) { lean = `<span class="up">UP lean</span>`; if (rg) lh = `When both agreed up in the past, price was higher 4h later ${pc(rg.up.higher_4h_later)} of the time.`; }
   else if (st.trend1h === -1 && !above) { lean = `<span class="down">DOWN lean</span>`; if (rg) lh = `When both agreed down in the past, price was lower 4h later ${pc(rg.down.lower_4h_later)} of the time.`; }
@@ -554,26 +565,36 @@ function guide() {
 }
 
 /* ================= model, indicators, journal ================= */
-function modelProb(s) {
-  const A = RES[s]; if (!A || !MODEL || !MODEL.model) return null;
+function modelProb(s, t) {
+  t = t || "15m";
+  const A = resTf(t, s), M = MODEL && MODEL.tfs && MODEL.tfs[t] ? MODEL.tfs[t].model : (t === "15m" && MODEL && MODEL.model);
+  if (!A || !M) return null;
   const F = Patterns.featureRows(A.c, A.res), x = F[F.length - 1];
-  return x ? Patterns.predict(MODEL.model, x) : null;
+  return x ? Patterns.predict(M, x) : null;
 }
 function renderModel() {
   const el = $("modelBody");
-  if (!MODEL || !MODEL.test) { el.innerHTML = "The model has not been trained yet (it retrains every day)."; return; }
-  const p = modelProb(sym), T = MODEL.test, Ts = MODEL.test_by_symbol && MODEL.test_by_symbol[sym];
-  const beat = T.accuracy - T.coin_flip_best;
-  const word = p === null ? "—" : p > 0.55 ? `<span class="up">leans UP</span>` : p < 0.45 ? `<span class="down">leans DOWN</span>` : `<span class="muted">no clear lean</span>`;
-  el.innerHTML = `<div style="display:flex;gap:18px;align-items:baseline;flex-wrap:wrap">
-      <span class="pnl ${p > 0.5 ? "up" : "down"}">${p === null ? "—" : pc(p, 1)}</span><span style="font-size:16px">${word}</span>
-      <span class="sub">${sym.replace("USDT", "")} · from the last closed 15-minute candle</span></div>
-    <div style="margin-top:6px"><span class="pill ${beat > 0.02 ? "good" : "bad"}">${beat > 0.02 ? "beat a coin flip in testing" : "no better than a coin flip in testing"}</span>
-      Tested on ${T.rows.toLocaleString()} unseen candles: right <b>${pc(T.accuracy, 1)}</b> of the time, versus <b>${pc(T.coin_flip_best, 1)}</b> for always guessing the more common direction.
-      ${Ts ? `On ${sym.replace("USDT", "")} alone: ${pc(Ts.accuracy, 1)}.` : ""}
-      Trading its strongest calls (${esc(T.trade_rule)}) averaged <b class="${T.avg_net_bps > 0 ? "up" : "down"}">${T.avg_net_bps} bps</b> per trade over ${T.trades.toLocaleString()} trades.</div>
-    <details><summary>How this model works</summary><div class="sub" style="margin-top:6px">${esc(MODEL.method.note)} It looks at ${MODEL.method.features.length} inputs: the indicators on the Indicators tab, VWAP, the 1-hour trend, recent moves, patterns and time of day.
-      Calibration on unseen data (when it said … , price was actually higher …): ${T.buckets.map(b => `${b.range}: ${b.cases ? pc(b.actually_up) : "—"}`).join(" · ")}. Retrained ${esc(MODEL.generated_at_utc)} UTC.</div></details>`;
+  if (!MODEL || !MODEL.tfs) { el.innerHTML = "The models have not been trained yet (they retrain every day)."; return; }
+  ["5m", "4H"].forEach(t => { if (!resTf(t, sym)) (t === "5m" ? analyze5 : analyze4)(sym); });
+  const P = {}, rows = ["5m", "15m", "4H"].map(t => {
+    const M = MODEL.tfs[t]; if (!M) return `<tr><td>${t}</td><td colspan="5" class="muted">not trained yet</td></tr>`;
+    const p = modelProb(sym, t), T = M.test, Ts = M.test_by_symbol && M.test_by_symbol[sym], beat = T.accuracy - T.coin_flip_best;
+    P[t] = p;
+    const lean = p === null ? "—" : p > 0.5 + M.band ? `<span class="up">UP</span>` : p < 0.5 - M.band ? `<span class="down">DOWN</span>` : `<span class="muted">no clear lean</span>`;
+    return `<tr><td><b>${t === "4H" ? "4h" : t}</b> <span class="sub">next ${esc(M.ahead)}</span></td>
+      <td class="r"><b class="${p > 0.5 ? "up" : "down"}">${p === null ? "—" : pc(p, 1)}</b></td><td>${lean}</td>
+      <td class="r">${pc(T.accuracy, 1)} <span class="sub">vs ${pc(T.coin_flip_best, 1)}</span>${Ts ? ` <span class="sub">(${sym.replace("USDT", "")} ${pc(Ts.accuracy, 1)})</span>` : ""}</td>
+      <td class="r ${T.avg_net_bps > 0 ? "up" : "down"}">${T.avg_net_bps === null ? "—" : T.avg_net_bps + " bps"} <span class="sub">${T.trades} trades</span></td>
+      <td><span class="pill ${beat > 0.02 && T.avg_net_bps > 0 ? "good" : "bad"}">${beat > 0.02 && T.avg_net_bps > 0 ? "held up in testing" : "no edge in testing"}</span></td></tr>`;
+  }).join("");
+  const ok = ["5m", "15m", "4H"].every(t => P[t] !== null && P[t] !== undefined);
+  const agreeNow = !ok ? "—" : ["5m", "15m", "4H"].every(t => P[t] > 0.5) ? `<b class="up">all three lean UP</b>` : ["5m", "15m", "4H"].every(t => P[t] < 0.5) ? `<b class="down">all three lean DOWN</b>` : `<span class="muted">they disagree, so no combined signal</span>`;
+  const G = MODEL.agreement;
+  el.innerHTML = `<table><tr><th>Timeframe</th><th class="r">Chance higher</th><th>Lean</th><th class="r">Right on unseen data</th><th class="r">Trading its calls</th><th></th></tr>${rows}</table>
+    <div style="margin-top:8px"><b>All three together:</b> ${agreeNow}.
+      ${G && G.trades ? `<span class="sub">Tested on unseen data: they agreed ${pc(G.share_of_time)} of the time; trading only then won ${pc(G.win_rate)} of ${G.trades.toLocaleString()} trades and averaged <b class="${G.avg_net_bps > 0 ? "up" : "down"}">${G.avg_net_bps} bps</b> per trade after costs.</span>` : ""}</div>
+    <details><summary>How these models work</summary><div class="sub" style="margin-top:6px">${esc(MODEL.method.note)} "Right on unseen data" is compared with always guessing the more common direction in that test period.
+      "Trading its calls" uses the confidence threshold picked on the training part only (shown as the UP/DOWN lean). bps = hundredths of a percent; 14 bps of costs are included. Retrained ${esc(MODEL.generated_at_utc)} UTC.</div></details>`;
 }
 function renderJournal() {
   const el = $("journal");
@@ -604,7 +625,7 @@ const IND_INFO = {
   OBV: { name: "OBV (on-balance volume)", what: "A running total that adds the volume of up-candles and subtracts the volume of down-candles. Rising OBV means volume is coming in on the buying side; OBV falling while price rises is a warning." }
 };
 function renderIndicators() {
-  const s = sym, A = RES[s]; $("iSym").textContent = s;
+  const s = sym, A = resTf(tf, s); $("iSym").textContent = s + " · " + TF_NAME[tf] + " candles";
   if (!A) return;
   const c = A.c, i = c.length - 1, ind = Patterns.indicators(c), px = c[i].c, d = dp(px), at = A.res.atr[i], vw = A.res.vwap[i];
   $("iTime").textContent = istT(c[i].t + M15) + " IST";
@@ -621,19 +642,22 @@ function renderIndicators() {
     ADX: [`${f(ind.adx[i])} · +DI ${f(ind.plusDI[i])} / −DI ${f(ind.minusDI[i])}`, `${ind.adx[i] > 25 ? "strong trend" : ind.adx[i] < 20 ? "weak / sideways" : "moderate"}, ${ind.plusDI[i] > ind.minusDI[i] ? `<span class="up">buyers pushing harder</span>` : `<span class="down">sellers pushing harder</span>`}`],
     OBV: [obv16 > 0 ? "rising" : "falling", obv16 > 0 ? `<span class="up">volume on the buying side (last 4h)</span>` : `<span class="down">volume on the selling side (last 4h)</span>`]
   };
-  const T = MODEL && MODEL.indicators && MODEL.indicators[s];
+  const MT = MODEL && MODEL.tfs && MODEL.tfs[tf], T = MT ? MT.indicators && MT.indicators[s] : (tf === "15m" && MODEL && MODEL.indicators && MODEL.indicators[s]);
   const tested = k => { const x = T && T[k]; if (!x || !x.n) return `<td colspan="3" class="muted">${k === "ATR" ? "no buy/sell signal (sizing tool)" : "not tested yet"}</td>`;
     return `<td class="r">${x.n}</td><td class="r">${pc(x.right_4h)}</td><td class="r ${x.avg_net_bps > 0 ? "up" : "down"}">${x.avg_net_bps} bps <span class="sub">(later ${x.last30.avg_net_bps})</span></td>`; };
   $("indTable").innerHTML = `<tr><th>Indicator</th><th>Now</th><th>What it says now</th><th>What it means</th><th class="r">Signals</th><th class="r">Right 4h</th><th class="r">After costs</th></tr>` +
     Object.keys(IND_INFO).map(k => `<tr><td><b>${IND_INFO[k].name}</b></td><td style="white-space:nowrap">${now[k][0]}</td><td>${now[k][1]}</td><td class="sub" style="min-width:280px">${IND_INFO[k].what}</td>${tested(k)}</tr>`).join("");
-  $("iWeights").innerHTML = MODEL && MODEL.weights ? `The model's biggest inputs (positive = pushes the forecast up when the input is high): ` +
-    MODEL.weights.slice(0, 8).map(w => `<b>${esc(w.feature)}</b> ${w.weight > 0 ? "+" : ""}${w.weight.toFixed(3)}`).join(" · ") + `. Small numbers everywhere mean no single input says much on its own.` : "Model not trained yet.";
+  const W = MT ? MT.weights : MODEL && MODEL.weights;
+  $("iWeights").innerHTML = W ? `The ${TF_NAME[tf]} model's biggest inputs (positive = pushes the forecast up when the input is high): ` +
+    W.slice(0, 8).map(w => `<b>${esc(w.feature)}</b> ${w.weight > 0 ? "+" : ""}${w.weight.toFixed(3)}`).join(" · ") + `. Small numbers everywhere mean no single input says much on its own.` : "Model not trained yet.";
 }
 
 /* ================= render orchestration ================= */
 function renderAll(keepRange) {
   analyze(sym); analyze5(sym); if (sym !== "BTCUSDT") analyze("BTCUSDT");
-  if (view === "trade") { setChartData("t", sym, keepRange, Patterns.PROFILES[profile].tf); renderTrade(); renderModel(); renderJournal(); }
+  if (tf === "5m" || profile === "aggressive") analyze5(sym);
+  if (tf === "4H") analyze4(sym);
+  if (view === "trade") { setChartData("t", sym, keepRange, tf); renderTrade(); renderModel(); renderJournal(); }
   else if (view === "indicators") renderIndicators();
   else renderPatterns(keepRange);
 }
@@ -652,19 +676,20 @@ function lightUpdate() {                      // every tick: no re-analysis, jus
 
 /* ================= data: REST history + live WebSocket ================= */
 async function fetchRest(s, gran) {
-  gran = gran || "15m"; const step = gran === "5m" ? 300000 : M15;
+  gran = gran || "15m"; const step = TF_MS[gran];
   try {
     const r = await fetch(`https://api.bitget.com/api/v2/mix/market/candles?symbol=${s}&productType=USDT-FUTURES&granularity=${gran}&limit=1000`);
     const j = await r.json();
     if (j.code !== "00000" || !Array.isArray(j.data) || j.data.length < 200) throw new Error(j.msg || "bad response");
     const now = Date.now(), rows = j.data.map(a => a.slice(0, 6).map(Number)).filter(a => a[0] + step <= now).sort((a, b) => a[0] - b[0]);
-    (gran === "5m" ? live5 : live)[s] = { rows };
+    (gran === "5m" ? live5 : gran === "4H" ? live4 : live)[s] = { rows };
     return true;
   } catch (e) { return false; }
 }
-function upsert5(s, r) {
-  if (!live5[s]) return false;
-  const rows = live5[s].rows, last = rows[rows.length - 1];
+function upsert5(s, r, store) {
+  store = store || live5;
+  if (!store[s]) return false;
+  const rows = store[s].rows, last = rows[rows.length - 1];
   if (last && last[0] === r[0]) { rows[rows.length - 1] = r; return false; }
   if (!last || r[0] > last[0]) { rows.push(r); if (rows.length > 1200) rows.shift(); return true; }
   return false;
@@ -684,7 +709,7 @@ function connectStream() {
   ws.onopen = () => {
     retries = 0;
     ws.send(JSON.stringify({ op: "subscribe", args: SYMS.flatMap(s => [
-      { instType: "USDT-FUTURES", channel: "candle15m", instId: s }, { instType: "USDT-FUTURES", channel: "candle5m", instId: s },
+      { instType: "USDT-FUTURES", channel: "candle15m", instId: s }, { instType: "USDT-FUTURES", channel: "candle5m", instId: s }, { instType: "USDT-FUTURES", channel: "candle4H", instId: s },
       { instType: "USDT-FUTURES", channel: "ticker", instId: s }]) }));
     pingT = setInterval(() => { if (ws && ws.readyState === 1) ws.send("ping"); }, 25000);
   };
@@ -706,7 +731,13 @@ function connectStream() {
       m.data.forEach(a => { const r = a.slice(0, 6).map(Number);
         if (r[0] + 300000 <= Date.now()) closedNew = upsert5(s, r) || closedNew;
         else forming5[s] = { t: r[0], o: r[1], h: r[2], l: r[3], c: r[4] }; });
-      if (closedNew) { analyze5(s); if (s === sym && view === "trade") { if (profile === "aggressive") setChartData("t", sym, true, "5m"); renderTrade(); } }
+      if (closedNew) { analyze5(s); if (s === sym) { if (view === "trade") { if (tf === "5m") setChartData("t", sym, true, "5m"); renderTrade(); } else if (tf === "5m") renderAll(true); } }
+    } else if (m.arg.channel === "candle4H") {
+      let closedNew = false;
+      m.data.forEach(a => { const r = a.slice(0, 6).map(Number);
+        if (r[0] + TF_MS["4H"] <= Date.now()) closedNew = upsert5(s, r, live4) || closedNew;
+        else forming4[s] = { t: r[0], o: r[1], h: r[2], l: r[3], c: r[4] }; });
+      if (closedNew && s === sym) { analyze4(s); renderAll(true); }
     } else if (m.arg.channel === "ticker") {
       const d = m.data[0]; tick[s] = { last: +d.lastPr, mark: +d.markPrice, funding: +d.fundingRate, at: Date.now() };
       checkPos(s, tick[s].last);
@@ -750,7 +781,7 @@ document.querySelectorAll("#coins span").forEach(t => t.onclick = async () => {
   document.querySelectorAll("#coins span").forEach(x => x.classList.remove("on")); t.classList.add("on");
   sym = t.dataset.sym;
   renderAll(false);
-  if (!live[sym] || !live5[sym]) { await Promise.all([fetchRest(sym), fetchRest(sym, "5m")]); renderAll(false); }
+  if (!live[sym] || !live5[sym] || !live4[sym]) { await Promise.all([fetchRest(sym), fetchRest(sym, "5m"), fetchRest(sym, "4H")]); renderAll(false); }
 });
 document.querySelectorAll("#views span").forEach(t => t.onclick = () => {
   document.querySelectorAll("#views span").forEach(x => x.classList.remove("on")); t.classList.add("on");
@@ -760,6 +791,12 @@ document.querySelectorAll("#views span").forEach(t => t.onclick = () => {
   $("indicatorsView").classList.toggle("hidden", view !== "indicators");
   renderAll(false);
 });
+function setTf(t) {
+  tf = t;
+  document.querySelectorAll("#tfs span").forEach(x => x.classList.toggle("on", x.dataset.tf === t));
+  renderAll(false);
+}
+document.querySelectorAll("#tfs span").forEach(x => x.onclick = () => setTf(x.dataset.tf));
 $("showCandle").onchange = $("showNeutral").onchange = () => renderAll(true);
 $("tMargin").oninput = $("tLev").onchange = () => renderTrade();
 
@@ -769,11 +806,12 @@ $("tMargin").oninput = $("tLev").onchange = () => renderTrade();
   await loadSnapshot();
   renderAll(false);
   $("tLev").value = String(Patterns.PROFILES[profile].lev);
-  await Promise.all(SYMS.flatMap(x => [fetchRest(x), fetchRest(x, "5m")]));
+  tf = Patterns.PROFILES[profile].tf; document.querySelectorAll("#tfs span").forEach(x => x.classList.toggle("on", x.dataset.tf === tf));
+  await Promise.all(SYMS.flatMap(x => [fetchRest(x), fetchRest(x, "5m"), fetchRest(x, "4H")]));
   renderAll(false);
   connectStream();
   setInterval(async () => { await loadSnapshot(); if (view === "trade") { renderModel(); renderJournal(); } }, 300000);
-  setInterval(async () => { await Promise.all([fetchRest(sym), fetchRest(sym, "5m")]); renderAll(true); }, 300000);
+  setInterval(async () => { await Promise.all([fetchRest(sym), fetchRest(sym, "5m"), fetchRest(sym, "4H")]); renderAll(true); }, 300000);
 })();
 </script>
 </body>

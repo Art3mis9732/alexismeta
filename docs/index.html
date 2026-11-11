@@ -64,7 +64,7 @@
   <h1>Pattern Radar</h1><span class="sub">BTC · ETH · XRP USDT perpetuals on Bitget · research tool, not advice</span>
   <div class="bar2">
     <div class="seg" id="coins"><span class="on" data-sym="BTCUSDT">BTC</span><span data-sym="ETHUSDT">ETH</span><span data-sym="XRPUSDT">XRP</span></div>
-    <div class="seg" id="views"><span class="on" data-view="trade">Buy / Sell</span><span data-view="patterns">Patterns</span></div>
+    <div class="seg" id="views"><span class="on" data-view="trade">Buy / Sell</span><span data-view="patterns">Patterns</span><span data-view="indicators">Indicators</span></div>
     <span class="sub" id="mode">connecting…</span>
   </div>
   <div class="banner" id="banner"></div>
@@ -74,6 +74,7 @@
 <!-- ======================= BUY / SELL VIEW ======================= -->
 <section id="tradeView">
   <div class="profiles" id="profiles"></div>
+  <div class="card" id="modelCard"><h2>Model forecast — chance the price is higher 4 hours from now</h2><div id="modelBody" class="sub">Loading…</div></div>
   <div class="row">
     <div class="card">
       <h2>What to do now — <span id="tSym">BTCUSDT</span> · <span id="tProf">Neutral</span></h2>
@@ -99,9 +100,24 @@
     <div class="chart" id="tChart"></div>
   </div>
   <div class="card">
-    <h2>Paper trade log (saved in this browser)</h2>
+    <h2>Automatic paper trader — runs every 15 minutes on GitHub, even when this page is closed</h2>
+    <div id="journal" class="sub">Loading…</div>
+  </div>
+  <div class="card">
+    <h2>Your own paper trades (saved in this browser)</h2>
     <div id="tLog" class="sub">No trades yet.</div>
   </div>
+</section>
+
+<!-- ======================= INDICATORS VIEW ======================= -->
+<section id="indicatorsView" class="hidden">
+  <div class="card">
+    <h2>Indicators on <span id="iSym">BTCUSDT</span> — 15-minute candles, last closed candle <span id="iTime"></span></h2>
+    <table id="indTable"></table>
+    <div class="sub" style="margin-top:8px"><b>Tested signal</b>: the indicator's textbook buy/sell signal on 180 days of Bitget 15-minute candles, entered at the next candle's open and held 4 hours, after 0.14% round-trip costs.
+      "Right 4h" is how often price went the signal's way (50% = coin flip). "Later 30%" is the most recent part of the data alone.</div>
+  </div>
+  <div class="card"><h2>What the model looks at most</h2><div id="iWeights" class="sub"></div></div>
 </section>
 
 <!-- ======================= PATTERNS VIEW ======================= -->
@@ -167,7 +183,7 @@ const DIR = { DOJI:0, SPIN:0, MARU_UP:1, MARU_DN:-1, HAMMER:1, HANGING:-1, STAR_
   PIERCING:1, DARK_CLOUD:-1, HARAMI_UP:1, HARAMI_DN:-1, MORNING_STAR:1, EVENING_STAR:-1, BO_UP:1, BO_DN:-1, BO_UP_WEAK:1, BO_DN_WEAK:-1,
   RETEST_UP:1, RETEST_DN:-1, FAIL_UP:-1, FAIL_DN:1, VWAP_PB_UP:1, VWAP_PB_DN:-1 };
 
-let MARKET = null, STATS = null, sym = "BTCUSDT", view = "trade";
+let MARKET = null, STATS = null, MODEL = null, JOURNAL = null, sym = "BTCUSDT", view = "trade";
 const live = {}, forming = {}, tick = {}, RES = {};          // per-symbol state, 15m
 const live5 = {}, forming5 = {}, RES5 = {};                  // per-symbol state, 5m (Aggressive)
 const PROFS = ["aggressive", "neutral", "careful"];
@@ -537,10 +553,88 @@ function guide() {
     return `<tr><td><b>${Patterns.NAMES[k]}</b></td><td class="muted">${SHORT[k]}</td><td class="${d > 0 ? "up" : d < 0 ? "down" : "muted"}">${d > 0 ? "up" : d < 0 ? "down" : "undecided"}</td><td class="sub">${Patterns.MEANING[k]}</td></tr>`; }).join("");
 }
 
+/* ================= model, indicators, journal ================= */
+function modelProb(s) {
+  const A = RES[s]; if (!A || !MODEL || !MODEL.model) return null;
+  const F = Patterns.featureRows(A.c, A.res), x = F[F.length - 1];
+  return x ? Patterns.predict(MODEL.model, x) : null;
+}
+function renderModel() {
+  const el = $("modelBody");
+  if (!MODEL || !MODEL.test) { el.innerHTML = "The model has not been trained yet (it retrains every day)."; return; }
+  const p = modelProb(sym), T = MODEL.test, Ts = MODEL.test_by_symbol && MODEL.test_by_symbol[sym];
+  const beat = T.accuracy - T.coin_flip_best;
+  const word = p === null ? "—" : p > 0.55 ? `<span class="up">leans UP</span>` : p < 0.45 ? `<span class="down">leans DOWN</span>` : `<span class="muted">no clear lean</span>`;
+  el.innerHTML = `<div style="display:flex;gap:18px;align-items:baseline;flex-wrap:wrap">
+      <span class="pnl ${p > 0.5 ? "up" : "down"}">${p === null ? "—" : pc(p, 1)}</span><span style="font-size:16px">${word}</span>
+      <span class="sub">${sym.replace("USDT", "")} · from the last closed 15-minute candle</span></div>
+    <div style="margin-top:6px"><span class="pill ${beat > 0.02 ? "good" : "bad"}">${beat > 0.02 ? "beat a coin flip in testing" : "no better than a coin flip in testing"}</span>
+      Tested on ${T.rows.toLocaleString()} unseen candles: right <b>${pc(T.accuracy, 1)}</b> of the time, versus <b>${pc(T.coin_flip_best, 1)}</b> for always guessing the more common direction.
+      ${Ts ? `On ${sym.replace("USDT", "")} alone: ${pc(Ts.accuracy, 1)}.` : ""}
+      Trading its strongest calls (${esc(T.trade_rule)}) averaged <b class="${T.avg_net_bps > 0 ? "up" : "down"}">${T.avg_net_bps} bps</b> per trade over ${T.trades.toLocaleString()} trades.</div>
+    <details><summary>How this model works</summary><div class="sub" style="margin-top:6px">${esc(MODEL.method.note)} It looks at ${MODEL.method.features.length} inputs: the indicators on the Indicators tab, VWAP, the 1-hour trend, recent moves, patterns and time of day.
+      Calibration on unseen data (when it said … , price was actually higher …): ${T.buckets.map(b => `${b.range}: ${b.cases ? pc(b.actually_up) : "—"}`).join(" · ")}. Retrained ${esc(MODEL.generated_at_utc)} UTC.</div></details>`;
+}
+function renderJournal() {
+  const el = $("journal");
+  if (!JOURNAL || !JOURNAL.trades) { el.innerHTML = "Starts with the next 15-minute run on GitHub."; return; }
+  const S = JOURNAL.summary || {}, open = JOURNAL.trades.filter(t => t.status === "open");
+  const card = p => { const x = S[p] || {}; const PR = Patterns.PROFILES[p];
+    return `<div class="pf" style="cursor:default"><span class="nm">${PR.name}</span><span class="tf">$5 at ${PR.lev}× per trade</span>
+      <div class="sg ${x.usd > 0 ? "up" : x.usd < 0 ? "down" : "muted"}">${x.closed ? usd(x.usd) : "$0.00"}</div>
+      <div class="rec">${x.closed || 0} closed (${x.wins || 0} won) · ${x.open || 0} open · ${x.R >= 0 ? "+" : ""}${(x.R || 0).toFixed(2)}R before fees</div></div>`; };
+  const rows = JOURNAL.trades.slice().reverse().slice(0, 15).map(t => {
+    const d = dp(t.entry);
+    return `<tr><td>${istT(t.entry_time)}</td><td>${Patterns.PROFILES[t.profile].name}</td><td>${t.sym.replace("USDT", "")}</td><td class="${t.dir > 0 ? "up" : "down"}">${t.dir > 0 ? "BUY" : "SELL"}</td>
+      <td class="sub">${esc(t.signal)}</td><td class="r">${nf(t.entry, d)}</td><td class="r">${nf(t.sl, d)} / ${nf(t.tp, d)}</td>
+      <td>${t.status === "open" ? `<span class="warn">open</span>` : esc(t.how)}</td><td class="r ${t.usd > 0 ? "up" : t.usd < 0 ? "down" : ""}">${t.status === "open" ? "—" : usd(t.usd)}</td></tr>`; }).join("");
+  el.innerHTML = `<div>Started ${esc(JOURNAL.started_utc)} UTC · last run ${esc(JOURNAL.updated_utc || "—")} UTC. These are forward results: none of these trades existed when the rules were written.</div>
+    <div class="profiles">${["aggressive", "neutral", "careful"].map(card).join("")}</div>
+    ${rows ? `<table style="margin-top:10px"><tr><th>Entry (IST)</th><th>Profile</th><th>Coin</th><th>Side</th><th>Signal</th><th class="r">Entry</th><th class="r">Stop / target</th><th>Result</th><th class="r">$</th></tr>${rows}</table>` : `<div style="margin-top:8px">No trades yet: waiting for the first signal.</div>`}`;
+}
+const IND_INFO = {
+  EMA: { name: "EMA 20 / 50 (moving averages)", what: "The average price of the last 20 and 50 candles, giving more weight to the newest ones. Price above the EMA, and the 20 above the 50, means the recent trend is up." },
+  VWAP: { name: "VWAP (volume-weighted average price)", what: "The average price everyone has paid today, weighted by how much was traded at each price. Resets at 05:30 IST. Above it, today's buyers are in profit; below it, they are not." },
+  RSI: { name: "RSI 14 (relative strength index)", what: "Compares the size of recent up-moves with recent down-moves on a 0–100 scale. Above 70 = stretched up (\"overbought\"), below 30 = stretched down (\"oversold\"), 50 = balanced. In a strong trend it can stay stretched for a long time." },
+  MACD: { name: "MACD 12, 26, 9", what: "The gap between a fast (12) and a slow (26) moving average, and a 9-candle average of that gap (the signal line). The histogram is the difference: above zero and growing means upward momentum is building." },
+  Stochastic: { name: "Stochastic 14, 3", what: "Where the latest close sits inside the high–low range of the last 14 candles, 0–100. Above 80 = closing near the top of the range, below 20 = near the bottom. Faster and jumpier than RSI." },
+  Bollinger: { name: "Bollinger Bands 20, 2", what: "A 20-candle average with bands two standard deviations above and below. %B shows where price sits (0 = lower band, 1 = upper band). Narrow bands (a \"squeeze\") mean quiet trading, which often comes before a bigger move, in either direction." },
+  ATR: { name: "ATR 14 (average true range)", what: "The typical size of one candle, including jumps between candles. It does not show direction. Use it to size stops (e.g. 1–2× ATR) and to judge whether a leverage level leaves room for normal movement." },
+  ADX: { name: "ADX 14 with +DI / −DI", what: "ADX measures how strong the trend is (0–100) without saying which way: above 25 = strong trend, below 20 = weak or sideways. +DI above −DI means buyers are pushing harder than sellers." },
+  OBV: { name: "OBV (on-balance volume)", what: "A running total that adds the volume of up-candles and subtracts the volume of down-candles. Rising OBV means volume is coming in on the buying side; OBV falling while price rises is a warning." }
+};
+function renderIndicators() {
+  const s = sym, A = RES[s]; $("iSym").textContent = s;
+  if (!A) return;
+  const c = A.c, i = c.length - 1, ind = Patterns.indicators(c), px = c[i].c, d = dp(px), at = A.res.atr[i], vw = A.res.vwap[i];
+  $("iTime").textContent = istT(c[i].t + M15) + " IST";
+  const f = (x, k = 1) => x === null || x === undefined ? "—" : x.toFixed(k);
+  const obv16 = ind.obv[i] - ind.obv[i - 16];
+  const now = {
+    EMA: [`${nf(ind.ema20[i], d)} / ${nf(ind.ema50[i], d)}`, px > ind.ema20[i] && ind.ema20[i] > ind.ema50[i] ? `<span class="up">uptrend: price above both, 20 above 50</span>` : px < ind.ema20[i] && ind.ema20[i] < ind.ema50[i] ? `<span class="down">downtrend: price below both, 20 below 50</span>` : `<span class="muted">mixed</span>`],
+    VWAP: [nf(vw, d), px > vw ? `<span class="up">price above today's average (${pc(px / vw - 1, 2)})</span>` : `<span class="down">price below today's average (${pc(px / vw - 1, 2)})</span>`],
+    RSI: [f(ind.rsi[i]), ind.rsi[i] > 70 ? `<span class="warn">stretched up</span>` : ind.rsi[i] < 30 ? `<span class="warn">stretched down</span>` : ind.rsi[i] > 55 ? `<span class="up">buyers stronger</span>` : ind.rsi[i] < 45 ? `<span class="down">sellers stronger</span>` : `<span class="muted">balanced</span>`],
+    MACD: [f(ind.macdHist[i], d), ind.macdHist[i] > 0 ? (ind.macdHist[i] > ind.macdHist[i - 1] ? `<span class="up">upward momentum, growing</span>` : `<span class="up">upward momentum, fading</span>`) : (ind.macdHist[i] < ind.macdHist[i - 1] ? `<span class="down">downward momentum, growing</span>` : `<span class="down">downward momentum, fading</span>`)],
+    Stochastic: [`${f(ind.stochK[i])} / ${f(ind.stochD[i])}`, ind.stochK[i] > 80 ? `<span class="warn">near the top of its range</span>` : ind.stochK[i] < 20 ? `<span class="warn">near the bottom of its range</span>` : `<span class="muted">mid-range</span>`],
+    Bollinger: [`%B ${f(ind.pctB[i], 2)} · width ${f(ind.bbWidth[i], 2)}%`, ind.pctB[i] > 1 ? `<span class="warn">above the upper band</span>` : ind.pctB[i] < 0 ? `<span class="warn">below the lower band</span>` : ind.pctB[i] > 0.5 ? `<span class="up">upper half</span>` : `<span class="down">lower half</span>`],
+    ATR: [`${nf(at, d)} (${pc(at / px, 2)})`, `<span class="muted">a normal 15-minute candle moves about ${pc(at / px, 2)}</span>`],
+    ADX: [`${f(ind.adx[i])} · +DI ${f(ind.plusDI[i])} / −DI ${f(ind.minusDI[i])}`, `${ind.adx[i] > 25 ? "strong trend" : ind.adx[i] < 20 ? "weak / sideways" : "moderate"}, ${ind.plusDI[i] > ind.minusDI[i] ? `<span class="up">buyers pushing harder</span>` : `<span class="down">sellers pushing harder</span>`}`],
+    OBV: [obv16 > 0 ? "rising" : "falling", obv16 > 0 ? `<span class="up">volume on the buying side (last 4h)</span>` : `<span class="down">volume on the selling side (last 4h)</span>`]
+  };
+  const T = MODEL && MODEL.indicators && MODEL.indicators[s];
+  const tested = k => { const x = T && T[k]; if (!x || !x.n) return `<td colspan="3" class="muted">${k === "ATR" ? "no buy/sell signal (sizing tool)" : "not tested yet"}</td>`;
+    return `<td class="r">${x.n}</td><td class="r">${pc(x.right_4h)}</td><td class="r ${x.avg_net_bps > 0 ? "up" : "down"}">${x.avg_net_bps} bps <span class="sub">(later ${x.last30.avg_net_bps})</span></td>`; };
+  $("indTable").innerHTML = `<tr><th>Indicator</th><th>Now</th><th>What it says now</th><th>What it means</th><th class="r">Signals</th><th class="r">Right 4h</th><th class="r">After costs</th></tr>` +
+    Object.keys(IND_INFO).map(k => `<tr><td><b>${IND_INFO[k].name}</b></td><td style="white-space:nowrap">${now[k][0]}</td><td>${now[k][1]}</td><td class="sub" style="min-width:280px">${IND_INFO[k].what}</td>${tested(k)}</tr>`).join("");
+  $("iWeights").innerHTML = MODEL && MODEL.weights ? `The model's biggest inputs (positive = pushes the forecast up when the input is high): ` +
+    MODEL.weights.slice(0, 8).map(w => `<b>${esc(w.feature)}</b> ${w.weight > 0 ? "+" : ""}${w.weight.toFixed(3)}`).join(" · ") + `. Small numbers everywhere mean no single input says much on its own.` : "Model not trained yet.";
+}
+
 /* ================= render orchestration ================= */
 function renderAll(keepRange) {
   analyze(sym); analyze5(sym); if (sym !== "BTCUSDT") analyze("BTCUSDT");
-  if (view === "trade") { setChartData("t", sym, keepRange, Patterns.PROFILES[profile].tf); renderTrade(); }
+  if (view === "trade") { setChartData("t", sym, keepRange, Patterns.PROFILES[profile].tf); renderTrade(); renderModel(); renderJournal(); }
+  else if (view === "indicators") renderIndicators();
   else renderPatterns(keepRange);
 }
 let lastLight = 0;
@@ -647,6 +741,8 @@ document.addEventListener("visibilitychange", async () => {
 async function loadSnapshot() {
   try { MARKET = await (await fetch("data/market.json?" + Date.now(), { cache: "no-store" })).json(); } catch (e) { MARKET = null; }
   try { STATS = await (await fetch("data/stats.json?" + Date.now(), { cache: "no-store" })).json(); } catch (e) { STATS = null; }
+  try { MODEL = await (await fetch("data/model.json?" + Date.now(), { cache: "no-store" })).json(); } catch (e) { MODEL = null; }
+  try { JOURNAL = await (await fetch("data/journal.json?" + Date.now(), { cache: "no-store" })).json(); } catch (e) { JOURNAL = null; }
 }
 
 /* ================= wiring ================= */
@@ -661,6 +757,7 @@ document.querySelectorAll("#views span").forEach(t => t.onclick = () => {
   view = t.dataset.view;
   $("tradeView").classList.toggle("hidden", view !== "trade");
   $("patternsView").classList.toggle("hidden", view !== "patterns");
+  $("indicatorsView").classList.toggle("hidden", view !== "indicators");
   renderAll(false);
 });
 $("showCandle").onchange = $("showNeutral").onchange = () => renderAll(true);
@@ -675,7 +772,7 @@ $("tMargin").oninput = $("tLev").onchange = () => renderTrade();
   await Promise.all(SYMS.flatMap(x => [fetchRest(x), fetchRest(x, "5m")]));
   renderAll(false);
   connectStream();
-  setInterval(async () => { await loadSnapshot(); }, 300000);
+  setInterval(async () => { await loadSnapshot(); if (view === "trade") { renderModel(); renderJournal(); } }, 300000);
   setInterval(async () => { await Promise.all([fetchRest(sym), fetchRest(sym, "5m")]); renderAll(true); }, 300000);
 })();
 </script>

@@ -1,0 +1,30 @@
+name: pattern-stats
+# Daily: download 180 days of 15m candles and measure what each pattern actually did.
+on:
+  schedule:
+    - cron: "41 1 * * *"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Days of 15m history"
+        default: "180"
+permissions:
+  contents: write
+concurrency:
+  group: stats
+  cancel-in-progress: false
+jobs:
+  stats:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -q requests pandas numpy
+      - run: python scripts/fetch_history.py --days ${{ github.event.inputs.days || '180' }}
+      - run: node scripts/pattern_stats.js
+      - run: bash scripts/publish.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

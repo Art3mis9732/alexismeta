@@ -8,23 +8,26 @@ A public dashboard for BTC/ETH/XRP USDT-margined perpetuals on Bitget, plus the 
 ## What's here
 | Path | What it does |
 |---|---|
-| `docs/index.html` | The website (GitHub Pages): price, mark/index, spread, funding, OI, contract specs, 30-day charts, links to free analysis sites |
-| `docs/data/latest.json` | Data the site reads; rewritten hourly by the snapshot workflow |
-| `scripts/fetch_snapshot.py` | Pulls public Bitget data and writes `latest.json` |
-| `.github/workflows/snapshot.yml` | Runs the fetch every hour at :17 (UTC) and commits the result |
-| `.github/workflows/tests.yml` | Runs the 22 lab tests on every push |
-| `bgbot/`, `tests/`, `config/` | The research lab (see `LAB.md`) |
+| `docs/index.html` | The website: live 15m chart with named patterns marked on it, a "right now" read, crowd positioning, the 100x maths, and a report card of every pattern |
+| `docs/patterns.js` | The pattern engine. One file, used by the site AND by the history test |
+| `docs/SOURCES.md` | Which videos / PDFs the rules came from and what was adapted |
+| `scripts/fetch_market.py` | Public Bitget data -> `data/market.json` (every 15 min) |
+| `scripts/analyze.js` | Current read per coin -> `data/read.json` |
+| `scripts/fetch_history.py`, `scripts/pattern_stats.js` | 180 days of 15m candles -> what each pattern actually did -> `data/stats.json` (daily) |
+| `scripts/publish.sh` | Publishes `docs/` to the `gh-pages` branch, which is what the site serves |
+| `tests_js/`, `tests/` | 14 engine tests (Node) + 22 lab tests (pytest) |
+| `bgbot/`, `config/` | The research lab (see `LAB.md`) |
 
-## Turn the website on (one time)
-1. Repo **Settings → Pages** → Source: *Deploy from a branch* → Branch `main`, folder `/docs` → Save.
-2. Repo **Actions** tab → enable workflows if asked → **market-snapshot → Run workflow**.
-3. Open `https://art3mis9732.github.io/alexismeta/` after ~1 minute.
+Site: https://art3mis9732.github.io/alexismeta/  (served from the `gh-pages` branch)
 
-If the snapshot job logs an error, Bitget may be refusing requests from GitHub's (US-based)
-servers. The site then shows a banner; the "Try live prices from my browser" button and running
-`python scripts/fetch_snapshot.py` on your own PC are the fallbacks.
+Run locally:
+```powershell
+python scripts/fetch_market.py; node scripts/analyze.js
+python scripts/fetch_history.py --days 180; node scripts/pattern_stats.js
+node --test tests_js/patterns.test.js
+```
 
 ## Why the account isn't connected
 A public static site cannot keep a secret. Account tools (balances, positions, demo orders) will run
 locally from `bgbot/` with a read-only, IP-bound, withdrawal-disabled key held in an environment
-variable — never committed and never sent to a browser.
+variable, never committed and never sent to a browser.

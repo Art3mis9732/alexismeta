@@ -1,7 +1,9 @@
 .venv/
 /data/
+docs/data/*.json
 results/
 *.env
 .env*
 secrets*
 __pycache__/
+node_modules/

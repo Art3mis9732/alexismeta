@@ -26,6 +26,7 @@ jobs:
       - run: python scripts/fetch_history.py --days ${{ github.event.inputs.days || '180' }} --gran 15m
       - run: python scripts/fetch_history.py --days ${{ github.event.inputs.days || '180' }} --gran 5m
       - run: node scripts/pattern_stats.js
+      - run: node scripts/train_model.js
       - run: bash scripts/publish.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

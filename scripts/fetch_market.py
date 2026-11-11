@@ -61,6 +61,12 @@ def main() -> int:
         except Exception as e:
             out["errors"].append(f"{sym} candles: {e}")
         try:
+            k5 = api.candles(sym, "5m", now - (BARS + 2) * 300_000, now)
+            row["candles5m"] = [[int(a), o, h, l, cl, v] for a, o, h, l, cl, v in
+                                zip(k5.ts, k5.open, k5.high, k5.low, k5.close, k5.base_vol)]
+        except Exception as e:
+            out["errors"].append(f"{sym} 5m candles: {e}")
+        try:
             tiers = api.position_tiers(sym)
             row["tier1_mmr"] = float(tiers[0]["keepMarginRate"]) if isinstance(tiers, list) and tiers else None
         except Exception as e:

@@ -27,6 +27,9 @@ jobs:
         run: |
           git fetch -q --depth=1 origin gh-pages || true
           git show origin/gh-pages:data/stats.json > docs/data/stats.json 2>/dev/null || rm -f docs/data/stats.json
+      - name: Carry over the paper-trade journal
+        run: git show origin/gh-pages:data/journal.json > docs/data/journal.json 2>/dev/null || rm -f docs/data/journal.json
+      - run: node scripts/paper_trader.js
       - run: node scripts/analyze.js
       - run: bash scripts/publish.sh
         env:

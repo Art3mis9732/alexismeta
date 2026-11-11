@@ -4,7 +4,7 @@
 set -euo pipefail
 mkdir -p docs/data
 git fetch -q --depth=1 origin gh-pages || true
-for f in market.json read.json stats.json; do
+for f in market.json read.json stats.json model.json journal.json; do
   if [ ! -f "docs/data/$f" ]; then
     git show "origin/gh-pages:data/$f" > "docs/data/$f" 2>/dev/null || rm -f "docs/data/$f"
   fi

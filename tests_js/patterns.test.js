@@ -232,3 +232,30 @@ test("careful rejects raw breakouts and accepts nothing that Neutral rejects", (
   });
   assert.ok(neutral > 0 && careful < neutral);
 });
+
+// ---------------- indicators + features ----------------
+function randomCandles(n, seed0) {
+  let seed = seed0; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const c = []; let p = 100;
+  for (let i = 0; i < n; i++) { const o = p, cl = p * (1 + (rnd() - 0.5) * 0.01);
+    c.push(bar(i, o, Math.max(o, cl) * (1 + rnd() * 0.002), Math.min(o, cl) * (1 - rnd() * 0.002), cl, 50 + rnd() * 200)); p = cl; }
+  return c;
+}
+test("indicators stay in their normal ranges", () => {
+  const ind = Pt.indicators(randomCandles(600, 9));
+  const ok = (arr, lo, hi) => arr.filter(v => v !== null).every(v => v >= lo - 1e-9 && v <= hi + 1e-9);
+  assert.ok(ok(ind.rsi, 0, 100) && ok(ind.stochK, 0, 100) && ok(ind.adx, 0, 100) && ok(ind.plusDI, 0, 100));
+  assert.ok(ind.rsi.filter(v => v !== null).length > 500 && ind.adx.filter(v => v !== null).length > 500);
+});
+test("RSI is 100 in a straight rise and 0 in a straight fall", () => {
+  const up = trend(base(5), 40, 1), dn = trend(base(5), 40, -1);
+  assert.strictEqual(Pt.indicators(up).rsi[up.length - 1], 100);
+  assert.ok(Pt.indicators(dn).rsi[dn.length - 1] < 1e-9);
+});
+test("features use no future data", () => {
+  const c = randomCandles(900, 21), cut = 700;
+  const fa = Pt.featureRows(c.slice(0, cut), Pt.analyze(c.slice(0, cut)));
+  const fb = Pt.featureRows(c, Pt.analyze(c));
+  for (let i = 150; i < cut; i++) assert.deepStrictEqual(fb[i], fa[i]);
+  assert.strictEqual(fb[800].length, Pt.FEATURES.length);
+});

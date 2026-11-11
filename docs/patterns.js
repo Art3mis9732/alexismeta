@@ -368,11 +368,92 @@
         trigger: ev.filter(function (e) { return e.i >= n - 2; }).pop() || null, price: last.c, time: last.t } : null };
   }
 
+
+  /* ===================== indicators (standard settings) ===================== */
+  function emaSkip(vals, n) {                     // EMA over a series that may start with nulls
+    var out = new Array(vals.length).fill(null), k = 2 / (n + 1), e = null, buf = [];
+    for (var i = 0; i < vals.length; i++) {
+      var v = vals[i]; if (v === null || v === undefined) continue;
+      if (e === null) { buf.push(v); if (buf.length === n) { e = buf.reduce(function (a, b) { return a + b; }, 0) / n; out[i] = e; } }
+      else { e = v * k + e * (1 - k); out[i] = e; }
+    }
+    return out;
+  }
+  function wilder(vals, n) {
+    var out = new Array(vals.length).fill(null), a = null, sum = 0, cnt = 0;
+    for (var i = 0; i < vals.length; i++) {
+      var v = vals[i]; if (v === null) continue;
+      if (a === null) { sum += v; cnt++; if (cnt === n) { a = sum / n; out[i] = a; } }
+      else { a = (a * (n - 1) + v) / n; out[i] = a; }
+    }
+    return out;
+  }
+  function indicators(c) {
+    var n = c.length, cl = c.map(function (x) { return x.c; });
+    var e20 = ema(cl, 20), e50 = ema(cl, 50), e12 = ema(cl, 12), e26 = ema(cl, 26);
+    var macd = cl.map(function (_, i) { return e12[i] !== null && e26[i] !== null ? e12[i] - e26[i] : null; });
+    var sig = emaSkip(macd, 9), hist = macd.map(function (m, i) { return m !== null && sig[i] !== null ? m - sig[i] : null; });
+    var gain = [null], loss = [null];
+    for (var i = 1; i < n; i++) { var d = cl[i] - cl[i - 1]; gain.push(Math.max(d, 0)); loss.push(Math.max(-d, 0)); }
+    var ag = wilder(gain, 14), al = wilder(loss, 14);
+    var rsi = ag.map(function (g, i) { return g === null || al[i] === null ? null : al[i] === 0 ? 100 : 100 - 100 / (1 + g / al[i]); });
+    var k = new Array(n).fill(null), pb = new Array(n).fill(null), bw = new Array(n).fill(null), obv = new Array(n).fill(0);
+    for (i = 0; i < n; i++) {
+      if (i >= 13) { var hh = -Infinity, ll = Infinity; for (var j = i - 13; j <= i; j++) { if (c[j].h > hh) hh = c[j].h; if (c[j].l < ll) ll = c[j].l; }
+        k[i] = hh > ll ? (cl[i] - ll) / (hh - ll) * 100 : 50; }
+      if (i >= 19) { var m = 0; for (j = i - 19; j <= i; j++) m += cl[j]; m /= 20; var v = 0; for (j = i - 19; j <= i; j++) v += (cl[j] - m) * (cl[j] - m);
+        var sd = Math.sqrt(v / 20); pb[i] = sd > 0 ? (cl[i] - (m - 2 * sd)) / (4 * sd) : 0.5; bw[i] = 4 * sd / m * 100; }
+      if (i > 0) obv[i] = obv[i - 1] + (cl[i] > cl[i - 1] ? c[i].v : cl[i] < cl[i - 1] ? -c[i].v : 0);
+    }
+    var dk = k.map(function (_, i) { return i >= 2 && k[i] !== null && k[i - 1] !== null && k[i - 2] !== null ? (k[i] + k[i - 1] + k[i - 2]) / 3 : null; });
+    var pdm = [null], mdm = [null], tr = [null];
+    for (i = 1; i < n; i++) { var up = c[i].h - c[i - 1].h, dn = c[i - 1].l - c[i].l;
+      pdm.push(up > dn && up > 0 ? up : 0); mdm.push(dn > up && dn > 0 ? dn : 0);
+      tr.push(Math.max(c[i].h - c[i].l, Math.abs(c[i].h - cl[i - 1]), Math.abs(c[i].l - cl[i - 1]))); }
+    var str = wilder(tr, 14), sp = wilder(pdm, 14), sm = wilder(mdm, 14);
+    var pdi = sp.map(function (x, i) { return x === null || !str[i] ? null : 100 * x / str[i]; });
+    var mdi = sm.map(function (x, i) { return x === null || !str[i] ? null : 100 * x / str[i]; });
+    var dx = pdi.map(function (x, i) { return x === null || mdi[i] === null || x + mdi[i] === 0 ? null : 100 * Math.abs(x - mdi[i]) / (x + mdi[i]); });
+    var adx = wilder(dx, 14);
+    return { ema20: e20, ema50: e50, macd: macd, macdSignal: sig, macdHist: hist, rsi: rsi, stochK: k, stochD: dk,
+             pctB: pb, bbWidth: bw, adx: adx, plusDI: pdi, minusDI: mdi, obv: obv };
+  }
+
+  /* Model features at bar i: everything is known when bar i closes. */
+  var FEATURES = ["RSI", "MACD histogram", "Stochastic %K", "Bollinger %B", "Bollinger width", "ADX (trend strength)",
+    "+DI minus -DI (trend direction)", "OBV slope (volume flow)", "Price vs EMA20", "EMA20 vs EMA50", "Price vs VWAP",
+    "1-hour trend", "Last 15m move", "Last 1h move", "Last 4h move", "Volatility (ATR %)", "Time of day (sin)", "Time of day (cos)",
+    "Bullish-minus-bearish patterns, last 2 bars"];
+  function featureRows(c, res, ind) {
+    ind = ind || indicators(c);
+    var A = res.atr, V = res.vwap, T = res.trend, out = new Array(c.length).fill(null), pat = new Array(c.length).fill(0);
+    res.events.forEach(function (e) { if (e.dir) pat[e.i] += e.dir; });
+    var clip = function (x) { return x > 5 ? 5 : x < -5 ? -5 : x; };
+    for (var i = 120; i < c.length; i++) {
+      var a = A[i], vals = [ind.rsi[i], ind.macdHist[i], ind.stochK[i], ind.pctB[i], ind.bbWidth[i], ind.adx[i], ind.plusDI[i], ind.minusDI[i], ind.ema20[i], ind.ema50[i]];
+      if (!a || vals.some(function (v) { return v === null || v === undefined || isNaN(v); })) continue;
+      var vs = 0; for (var j = i - 15; j <= i; j++) vs += c[j].v;
+      var hr = (c[i].t % DAY) / DAY * 2 * Math.PI;
+      out[i] = [ (ind.rsi[i] - 50) / 50, ind.macdHist[i] / a, (ind.stochK[i] - 50) / 50, ind.pctB[i] - 0.5, ind.bbWidth[i] / (a / c[i].c * 100) / 10,
+        ind.adx[i] / 50, (ind.plusDI[i] - ind.minusDI[i]) / 50, vs > 0 ? (ind.obv[i] - ind.obv[i - 16]) / vs : 0,
+        (c[i].c - ind.ema20[i]) / a, (ind.ema20[i] - ind.ema50[i]) / a, (c[i].c - V[i]) / a, T[i],
+        (c[i].c - c[i - 1].c) / a, (c[i].c - c[i - 4].c) / a, (c[i].c - c[i - 16].c) / a, a / c[i].c * 100,
+        Math.sin(hr), Math.cos(hr), pat[i] + pat[i - 1] ].map(clip);
+    }
+    return out;
+  }
+  function predict(model, x) {
+    if (!model || !x) return null;
+    var z = model.bias;
+    for (var i = 0; i < x.length; i++) z += model.w[i] * (x[i] - model.mean[i]) / model.std[i];
+    return 1 / (1 + Math.exp(-z));
+  }
+
   /* Isolated-margin liquidation distance as a fraction of entry (long and short are within a
    * hair of each other). Same formula as bgbot/sizing.py: maintenance margin includes the
    * closing taker fee. */
   function liqDistance(lev, mmr, taker) { return 1 - (1 - 1 / lev) / (1 - mmr - taker); }
 
-  return { analyze: analyze, rangeScalp: rangeScalp, isSetup: isSetup, carefulCheck: carefulCheck, PROFILES: PROFILES, H1: H1, DAY: DAY, ema: ema, atr: atr, sessionVwap: sessionVwap, hourTrend: hourTrend,
+  return { indicators: indicators, featureRows: featureRows, predict: predict, FEATURES: FEATURES, analyze: analyze, rangeScalp: rangeScalp, isSetup: isSetup, carefulCheck: carefulCheck, PROFILES: PROFILES, H1: H1, DAY: DAY, ema: ema, atr: atr, sessionVwap: sessionVwap, hourTrend: hourTrend,
            liqDistance: liqDistance, NAMES: NAMES, MEANING: MEANING, PARAMS: P, M15: M15 };
 });

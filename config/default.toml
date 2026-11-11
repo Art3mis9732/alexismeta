@@ -15,21 +15,19 @@ download_granularity = "1H"
 taker_fee = 0.0006           # ASSUMPTION: Bitget standard tier USDT-M taker (public fee page); check your account
 maker_fee = 0.0002           # not used: the backtest assumes every fill is a taker fill (conservative)
 slippage_bps = 2.0           # per side, on top of half the spread
-half_spread_bps = { BTCUSDT = 0.1, ETHUSDT = 0.1, XRPUSDT = 0.5 }   # ASSUMPTION: replace with snapshot medians
+half_spread_bps = { BTCUSDT = 0.1, ETHUSDT = 0.1, XRPUSDT = 0.5 }   # one Bitget snapshot 2026-11-11 09:14 UTC: full spreads 0.014 / 0.049 / 0.945 bps; kept conservative
 cost_multiplier = 1.0        # stress test sets 2.0
 
 [margin]
 mode = "isolated"
 exchange_leverage = 5        # the leverage SETTING on the exchange (affects margin + liquidation, not size)
-# ASSUMPTION: tier-1 maintenance margin rates. Replace with `keepMarginRate` from
-# GET /api/v2/mix/market/query-position-lever for each symbol.
-maint_margin_rate = { BTCUSDT = 0.004, ETHUSDT = 0.005, XRPUSDT = 0.01 }
+# VERIFIED 2026-11-11 09:14 UTC: tier-1 keepMarginRate from /api/v2/mix/market/query-position-lever
+maint_margin_rate = { BTCUSDT = 0.004, ETHUSDT = 0.004, XRPUSDT = 0.004 }
 
 [contract]
-# ASSUMPTION placeholders. `python -m bgbot.bitget_public snapshot` prints the real
-# minTradeNum / sizeMultiplier / minTradeUSDT; copy them here.
-min_qty = { BTCUSDT = 0.001, ETHUSDT = 0.01, XRPUSDT = 10.0 }
-qty_step = { BTCUSDT = 0.001, ETHUSDT = 0.01, XRPUSDT = 10.0 }
+# VERIFIED 2026-11-11 09:14 UTC from /api/v2/mix/market/contracts (all three status=normal, fundInterval=8h)
+min_qty = { BTCUSDT = 0.0001, ETHUSDT = 0.01, XRPUSDT = 1.0 }
+qty_step = { BTCUSDT = 0.0001, ETHUSDT = 0.01, XRPUSDT = 1.0 }
 min_notional_usdt = 5.0
 
 [risk]

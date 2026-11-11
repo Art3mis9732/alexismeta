@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bitget Edge Dashboard — BTC · ETH · XRP perps</title>
+<style>
+  :root { --bg:#0f1115; --card:#171a21; --line:#262b35; --text:#e7e9ee; --muted:#8b93a3;
+          --up:#2fbf71; --down:#e5484d; --accent:#6ea8fe; --warn:#f5a524; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); }
+  header, main, footer { max-width:1100px; margin:0 auto; padding:16px 20px; }
+  h1 { font-size:20px; margin:8px 0 2px; } h2 { font-size:15px; margin:28px 0 10px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.06em; }
+  .sub { color:var(--muted); font-size:13px; }
+  .banner { border:1px solid var(--warn); color:var(--warn); background:#2a2110; padding:10px 12px; border-radius:8px; margin-top:12px; display:none; white-space:pre-wrap; }
+  .controls { margin-top:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  button { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 12px; cursor:pointer; font:inherit; }
+  button:hover { border-color:var(--accent); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; }
+  .card h3 { margin:0 0 4px; font-size:16px; display:flex; justify-content:space-between; }
+  .price { font-size:24px; font-variant-numeric:tabular-nums; }
+  table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; margin-top:8px; }
+  td { padding:3px 0; border-bottom:1px solid var(--line); } td:last-child { text-align:right; }
+  .up { color:var(--up); } .down { color:var(--down); } .muted { color:var(--muted); }
+  canvas { width:100%; height:70px; display:block; margin-top:10px; }
+  .lbl { font-size:11px; color:var(--muted); margin-top:8px; }
+  .links { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px; }
+  .links a { display:block; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:10px 12px; color:var(--text); text-decoration:none; }
+  .links a:hover { border-color:var(--accent); } .links small { display:block; color:var(--muted); }
+  .note { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; color:var(--muted); }
+  .tag { font-size:11px; padding:1px 6px; border-radius:4px; border:1px solid var(--line); color:var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Bitget Edge Dashboard</h1>
+  <div class="sub">BTC · ETH · XRP USDT-margined perpetuals · public market data only · research, not advice</div>
+  <div class="sub" id="stamp">Loading…</div>
+  <div class="banner" id="banner"></div>
+  <div class="controls">
+    <button id="liveBtn">Try live prices from my browser</button>
+    <span class="sub" id="liveStatus"></span>
+  </div>
+</header>
+
+<main>
+  <h2>Market snapshot</h2>
+  <div class="grid" id="cards"></div>
+
+  <h2>Free analysis sites (open in a new tab, no login needed)</h2>
+  <div class="links" id="links"></div>
+
+  <h2>Why your Bitget account is not connected here</h2>
+  <div class="note">
+    This is a public static website. Anything a public page uses (including an API key) can be read by anyone who opens it,
+    so account access (balances, positions, orders) does <b>not</b> belong here. Account-level tools will run locally on your
+    own PC from the <code>bgbot</code> lab code, with a <b>read-only, IP-bound, withdrawal-disabled</b> key kept in an
+    environment variable — never in this repository, never in a browser.
+  </div>
+
+  <h2>Research status</h2>
+  <div class="note">
+    Strategy edge: <b>UNTESTED on real Bitget data</b>. Run the lab (see <code>LAB.md</code>): snapshot → download → dev →
+    lock → holdout. Until a holdout passes the pre-registered criteria, the decision is: no real money.
+  </div>
+</main>
+
+<footer class="sub">
+  Data: Bitget public REST API v2, refreshed hourly by GitHub Actions (<code>docs/data/latest.json</code>).
+  Funding is the rate for the current settlement interval; "annualized" is a naive rate × settlements/year illustration, not a forecast.
+</footer>
+
+<script>
+const SYMS = ["BTCUSDT", "ETHUSDT", "XRPUSDT"];
+const IST = { timeZone: "Asia/Kolkata", hour12: false };
+const fmtT = ms => { const d = new Date(ms);
+  return d.toISOString().replace("T", " ").slice(0, 19) + " UTC / " + d.toLocaleString("en-GB", IST) + " IST"; };
+const nf = (x, d = 2) => (x === null || x === undefined || isNaN(x)) ? "—" :
+  Number(x).toLocaleString("en-US", { maximumFractionDigits: d, minimumFractionDigits: Math.min(d, 2) });
+const pct = (x, d = 4) => (x === null || x === undefined || isNaN(x)) ? "—" : (x * 100).toFixed(d) + "%";
+const dp = s => s === "XRPUSDT" ? 4 : 2;
+
+const LINKS = [
+  ["TradingView – BTCUSDT.P (Bitget)", "https://www.tradingview.com/chart/?symbol=BITGET:BTCUSDT.P", "Charts & indicators"],
+  ["TradingView – ETHUSDT.P (Bitget)", "https://www.tradingview.com/chart/?symbol=BITGET:ETHUSDT.P", "Charts & indicators"],
+  ["TradingView – XRPUSDT.P (Bitget)", "https://www.tradingview.com/chart/?symbol=BITGET:XRPUSDT.P", "Charts & indicators"],
+  ["CoinGlass – Funding rates", "https://www.coinglass.com/FundingRate", "Cross-exchange funding"],
+  ["CoinGlass – Open interest", "https://www.coinglass.com/open-interest/BTC", "OI by exchange"],
+  ["CoinGlass – Liquidations", "https://www.coinglass.com/LiquidationData", "Forced-liquidation flow"],
+  ["Bitget – BTCUSDT futures", "https://www.bitget.com/futures/usdt/BTCUSDT", "Exchange page (login for trading)"],
+  ["Bitget – Announcements", "https://www.bitget.com/support/sections/12508313443483", "Delistings, maintenance, rule changes"],
+  ["Bitget API docs", "https://www.bitget.com/api-doc/common/intro", "Endpoint reference"],
+  ["CoinGecko – Markets", "https://www.coingecko.com/", "Cross-exchange spot prices"],
+  ["BLS release calendar", "https://www.bls.gov/schedule/news_release/", "CPI / PPI / jobs times (ET)"],
+  ["Fed – FOMC calendar", "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm", "Rate-decision dates"],
+];
+document.getElementById("links").innerHTML = LINKS.map(([t, u, s]) =>
+  `<a href="${u}" target="_blank" rel="noopener noreferrer">${t}<small>${s}</small></a>`).join("");
+
+function spark(canvas, pts, color, bars = false) {
+  const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  const c = canvas.getContext("2d"); c.scale(dpr, dpr);
+  if (!pts || pts.length < 2) { c.fillStyle = "#8b93a3"; c.fillText("no data", 4, 14); return; }
+  const ys = pts.map(p => p[1]);
+  let lo = Math.min(...ys), hi = Math.max(...ys);
+  if (bars) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+  const pad = 4, sy = v => h - pad - (v - lo) / ((hi - lo) || 1) * (h - 2 * pad);
+  if (bars) {
+    const bw = Math.max(1, w / pts.length - 1), z = sy(0);
+    pts.forEach((p, i) => { c.fillStyle = p[1] > 0 ? "#e5484d" : "#2fbf71";
+      const y = sy(p[1]); c.fillRect(i * (w / pts.length), Math.min(y, z), bw, Math.abs(z - y) || 1); });
+  } else {
+    c.strokeStyle = color; c.lineWidth = 1.5; c.beginPath();
+    pts.forEach((p, i) => { const x = i / (pts.length - 1) * w; i ? c.lineTo(x, sy(p[1])) : c.moveTo(x, sy(p[1])); });
+    c.stroke();
+  }
+}
+
+function render(data) {
+  const cards = document.getElementById("cards");
+  cards.innerHTML = "";
+  for (const s of SYMS) {
+    const r = (data.symbols || {})[s];
+    const el = document.createElement("div"); el.className = "card";
+    if (!r) { el.innerHTML = `<h3>${s}</h3><div class="muted">No data in snapshot.</div>`; cards.appendChild(el); continue; }
+    const ch = r.change_24h, perYear = r.fund_interval_h ? 8760 / Number(r.fund_interval_h) : 1095;
+    el.innerHTML = `
+      <h3>${s} <span class="tag">${r.status ?? "status ?"}</span></h3>
+      <div class="price">${nf(r.last, dp(s))} <span class="${ch >= 0 ? "up" : "down"}" style="font-size:14px">${pct(ch, 2)} 24h</span></div>
+      <table>
+        <tr><td>Mark / Index</td><td>${nf(r.mark, dp(s))} / ${nf(r.index, dp(s))}</td></tr>
+        <tr><td>Bid / Ask</td><td>${nf(r.bid, dp(s))} / ${nf(r.ask, dp(s))}</td></tr>
+        <tr><td>Spread</td><td>${nf(r.spread_bps, 2)} bps</td></tr>
+        <tr><td>Funding (current interval${r.fund_interval_h ? ", " + r.fund_interval_h + "h" : ""})</td>
+            <td class="${r.funding_rate > 0 ? "down" : "up"}">${pct(r.funding_rate)} <span class="muted">(~${pct(r.funding_rate * perYear, 1)}/yr naive)</span></td></tr>
+        <tr><td>Open interest</td><td>${nf(r.open_interest, 0)} ${s.replace("USDT", "")}</td></tr>
+        <tr><td>24h quote volume</td><td>${nf(r.quote_volume_24h / 1e6, 1)} M USDT</td></tr>
+        <tr><td>Min order / step</td><td>${r.min_trade_num ?? "—"} / ${r.size_multiplier ?? "—"}</td></tr>
+        <tr><td>Tier-1 maint. margin</td><td>${r.tier1 ? pct(Number(r.tier1.keepMarginRate), 2) : "—"}</td></tr>
+        <tr><td>Ticker time</td><td class="muted">${r.ticker_ts_ms ? fmtT(r.ticker_ts_ms) : "—"}</td></tr>
+      </table>
+      <div class="lbl">4H close, last 30 days</div><canvas class="c1"></canvas>
+      <div class="lbl">Settled funding, last 30 days (red = longs pay shorts, green = shorts pay longs)</div><canvas class="c2"></canvas>`;
+    cards.appendChild(el);
+    spark(el.querySelector(".c1"), r.closes_4h, "#6ea8fe");
+    spark(el.querySelector(".c2"), r.funding_history, null, true);
+  }
+}
+
+function banner(msg) { const b = document.getElementById("banner"); b.textContent = msg; b.style.display = msg ? "block" : "none"; }
+
+fetch("data/latest.json", { cache: "no-store" }).then(r => r.json()).then(d => {
+  window.__snap = d;
+  const age = d.generated_at_utc ? (Date.now() - Date.parse(d.generated_at_utc + "Z")) / 3.6e6 : null;
+  document.getElementById("stamp").textContent = d.generated_at_utc
+    ? `Snapshot: ${fmtT(Date.parse(d.generated_at_utc + "Z"))} (${age.toFixed(1)} h ago)` : "No snapshot yet.";
+  const errs = [...(d.errors || []), ...(d.last_attempt_errors || [])];
+  if (!d.generated_at_utc) banner("No snapshot yet. In GitHub: Actions → market-snapshot → Run workflow.");
+  else if (age > 3) banner(`Snapshot is ${age.toFixed(1)} hours old — data may be stale. ${errs.join(" | ")}`);
+  else if (errs.length) banner("Partial data: " + errs.join(" | "));
+  render(d);
+}).catch(e => banner("Could not load data/latest.json: " + e));
+
+document.getElementById("liveBtn").onclick = async () => {
+  const st = document.getElementById("liveStatus"); st.textContent = "fetching…";
+  try {
+    const r = await fetch("https://api.bitget.com/api/v2/mix/market/tickers?productType=USDT-FUTURES");
+    const j = await r.json();
+    if (j.code !== "00000") throw new Error(j.msg);
+    const d = JSON.parse(JSON.stringify(window.__snap || { symbols: {} }));
+    for (const t of j.data) if (SYMS.includes(t.symbol)) {
+      const o = d.symbols[t.symbol] = d.symbols[t.symbol] || {};
+      const bid = +t.bidPr, ask = +t.askPr;
+      Object.assign(o, { last: +t.lastPr, mark: +t.markPrice, index: +t.indexPrice, bid, ask,
+        spread_bps: (ask - bid) / ((ask + bid) / 2) * 1e4, funding_rate: +t.fundingRate,
+        open_interest: +t.holdingAmount, quote_volume_24h: +t.quoteVolume, change_24h: +t.change24h, ticker_ts_ms: +t.ts });
+    }
+    render(d); st.textContent = "live prices loaded from Bitget at " + fmtT(Date.now()) + " (charts still from snapshot)";
+  } catch (e) {
+    st.textContent = "Live fetch blocked (" + e.message + "). Bitget may not allow browser requests (CORS); the hourly snapshot still works.";
+  }
+};
+</script>
+</body>
+</html>

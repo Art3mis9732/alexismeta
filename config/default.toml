@@ -1,0 +1,73 @@
+# bitget-edge-lab configuration.
+# Every number marked ASSUMPTION must be replaced with a value you verified
+# (contracts endpoint, query-position-lever endpoint, your own fee page).
+# Changing ANY value in [strategy.*], [costs], [risk] after `experiment lock`
+# makes a new variant and the holdout must not be reused.
+
+[exchange]
+base_url = "https://api.bitget.com"
+product_type = "USDT-FUTURES"
+symbols = ["BTCUSDT", "ETHUSDT", "XRPUSDT"]
+signal_bar = "4H"            # strategies run on 4H bars built from 1H downloads
+download_granularity = "1H"
+
+[costs]
+taker_fee = 0.0006           # ASSUMPTION: Bitget standard tier USDT-M taker (public fee page); check your account
+maker_fee = 0.0002           # not used: the backtest assumes every fill is a taker fill (conservative)
+slippage_bps = 2.0           # per side, on top of half the spread
+half_spread_bps = { BTCUSDT = 0.1, ETHUSDT = 0.1, XRPUSDT = 0.5 }   # ASSUMPTION: replace with snapshot medians
+cost_multiplier = 1.0        # stress test sets 2.0
+
+[margin]
+mode = "isolated"
+exchange_leverage = 5        # the leverage SETTING on the exchange (affects margin + liquidation, not size)
+# ASSUMPTION: tier-1 maintenance margin rates. Replace with `keepMarginRate` from
+# GET /api/v2/mix/market/query-position-lever for each symbol.
+maint_margin_rate = { BTCUSDT = 0.004, ETHUSDT = 0.005, XRPUSDT = 0.01 }
+
+[contract]
+# ASSUMPTION placeholders. `python -m bgbot.bitget_public snapshot` prints the real
+# minTradeNum / sizeMultiplier / minTradeUSDT; copy them here.
+min_qty = { BTCUSDT = 0.001, ETHUSDT = 0.01, XRPUSDT = 10.0 }
+qty_step = { BTCUSDT = 0.001, ETHUSDT = 0.01, XRPUSDT = 10.0 }
+min_notional_usdt = 5.0
+
+[risk]
+risk_per_trade = 0.005           # 0.5% of equity lost if the stop fills at the modeled price
+max_total_open_risk = 0.015      # all open positions combined (BTC/ETH/XRP move together)
+max_effective_leverage = 1.0     # total notional / equity cap, at tier 1
+daily_loss_limit = 0.02          # from UTC-day start equity; blocks NEW entries until next UTC day
+max_drawdown_halt = 0.10         # from peak equity; flattens and halts until a human resets
+liq_distance_multiple_of_stop = 2.0  # entry->liquidation must be >= 2x entry->stop, else size 0
+
+[strategy.trend]                 # volatility-scaled breakout, written before any test
+entry_lookback = 55              # bars (4H) -> ~9 days
+exit_lookback = 20               # opposite-channel exit
+atr_len = 14
+stop_atr = 2.0
+max_adverse_funding = 0.0005     # skip entry if current funding would charge us more than 0.05% per interval
+
+[strategy.meanrev]               # range-based mean reversion, written before any test
+bb_len = 20
+bb_k = 2.0
+er_len = 20
+er_max = 0.30                    # efficiency ratio below this = "range" regime
+atr_len = 14
+stop_atr = 1.5
+time_stop_bars = 12
+max_adverse_funding = 0.0005
+
+[validation]
+holdout_fraction = 0.25          # final 25% of the timeline, untouched until `experiment holdout`
+dev_folds = 4
+bootstrap_block_days = 10
+bootstrap_sims = 2000
+
+[criteria]                       # decided BEFORE looking at the holdout (see README)
+min_trades_total = 100
+min_trades_per_coin = 30
+min_expectancy_R = 0.10
+max_drawdown = 0.10
+max_bootstrap_dd_p95 = 0.20
+max_best5_profit_share = 0.50
+min_positive_fold_share = 0.60

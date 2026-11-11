@@ -323,9 +323,98 @@ async function tryLive(s) {
 async function refresh(first) {
   const ok = await tryLive(sym);
   if (ok && sym !== "BTCUSDT") await tryLive("BTCUSDT");
-  $("mode").textContent = ok ? "● live candles from Bitget, refreshed every minute" : "○ showing the published snapshot (this browser could not reach Bitget directly)";
+  if (!ws || ws.readyState > 1) setMode();
   render(!first);
+  drawForming();
 }
+
+/* ---------- real-time stream (Bitget public WebSocket, no key) ----------
+ * Every trade tick moves the forming candle and the live price. Patterns are only re-read
+ * when a candle CLOSES, because a pattern on an unfinished candle can still change. */
+const WS_URL = "wss://ws.bitget.com/v2/ws/public";
+let ws = null, wsSym = null, forming = null, lastMsg = 0, lastTick = null, pingT = null, retryT = null, retries = 0;
+function setMode() {
+  const age = lastMsg ? (Date.now() - lastMsg) / 1000 : null;
+  const t = lastTick;
+  if (ws && ws.readyState === 1 && age !== null && age < 30) {
+    $("mode").innerHTML = `<span class="up">● streaming live</span> · last tick ${new Date(lastMsg + IST_MS).toISOString().slice(11, 19)} IST` +
+      (t ? ` · last <b>${nf(t.last, dp(t.last))}</b> · mark ${nf(t.mark, dp(t.last))} · funding ${(t.funding * 100).toFixed(4)}%` : "");
+  } else if (live[sym] && live[sym].rows) {
+    $("mode").innerHTML = `<span class="warn">○ stream reconnecting</span> · chart from Bitget candles (closed candles only)`;
+  } else {
+    $("mode").innerHTML = `<span class="muted">○ showing the published snapshot (this browser could not reach Bitget)</span>`;
+  }
+}
+function drawForming() {
+  if (!series || !forming || forming.s !== sym) return;
+  const rows = live[sym] && live[sym].rows, lastT = rows && rows.length ? rows[rows.length - 1][0] : 0;
+  if (forming.t <= lastT) return;
+  series.update({ time: (forming.t + IST_MS) / 1000, open: forming.o, high: forming.h, low: forming.l, close: forming.c });
+}
+function upsertClosed(s, r) {
+  if (!live[s] || !live[s].rows) {
+    const snap = MARKET && MARKET.symbols[s] && MARKET.symbols[s].candles15m;
+    if (!snap) return false;
+    live[s] = { rows: snap.map(a => a.slice(0, 6).map(Number)) };
+  }
+  const rows = live[s].rows, last = rows[rows.length - 1];
+  if (last && last[0] === r[0]) { rows[rows.length - 1] = r; return false; }
+  if (!last || r[0] > last[0]) { rows.push(r); if (rows.length > 1200) rows.shift(); return true; }
+  return false;
+}
+function connectStream(s) {
+  clearTimeout(retryT); clearInterval(pingT);
+  if (ws) { ws.onclose = null; try { ws.close(); } catch (e) {} }
+  wsSym = s; forming = null; lastTick = null; lastMsg = 0;
+  try { ws = new WebSocket(WS_URL); } catch (e) { scheduleRetry(); return; }
+  ws.onopen = () => {
+    retries = 0;
+    ws.send(JSON.stringify({ op: "subscribe", args: [
+      { instType: "USDT-FUTURES", channel: "candle15m", instId: s },
+      { instType: "USDT-FUTURES", channel: "ticker", instId: s }] }));
+    pingT = setInterval(() => { if (ws && ws.readyState === 1) ws.send("ping"); }, 25000);
+  };
+  ws.onmessage = ev => {
+    lastMsg = Date.now();
+    if (ev.data === "pong") return;
+    let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    if (!m.arg || !m.data || m.arg.instId !== wsSym) return;
+    if (m.arg.channel === "candle15m") {
+      let closedNew = false;
+      m.data.forEach(a => {
+        const r = a.slice(0, 6).map(Number);
+        if (r[0] + M15 <= Date.now()) closedNew = upsertClosed(wsSym, r) || closedNew;
+        else forming = { s: wsSym, t: r[0], o: r[1], h: r[2], l: r[3], c: r[4] };
+      });
+      if (closedNew && wsSym === sym) render(true);
+      drawForming();
+    } else if (m.arg.channel === "ticker") {
+      const d = m.data[0];
+      lastTick = { last: +d.lastPr, mark: +d.markPrice, funding: +d.fundingRate };
+    }
+    setMode();
+  };
+  ws.onclose = () => { clearInterval(pingT); setMode(); scheduleRetry(); };
+  ws.onerror = () => { try { ws.close(); } catch (e) {} };
+}
+function scheduleRetry() {
+  clearTimeout(retryT);
+  const wait = Math.min(30000, 2000 * Math.pow(2, retries++));
+  retryT = setTimeout(() => connectStream(sym), wait);
+}
+// Watchdog: a silent socket (laptop sleep, network change) is replaced; a candle that closed
+// while ticks were quiet is fetched; the status line keeps its age current.
+setInterval(() => {
+  setMode();
+  if (ws && ws.readyState === 1 && lastMsg && Date.now() - lastMsg > 40000) connectStream(sym);
+  if (forming && forming.s === sym && forming.t + M15 + 5000 < Date.now()) { forming = null; refresh(false); }
+}, 5000);
+// Browsers freeze background tabs; when you come back, catch up at once.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  refresh(false);
+  if (!ws || ws.readyState !== 1 || Date.now() - lastMsg > 30000) connectStream(sym);
+});
 async function loadSnapshot() {
   try { MARKET = await (await fetch("data/market.json?" + Date.now(), { cache: "no-store" })).json(); } catch (e) { MARKET = null; }
   try { STATS = await (await fetch("data/stats.json?" + Date.now(), { cache: "no-store" })).json(); } catch (e) { STATS = null; }
@@ -338,16 +427,17 @@ async function loadSnapshot() {
 
 document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
   document.querySelectorAll(".tab").forEach(x => x.classList.remove("on")); t.classList.add("on");
-  sym = t.dataset.sym; render(false); refresh(true);
+  sym = t.dataset.sym; render(false); refresh(true); connectStream(sym);
 });
-$("showCandle").onchange = $("showNeutral").onchange = () => render(true);
+$("showCandle").onchange = $("showNeutral").onchange = () => { render(true); drawForming(); };
 (async () => {
   guide();
   await loadSnapshot();
   render(false);
   await refresh(true);
-  setInterval(() => refresh(false), 60000);
-  setInterval(async () => { await loadSnapshot(); render(true); }, 300000);
+  connectStream(sym);
+  setInterval(() => refresh(false), 300000);   // full re-sync every 5 min; ticks come from the stream
+  setInterval(async () => { await loadSnapshot(); render(true); drawForming(); }, 300000);
 })();
 </script>
 </body>

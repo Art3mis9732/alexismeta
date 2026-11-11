@@ -17,6 +17,7 @@ model summarised the rules with timestamps; the full transcripts were not read w
 | Benjamin Cowen, XRP Risk Metric (18:29) | Extracted | Long-term risk bands; NOT usable intraday |
 | TJR, How To Start Day Trading In 2026 (6:40:35) | Extracted, partial | Break of structure, fair value gap, inverse FVG, equilibrium were named; NOT coded yet |
 | Mind Math Money, MASTER Candlestick Patterns (125 min) | Transcript NOT obtained; chapter list only | Inverted hammer added from its chapter list using the standard definition. Three methods, flags and gaps NOT coded (crypto candles do not gap) |
+| Data Trader, The BEST 5 Minute Scalping Strategy Ever (15:14) | Extracted | Aggressive profile: first 4-hour candle's range, 5m close back inside after a break, stop at the breakout extreme, 2R target. Presenter's crypto test: 7 trades (5 wins), too few to rely on |
 | Zerodha Varsity Module 9, Delta Exchange guides, CFTC advisory | Not retrieved | Bitget's own fee, margin and liquidation rules are used instead |
 
 ## Adaptations (the sources are written for daily stock charts)
@@ -31,6 +32,14 @@ model summarised the rules with timestamps; the full transcripts were not read w
 5. **Breakout** = first 15m close beyond the prior 20-bar high/low; volume compared with the last 10 bars.
    Retest and failure are judged for 12 bars after the breakout.
 6. **Stops in the history test** are the pattern's own invalidation but never closer than 0.5 ATR.
+
+7. **Aggressive profile.** "First 4-hour candle of the day" = 00:00-04:00 UTC (05:30-09:30 IST), the
+   Bitget/TradingView day start for crypto. A break needs a 5m close outside the range; the trade is
+   skipped if the stop would be wider than the range; one signal per side per day; open trades end
+   at the UTC day close.
+8. **Careful profile.** A Neutral setup that is a retest or VWAP pullback (no raw breakouts), with the
+   last 24h moving the same way and 15m volatility not in the top 25% of the last 10 days; stop at
+   least 1 ATR.
 
 All numbers live in `PARAMS` at the top of `patterns.js`. They were fixed before the first run on
 real data; changing them afterwards and re-reading the same history would be curve-fitting.

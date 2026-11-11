@@ -300,11 +300,79 @@
     };
   }
 
+
+  /* ===================== three trader profiles ===================== */
+  var TRIGGERS = { BO_UP: 1, RETEST_UP: 1, VWAP_PB_UP: 1, BO_DN: 1, RETEST_DN: 1, VWAP_PB_DN: 1 };
+  var CAREFUL_TRIG = { RETEST_UP: 1, RETEST_DN: 1, VWAP_PB_UP: 1, VWAP_PB_DN: 1 };
+
+  var PROFILES = {
+    aggressive: { name: "Aggressive", tf: "5m", rr: 2.0, minStopAtr: 0, lev: 50,
+      desc: "Scalps 5-minute false breakouts of the day's first 4-hour range. Trades often, aims for 2x the risk." },
+    neutral: { name: "Neutral", tf: "15m", rr: 1.5, minStopAtr: 0.5, lev: 10,
+      desc: "Follows the 15-minute trend: 1-hour trend + side of VWAP + a breakout, retest or VWAP pullback." },
+    careful: { name: "Careful", tf: "15m", rr: 1.5, minStopAtr: 1.0, lev: 3,
+      desc: "Same as Neutral but only the calmer entries (retest or VWAP pullback), only when the last 24h moved the same way and the market is not unusually wild. Wider stop, low leverage, few trades." }
+  };
+
+  /* Neutral: a trigger in the direction of the 1-hour trend, on the matching side of VWAP. */
+  function isSetup(e) { return !!TRIGGERS[e.code] && e.trend === e.dir && (e.dir === 1) === e.above; }
+
+  /* Careful: a Neutral setup that also passes three filters. Returns {ok, why}. */
+  function carefulCheck(c, res, e) {
+    if (!isSetup(e)) return { ok: false, why: "no Neutral setup" };
+    if (!CAREFUL_TRIG[e.code]) return { ok: false, why: "it is a raw breakout; Careful only takes a retest or a VWAP pullback" };
+    var i = e.i;
+    if (i < 96) return { ok: false, why: "not enough history" };
+    if (e.dir * (c[i].c - c[i - 96].c) <= 0) return { ok: false, why: "the last 24 hours moved the other way" };
+    var lo = Math.max(P.atrLen, i - 960), arr = [];
+    for (var k = lo; k < i; k++) if (res.atr[k] !== null) arr.push(res.atr[k] / c[k].c);
+    if (arr.length < 100) return { ok: false, why: "not enough history" };
+    arr.sort(function (a, b) { return a - b; });
+    if (res.atr[i] / c[i].c > arr[Math.floor(arr.length * 0.75)]) return { ok: false, why: "the market is moving more wildly than usual (top 25% of the last 10 days)" };
+    return { ok: true, why: "" };
+  }
+
+  /* Aggressive: 5-minute false breakout of the first 4-hour candle of the UTC day
+   * (00:00-04:00 UTC = 05:30-09:30 IST).  Source: Data Trader, "The BEST 5 Minute Scalping
+   * Strategy Ever" (rules at 15:14 video).  Adaptations [A]: a "break" is a 5m CLOSE outside the
+   * range; the re-entry candle must close back inside; stop = most extreme price since the break;
+   * if that stop is wider than the range itself the trade is skipped (the video says to use a
+   * nearer level when the breakout is too large, which is not mechanical); first signal per side
+   * per day; trades end at the UTC day close if neither stop nor target is hit. */
+  function rangeScalp(c) {
+    var ev = [], day = null, st = null, H4 = 4 * H1;
+    for (var i = 0; i < c.length; i++) {
+      var d = Math.floor(c[i].t / DAY);
+      if (d !== day) { day = d; st = { day: d, hi: -Infinity, lo: Infinity, n: 0, upB: false, dnB: false, upExt: -Infinity, dnExt: Infinity, doneS: false, doneL: false }; }
+      if (c[i].t - d * DAY < H4) { if (c[i].h > st.hi) st.hi = c[i].h; if (c[i].l < st.lo) st.lo = c[i].l; st.n++; continue; }
+      if (st.n < 44) continue;                      // range has missing candles: skip the day
+      var range = st.hi - st.lo;
+      if (c[i].c > st.hi) st.upB = true;
+      if (c[i].c < st.lo) st.dnB = true;
+      if (st.upB && c[i].h > st.upExt) st.upExt = c[i].h;
+      if (st.dnB && c[i].l < st.dnExt) st.dnExt = c[i].l;
+      var inside = c[i].c < st.hi && c[i].c > st.lo;
+      if (st.upB && !st.doneS && inside) {
+        st.doneS = true;
+        if (st.upExt - c[i].c <= range) ev.push({ i: i, t: c[i].t, code: "RANGE_SHORT", name: "False breakout above the 4h range", dir: -1, stop: st.upExt, level: st.hi, rangeHi: st.hi, rangeLo: st.lo });
+      }
+      if (st.dnB && !st.doneL && inside) {
+        st.doneL = true;
+        if (c[i].c - st.dnExt <= range) ev.push({ i: i, t: c[i].t, code: "RANGE_LONG", name: "False breakout below the 4h range", dir: 1, stop: st.dnExt, level: st.lo, rangeHi: st.hi, rangeLo: st.lo });
+      }
+    }
+    var n = c.length, last = n ? c[n - 1] : null, inRange = last && st && last.t - st.day * DAY < H4;
+    return { events: ev, atr: atr(c, P.atrLen), vwap: sessionVwap(c),
+      state: last ? { phase: inRange ? "forming" : (st.n < 44 ? "nodata" : "active"), hi: st.hi, lo: st.lo, upBroken: st.upB, dnBroken: st.dnB,
+        upExt: st.upExt, dnExt: st.dnExt, doneS: st.doneS, doneL: st.doneL, rangeEnd: st.day * DAY + H4,
+        trigger: ev.filter(function (e) { return e.i >= n - 2; }).pop() || null, price: last.c, time: last.t } : null };
+  }
+
   /* Isolated-margin liquidation distance as a fraction of entry (long and short are within a
    * hair of each other). Same formula as bgbot/sizing.py: maintenance margin includes the
    * closing taker fee. */
   function liqDistance(lev, mmr, taker) { return 1 - (1 - 1 / lev) / (1 - mmr - taker); }
 
-  return { analyze: analyze, ema: ema, atr: atr, sessionVwap: sessionVwap, hourTrend: hourTrend,
+  return { analyze: analyze, rangeScalp: rangeScalp, isSetup: isSetup, carefulCheck: carefulCheck, PROFILES: PROFILES, H1: H1, DAY: DAY, ema: ema, atr: atr, sessionVwap: sessionVwap, hourTrend: hourTrend,
            liqDistance: liqDistance, NAMES: NAMES, MEANING: MEANING, PARAMS: P, M15: M15 };
 });

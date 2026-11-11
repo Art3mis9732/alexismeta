@@ -176,3 +176,59 @@ test("100x liquidation distance matches the Python formula", () => {
   assert.ok(Math.abs(d - (1 - 0.99 / 0.9954)) < 1e-12);
   assert.ok(d > 0.005 && d < 0.006);                            // about 0.54%
 });
+
+// ---------------- three profiles ----------------
+const D0 = Date.UTC(2026, 0, 6);                    // UTC midnight
+const b5 = (k, o, h, l, c) => ({ t: D0 + k * 300000, o, h, l, c, v: 100 });
+function rangeDay() {                                // 48 bars of 00:00-04:00 UTC between 99 and 101
+  const c = [];
+  for (let k = 0; k < 48; k++) c.push(b5(k, 100, 101, 99, 100));
+  return c;
+}
+
+test("aggressive: break above the 4h range then close back inside -> SELL, stop at the high since the break", () => {
+  const c = rangeDay();
+  c.push(b5(48, 100.5, 101.6, 100.4, 101.4));        // closes above 101: break
+  c.push(b5(49, 101.4, 101.9, 101.2, 101.5));        // extreme 101.9
+  c.push(b5(50, 101.5, 101.6, 100.3, 100.6));        // closes back inside
+  const r = Pt.rangeScalp(c);
+  assert.strictEqual(r.events.length, 1);
+  const e = r.events[0];
+  assert.deepStrictEqual([e.code, e.dir, e.i, e.stop, e.level], ["RANGE_SHORT", -1, 50, 101.9, 101]);
+  assert.strictEqual(r.state.trigger.code, "RANGE_SHORT");
+});
+
+test("aggressive: a wick above the range without a close above is not a break", () => {
+  const c = rangeDay();
+  c.push(b5(48, 100.5, 101.8, 100.4, 100.9));
+  c.push(b5(49, 100.9, 101.0, 100.2, 100.4));
+  assert.strictEqual(Pt.rangeScalp(c).events.length, 0);
+});
+
+test("aggressive: nothing during the range-building hours, one signal per side per day, skip if stop wider than range", () => {
+  const c = rangeDay().slice(0, 30);
+  let r = Pt.rangeScalp(c);
+  assert.strictEqual(r.state.phase, "forming");
+  const d = rangeDay();
+  d.push(b5(48, 100, 99.5, 98.0, 98.2));             // break below
+  d.push(b5(49, 98.2, 99.6, 96.0, 99.5));            // extreme 96, back inside; stop 3.5 > range 2 -> skipped
+  d.push(b5(50, 99.5, 99.6, 98.5, 98.6));            // break below again
+  d.push(b5(51, 98.6, 99.8, 98.5, 99.7));            // back inside again: already used this side today
+  r = Pt.rangeScalp(d);
+  assert.strictEqual(r.events.length, 0);
+});
+
+test("careful rejects raw breakouts and accepts nothing that Neutral rejects", () => {
+  let seed = 3; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const c = []; let p = 100;
+  for (let i = 0; i < 3000; i++) { const o = p, cl = p * (1 + (rnd() - 0.48) * 0.008);
+    c.push(bar(i, o, Math.max(o, cl) * (1 + rnd() * 0.002), Math.min(o, cl) * (1 - rnd() * 0.002), cl, 50 + rnd() * 200)); p = cl; }
+  const res = Pt.analyze(c);
+  let careful = 0, neutral = 0;
+  res.events.forEach(e => {
+    const ok = Pt.carefulCheck(c, res, e).ok;
+    if (Pt.isSetup(e)) neutral++;
+    if (ok) { careful++; assert.ok(Pt.isSetup(e)); assert.ok(!/^BO_/.test(e.code)); }
+  });
+  assert.ok(neutral > 0 && careful < neutral);
+});

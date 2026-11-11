@@ -16,12 +16,13 @@ sys.path.insert(0, str(ROOT))
 from bgbot.bitget_public import BitgetPublic, gap_report  # noqa: E402
 from bgbot.config import load_config  # noqa: E402
 
-M15 = 900_000
+STEP = {"5m": 300_000, "15m": 900_000}
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=180)
+    ap.add_argument("--gran", default="15m", choices=["5m", "15m"])
     a = ap.parse_args()
     cfg = load_config()
     ex = cfg["exchange"]
@@ -30,11 +31,11 @@ def main() -> int:
     out_dir = ROOT / "data" / "hist"
     out_dir.mkdir(parents=True, exist_ok=True)
     for sym in ex["symbols"]:
-        k = api.candles(sym, "15m", now - a.days * 86_400_000, now)
+        k = api.candles(sym, a.gran, now - a.days * 86_400_000, now - now % STEP[a.gran])
         rows = [[int(t), o, h, l, c, v] for t, o, h, l, c, v in zip(k.ts, k.open, k.high, k.low, k.close, k.base_vol)]
-        (out_dir / f"{sym}_15m.json").write_text(json.dumps(rows, separators=(",", ":")))
-        g = gap_report(k, M15)
-        print(sym, {x: g.get(x) for x in ("rows", "first", "last", "missing_bars")})
+        (out_dir / f"{sym}_{a.gran}.json").write_text(json.dumps(rows, separators=(",", ":")))
+        g = gap_report(k, STEP[a.gran])
+        print(sym, a.gran, {x: g.get(x) for x in ("rows", "first", "last", "missing_bars")})
     return 0
 
 

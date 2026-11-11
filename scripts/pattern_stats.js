@@ -127,8 +127,89 @@ function run(sym, rows) {
   };
 }
 
+
+/* ---------------- three trader profiles ----------------
+ * One trade per signal: entry at the next candle's open, stop at the signal's invalidation
+ * (never closer than minStopAtr x ATR), target rr x risk, stop wins if both are inside one candle,
+ * gap through the stop fills at the open. Same costs as above. Results in R and in dollars for
+ * $5 of margin at the profile's default leverage (liquidated if the stop is beyond liquidation). */
+function tradeOut(c, i, d, stop, atrv, rr, minStopAtr, endIdx) {
+  if (i + 1 > endIdx) return null;
+  const entry = c[i + 1].o;
+  let risk = d * (entry - stop);
+  if (!(risk > 0)) return null;                          // price already through the stop
+  if (minStopAtr && atrv) risk = Math.max(risk, minStopAtr * atrv);
+  const sl = entry - d * risk, tp = entry + d * rr * risk;
+  let exit = null, how = "time";
+  for (let j = i + 1; j <= endIdx; j++) {
+    const sh = d === 1 ? c[j].l <= sl : c[j].h >= sl, th = d === 1 ? c[j].h >= tp : c[j].l <= tp;
+    if (sh) { exit = (j > i + 1 && (d === 1 ? c[j].o < sl : c[j].o > sl)) ? c[j].o : sl; how = "stop"; break; }
+    if (th) { exit = tp; how = "target"; break; }
+  }
+  if (exit === null) exit = c[endIdx].c;
+  const riskPct = risk / entry, grossR = d * (exit - entry) / risk;
+  return { t: c[i].t, grossR, netR: grossR - COST / riskPct, riskPct, how, entry };
+}
+function profileAgg(list, cut, lev) {
+  const liqD = Pt.liqDistance(lev, MMR, TAKER);
+  const r3 = v => v === null || v === undefined || isNaN(v) ? null : Math.round(v * 1000) / 1000;
+  const one = L => {
+    if (!L.length) return { trades: 0 };
+    const wins = L.filter(x => x.netR > 0), loss = L.filter(x => x.netR <= 0), mean = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : null;
+    let cum = 0, peak = 0, dd = 0, streak = 0, worst = 0, usd = 0;
+    L.forEach(x => {
+      cum += x.netR; peak = Math.max(peak, cum); dd = Math.max(dd, peak - cum);
+      streak = x.netR <= 0 ? streak + 1 : 0; worst = Math.max(worst, streak);
+      const notional = 5 * lev;
+      usd += x.riskPct >= liqD ? -5 : Math.max(-5, x.netR * x.riskPct * notional);   // $ result on $5 margin
+    });
+    return { trades: L.length, win_rate: r3(wins.length / L.length), avg_win_R: r3(mean(wins.map(x => x.netR))), avg_loss_R: r3(mean(loss.map(x => x.netR))),
+      exp_R_gross: r3(mean(L.map(x => x.grossR))), exp_R_net: r3(mean(L.map(x => x.netR))), total_R: r3(cum), max_drawdown_R: r3(dd),
+      longest_losing_streak: worst, avg_stop_pct: r3(mean(L.map(x => x.riskPct * 100))), cost_in_R: r3(mean(L.map(x => COST / x.riskPct))),
+      liq_before_stop: r3(L.filter(x => x.riskPct >= liqD).length / L.length), usd_on_5: r3(usd),
+      per_week: null };
+  };
+  const all = one(list);
+  all.first70 = one(list.filter(x => x.t < cut)); all.last30 = one(list.filter(x => x.t >= cut));
+  ["first70", "last30"].forEach(k => { const o = all[k]; all[k] = { trades: o.trades, win_rate: o.win_rate, exp_R_net: o.exp_R_net, total_R: o.total_R }; });
+  return all;
+}
+function runProfiles(sym, c15, c5) {
+  const out = {}, PR = Pt.PROFILES;
+  const res = Pt.analyze(c15), cut = c15[Math.floor(c15.length * SPLIT)].t;
+  const weeks = (c15[c15.length - 1].t - c15[0].t) / (7 * 86400000);
+  const neutral = [], careful = [];
+  res.events.forEach(e => {
+    if (!Pt.isSetup(e)) return;
+    const end = Math.min(c15.length - 1, e.i + HOLD);
+    const a = tradeOut(c15, e.i, e.dir, e.stop, e.atr, PR.neutral.rr, PR.neutral.minStopAtr, end);
+    if (a) neutral.push(a);
+    if (Pt.carefulCheck(c15, res, e).ok) {
+      const b = tradeOut(c15, e.i, e.dir, e.stop, e.atr, PR.careful.rr, PR.careful.minStopAtr, end);
+      if (b) careful.push(b);
+    }
+  });
+  out.neutral = profileAgg(neutral, cut, PR.neutral.lev);
+  out.careful = profileAgg(careful, cut, PR.careful.lev);
+  if (c5 && c5.length > 1000) {
+    const rs = Pt.rangeScalp(c5), agg = [];
+    rs.events.forEach(e => {
+      const dayEnd = (Math.floor(c5[e.i].t / Pt.DAY) + 1) * Pt.DAY;
+      let end = e.i; while (end + 1 < c5.length && c5[end + 1].t < dayEnd) end++;
+      const a = tradeOut(c5, e.i, e.dir, e.stop, rs.atr[e.i], PR.aggressive.rr, PR.aggressive.minStopAtr, end);
+      if (a) agg.push(a);
+    });
+    out.aggressive = profileAgg(agg, cut, PR.aggressive.lev);
+    out.aggressive.signals = rs.events.length;
+    out.aggressive.history = { bars5m: c5.length, from: new Date(c5[0].t).toISOString(), to: new Date(c5[c5.length - 1].t + 300000).toISOString() };
+  } else out.aggressive = { trades: 0, note: "no 5-minute history" };
+  ["aggressive", "neutral", "careful"].forEach(k => { if (out[k].trades) out[k].per_week = Math.round(out[k].trades / weeks * 10) / 10; out[k].default_leverage = PR[k].lev; out[k].rr = PR[k].rr; });
+  return out;
+}
+
 function main() {
   const files = fs.readdirSync(HIST).filter(f => f.endsWith("_15m.json")).sort();
+  const load = f => JSON.parse(fs.readFileSync(path.join(HIST, f), "utf8")).map(r => ({ t: r[0], o: r[1], h: r[2], l: r[3], c: r[4], v: r[5] }));
   if (!files.length) { console.error("no history files in " + HIST); process.exit(1); }
   const out = {
     generated_at_utc: new Date().toISOString().slice(0, 19).replace("T", " "),
@@ -144,6 +225,9 @@ function main() {
     const sym = f.replace("_15m.json", "");
     out.symbols[sym] = run(sym, JSON.parse(fs.readFileSync(path.join(HIST, f), "utf8")));
     const s = out.symbols[sym];
+    const f5 = sym + "_5m.json";
+    s.profiles = runProfiles(sym, load(f), fs.existsSync(path.join(HIST, f5)) ? load(f5) : null);
+    Object.entries(s.profiles).forEach(([k, v]) => console.log(`  PROFILE ${k.padEnd(10)} ${JSON.stringify(v)}`));
     console.log(`${sym}: ${s.bars} bars ${s.from} -> ${s.to}; baseline long_hit16=${s.baseline.long_hit16} liq100 long=${s.baseline.long_liq100}`);
     Object.entries(s.patterns).forEach(([k, v]) =>
       console.log(`  ${k.padEnd(16)} n=${String(v.n).padStart(5)} hit16=${v.hit16} expR_net=${v.exp_R_net} (gross ${v.exp_R_gross}, cost ${v.cost_in_R}R) last30: n=${v.last30 ? v.last30.n : 0} expR=${v.last30 ? v.last30.exp_R_net : null} liq100=${v.liq100}`));

@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pattern Radar — BTC · ETH · XRP perps (Bitget)</title>
+<style>
+  :root { --bg:#0f1115; --card:#171a21; --line:#262b35; --text:#e7e9ee; --muted:#8b93a3;
+          --up:#2fbf71; --down:#e5484d; --accent:#6ea8fe; --warn:#f5a524; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); }
+  header, main, footer { max-width:1180px; margin:0 auto; padding:12px 18px; }
+  h1 { font-size:20px; margin:4px 0 0; display:inline-block; margin-right:12px; }
+  h2 { font-size:12px; margin:0 0 10px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.06em; }
+  .sub { color:var(--muted); font-size:13px; }
+  .banner { border:1px solid var(--warn); color:var(--warn); background:#2a2110; padding:8px 12px; border-radius:8px; margin-top:10px; display:none; }
+  .bar2 { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center; }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .seg span { padding:7px 16px; cursor:pointer; background:var(--card); border-right:1px solid var(--line); user-select:none; }
+  .seg span:last-child { border-right:0; }
+  .seg span.on { background:#1f2a3d; color:var(--accent); font-weight:600; }
+  button { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 14px; cursor:pointer; font:inherit; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; margin-top:12px; overflow-x:auto; }
+  .row { display:grid; grid-template-columns:1.1fr 1fr; gap:12px; }
+  @media (max-width:860px) { .row { grid-template-columns:1fr; } }
+  .up { color:var(--up); } .down { color:var(--down); } .muted { color:var(--muted); } .warn { color:var(--warn); }
+  table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+  th { text-align:left; color:var(--muted); font-weight:500; font-size:12px; padding:4px 6px; border-bottom:1px solid var(--line); }
+  td { padding:5px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+  td.r, th.r { text-align:right; }
+  .chart { height:440px; }
+  .pill { font-size:11px; padding:1px 7px; border-radius:10px; border:1px solid var(--line); white-space:nowrap; }
+  .pill.good { color:var(--up); border-color:var(--up); } .pill.bad { color:var(--down); border-color:var(--down); } .pill.unknown { color:var(--muted); }
+  .meter { height:10px; border-radius:5px; background:var(--down); overflow:hidden; margin:4px 0 2px; }
+  .meter > div { height:100%; background:var(--up); }
+  details { margin-top:8px; } summary { cursor:pointer; color:var(--accent); }
+  a { color:var(--accent); }
+  /* trade view */
+  .signal { font-size:40px; font-weight:800; letter-spacing:.03em; line-height:1.1; }
+  .s-buy { color:var(--up); } .s-sell { color:var(--down); } .s-wait { color:var(--warn); } .s-none { color:var(--muted); }
+  .price { font-size:26px; font-variant-numeric:tabular-nums; font-weight:600; }
+  .levels td:first-child { color:var(--muted); }
+  .levels td { font-size:15px; }
+  .go { font-size:16px; font-weight:700; padding:12px 18px; width:100%; margin-top:10px; }
+  .go.buy { background:#143524; border-color:var(--up); color:var(--up); }
+  .go.sell { background:#3a1618; border-color:var(--down); color:var(--down); }
+  .alert { border:1px solid var(--down); background:#2a1214; color:#ffb4b6; padding:8px 10px; border-radius:8px; margin-top:8px; }
+  .ok { border:1px solid #2a4a38; background:#122219; padding:8px 10px; border-radius:8px; margin-top:8px; }
+  select, input[type=number] { background:#0b0d11; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:5px 8px; font:inherit; width:90px; }
+  .pnl { font-size:24px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .hidden { display:none !important; }
+  .profiles { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:12px; }
+  @media (max-width:860px) { .profiles { grid-template-columns:1fr; } }
+  .pf { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; cursor:pointer; }
+  .pf.on { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
+  .pf .nm { font-weight:700; } .pf .tf { font-size:11px; color:var(--muted); margin-left:6px; }
+  .pf .sg { font-size:22px; font-weight:800; margin-top:4px; }
+  .pf .rec { font-size:12px; color:var(--muted); margin-top:4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Pattern Radar</h1><span class="sub">BTC · ETH · XRP USDT perpetuals on Bitget · research tool, not advice</span>
+  <div class="bar2">
+    <div class="seg" id="coins"><span class="on" data-sym="BTCUSDT">BTC</span><span data-sym="ETHUSDT">ETH</span><span data-sym="XRPUSDT">XRP</span></div>
+    <div class="seg" id="tfs" title="Chart timeframe"><span data-tf="5m">5m</span><span class="on" data-tf="15m">15m</span><span data-tf="4H">4h</span></div>
+    <div class="seg" id="views"><span class="on" data-view="trade">Buy / Sell</span><span data-view="patterns">Patterns</span><span data-view="indicators">Indicators</span></div>
+    <span class="sub" id="mode">connecting…</span>
+  </div>
+  <div class="banner" id="banner"></div>
+</header>
+
+<main>
+<!-- ======================= BUY / SELL VIEW ======================= -->
+<section id="tradeView">
+  <div class="profiles" id="profiles"></div>
+  <div class="card" id="modelCard"><h2>Model forecasts — chance the price is higher 16 candles from now, on 5m, 15m and 4h</h2><div id="modelBody" class="sub">Loading…</div></div>
+  <div class="row">
+    <div class="card">
+      <h2>What to do now — <span id="tSym">BTCUSDT</span> · <span id="tProf">Neutral</span></h2>
+      <div class="signal" id="tSignal">…</div>
+      <div id="tWhy" class="sub" style="margin-top:4px"></div>
+      <div style="margin-top:10px"><span class="sub">Live price</span> <span class="price" id="tPrice">—</span> <span class="sub" id="tTick"></span></div>
+      <table class="levels" style="margin-top:10px" id="tLevels"></table>
+      <div id="tWarn"></div>
+      <div class="sub" style="margin-top:10px" id="tRecord"></div>
+    </div>
+    <div class="card">
+      <h2>Your trade</h2>
+      <div class="sub">Margin <input type="number" id="tMargin" min="1" step="1" value="5"> USDT &nbsp; Leverage
+        <select id="tLev"><option>1</option><option>2</option><option>3</option><option>5</option><option>10</option><option>20</option><option>50</option><option selected>100</option></select></div>
+      <table style="margin-top:10px" id="tMoney"></table>
+      <button class="go" id="tStart" disabled>Start paper trade</button>
+      <div class="sub" style="margin-top:6px">Paper trade only: nothing is sent to Bitget. The stop loss and take profit close it automatically on live prices.</div>
+      <div id="tPos"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Live chart (<span id="tTf">15m</span>) — <span class="muted">green dashed = take profit · red dashed = stop loss · white = entry · blue line = today's VWAP · times in IST</span></h2>
+    <div class="chart" id="tChart"></div>
+  </div>
+  <div class="card">
+    <h2>Automatic paper trader — runs every 15 minutes on GitHub, even when this page is closed</h2>
+    <div id="journal" class="sub">Loading…</div>
+  </div>
+  <div class="card">
+    <h2>Your own paper trades (saved in this browser)</h2>
+    <div id="tLog" class="sub">No trades yet.</div>
+  </div>
+</section>
+
+<!-- ======================= INDICATORS VIEW ======================= -->
+<section id="indicatorsView" class="hidden">
+  <div class="card">
+    <h2>Indicators on <span id="iSym">BTCUSDT</span> — 15-minute candles, last closed candle <span id="iTime"></span></h2>
+    <table id="indTable"></table>
+    <div class="sub" style="margin-top:8px"><b>Tested signal</b>: the indicator's textbook buy/sell signal on 180 days of Bitget 15-minute candles, entered at the next candle's open and held 4 hours, after 0.14% round-trip costs.
+      "Right 4h" is how often price went the signal's way (50% = coin flip). "Later 30%" is the most recent part of the data alone.</div>
+  </div>
+  <div class="card"><h2>What the model looks at most</h2><div id="iWeights" class="sub"></div></div>
+</section>
+
+<!-- ======================= PATTERNS VIEW ======================= -->
+<section id="patternsView" class="hidden">
+  <div class="row">
+    <div class="card">
+      <h2>Right now — <span id="symName">BTCUSDT</span></h2>
+      <div class="signal" style="font-size:26px" id="verdict">…</div>
+      <div id="verdictSub" class="sub"></div>
+      <ul id="reasons" style="margin:6px 0 0;padding-left:18px"></ul>
+      <div id="plan" style="margin-top:10px"></div>
+      <div id="setupHist" style="margin-top:10px"></div>
+    </div>
+    <div class="card">
+      <h2>Which way is it leaning?</h2>
+      <div style="font-size:18px" id="lean">…</div>
+      <div class="sub" id="leanHist"></div>
+      <table style="margin-top:10px" id="levels"></table>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Chart with every pattern named · <span class="muted">blue line = today's VWAP</span>
+      <label class="sub" style="text-transform:none;letter-spacing:0;margin-left:10px"><input type="checkbox" id="showCandle" checked> candle patterns</label>
+      <label class="sub" style="text-transform:none;letter-spacing:0;margin-left:6px"><input type="checkbox" id="showNeutral"> doji / spinning tops</label></h2>
+    <div class="chart" id="chart"></div>
+    <div class="sub" style="margin-top:6px">Arrows mark where a pattern completed (green = bullish, red = bearish). CAPITALS are trend-continuation signals; small labels are candlestick patterns.</div>
+  </div>
+  <div class="row">
+    <div class="card"><h2>Who is buying and selling</h2><div id="crowd"></div></div>
+    <div class="card"><h2>What leverage does to $5</h2><div id="lev"></div></div>
+  </div>
+  <div class="card"><h2>Patterns found on this chart (newest first)</h2><table id="events"></table></div>
+  <div class="card">
+    <h2>Report card — every pattern, measured on real Bitget history</h2>
+    <div class="sub" id="statsMeta"></div>
+    <table id="report" style="margin-top:8px"></table>
+    <details><summary>How to read this table</summary>
+      <div class="sub" style="margin-top:6px"><b>Right side 4h</b>: how often price was on the pattern's side four hours later (50% = coin flip).
+        <b>After fees</b>: average result per trade in units of the amount risked (R), stop at the pattern's invalidation, target 1.5× risk,
+        entry at the next candle's open, 0.06% taker fee each way plus slippage. <b>Later 30%</b>: the same on the most recent 30% of the data.
+        <b>100× wiped</b>: how often a 100× position would have been liquidated within 4 hours.</div>
+    </details>
+  </div>
+  <div class="card"><h2>What each pattern means</h2><table id="guide"></table></div>
+</section>
+</main>
+
+<footer class="sub">
+  Data: Bitget public API and live WebSocket (no account, no API key). Rules: Zerodha Varsity Module 2, SMB Capital and Brian Shannon VWAP videos, adapted for 24/7 crypto (<a href="SOURCES.md">sources</a>).
+  Charts: <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView Lightweight Charts™</a>. Past frequencies are shown so you can judge the signals; they are not a promise.
+</footer>
+
+<script src="vendor/lightweight-charts.standalone.production.js"></script>
+<script src="patterns.js"></script>
+<script>
+"use strict";
+const SYMS = ["BTCUSDT", "ETHUSDT", "XRPUSDT"], IST_MS = 19800000, M15 = 900000, RR = 1.5, MIN_STOP_ATR = 0.5;
+const SHORT = { DOJI:"Doji", SPIN:"Spin", MARU_UP:"Maru", MARU_DN:"Maru", HAMMER:"Hammer", HANGING:"Hang", STAR_SHOOT:"Star",
+  INV_HAMMER:"InvH", ENGULF_UP:"Engulf", ENGULF_DN:"Engulf", PIERCING:"Pierce", DARK_CLOUD:"DCloud", HARAMI_UP:"Harami",
+  HARAMI_DN:"Harami", MORNING_STAR:"M-Star", EVENING_STAR:"E-Star", BO_UP:"BREAKOUT", BO_DN:"BREAKDOWN", BO_UP_WEAK:"breakout?",
+  BO_DN_WEAK:"breakdown?", RETEST_UP:"RETEST ✓", RETEST_DN:"RETEST ✓", FAIL_UP:"FAILED ✗", FAIL_DN:"FAILED ✗", VWAP_PB_UP:"VWAP ✓", VWAP_PB_DN:"VWAP ✓" };
+const DIR = { DOJI:0, SPIN:0, MARU_UP:1, MARU_DN:-1, HAMMER:1, HANGING:-1, STAR_SHOOT:-1, INV_HAMMER:1, ENGULF_UP:1, ENGULF_DN:-1,
+  PIERCING:1, DARK_CLOUD:-1, HARAMI_UP:1, HARAMI_DN:-1, MORNING_STAR:1, EVENING_STAR:-1, BO_UP:1, BO_DN:-1, BO_UP_WEAK:1, BO_DN_WEAK:-1,
+  RETEST_UP:1, RETEST_DN:-1, FAIL_UP:-1, FAIL_DN:1, VWAP_PB_UP:1, VWAP_PB_DN:-1 };
+
+let MARKET = null, STATS = null, MODEL = null, JOURNAL = null, sym = "BTCUSDT", view = "trade";
+const live = {}, forming = {}, tick = {}, RES = {};          // per-symbol state, 15m
+const live5 = {}, forming5 = {}, RES5 = {};                  // per-symbol state, 5m (Aggressive)
+const live4 = {}, forming4 = {}, RES4 = {};                  // per-symbol state, 4h
+let tf = "15m";
+const TF_MS = { "5m": 300000, "15m": 900000, "4H": 14400000 }, TF_NAME = { "5m": "5-minute", "15m": "15-minute", "4H": "4-hour" };
+const PROFS = ["aggressive", "neutral", "careful"];
+let profile = (function () { try { const v = localStorage.getItem("radar.profile"); return PROFS.includes(v) ? v : "neutral"; } catch (e) { return "neutral"; } })();
+const posKey = (pf, s) => "radar.pos." + pf + "." + s;
+const $ = id => document.getElementById(id);
+const dp = p => p >= 1000 ? 1 : p >= 10 ? 2 : 4;
+const nf = (x, d) => (x === null || x === undefined || isNaN(x)) ? "—" : Number(x).toLocaleString("en-US", { maximumFractionDigits: d, minimumFractionDigits: d });
+const pc = (x, d = 0) => (x === null || x === undefined || isNaN(x)) ? "—" : (x * 100).toFixed(d) + "%";
+const usd = x => (x < 0 ? "−$" : "$") + Math.abs(x).toFixed(2);
+const istT = ms => new Date(ms + IST_MS).toISOString().slice(5, 16).replace("T", " ");
+const istHMS = ms => new Date(ms + IST_MS).toISOString().slice(11, 19);
+const fmtBoth = ms => new Date(ms).toISOString().slice(0, 16).replace("T", " ") + " UTC / " + new Date(ms + IST_MS).toISOString().slice(11, 16) + " IST";
+const esc = s => String(s).replace(/[&<>]/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[m]));
+const rr = x => (x === null || x === undefined) ? "—" : (x > 0 ? "+" : "") + x.toFixed(2) + "R";
+const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+                set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
+function banner(msg) { $("banner").textContent = msg; $("banner").style.display = msg ? "block" : "none"; }
+
+function rowsOf(s) {
+  return (live[s] && live[s].rows) || (MARKET && MARKET.symbols[s] && MARKET.symbols[s].candles15m) || [];
+}
+function candles(s) { return rowsOf(s).map(r => ({ t: +r[0], o: +r[1], h: +r[2], l: +r[3], c: +r[4], v: +r[5] })); }
+function hist(s, key) { if (tf !== "15m") return null; const x = STATS && STATS.symbols && STATS.symbols[s]; return x && x.patterns[key] || null; }
+function grade(h) {
+  if (!h || h.trades < 50 || !h.last30 || h.last30.n < 15) return ["unknown", "too few cases"];
+  if (h.exp_R_net > 0.05 && h.first70 && h.first70.exp_R_net > 0 && h.last30.exp_R_net > 0) return ["good", "held up so far"];
+  return ["bad", "lost after fees"];
+}
+function contractOf(s) {
+  const m = MARKET && MARKET.symbols[s] || {};
+  return { mmr: m.tier1_mmr || 0.004, taker: parseFloat(m.contract && m.contract.taker_fee) || 0.0006 };
+}
+function livePrice(s) {
+  if (tick[s] && Date.now() - tick[s].at < 60000) return tick[s].last;
+  if (forming[s]) return forming[s].c;
+  const r = rowsOf(s); return r.length ? +r[r.length - 1][4] : null;
+}
+function liqPrice(entry, dir, lev, mmr, taker) {
+  return dir > 0 ? entry * (1 - 1 / lev) / (1 - mmr - taker) : entry * (1 + 1 / lev) / (1 + mmr + taker);
+}
+function analyze5(s) {
+  const rows = (live5[s] && live5[s].rows) || [];
+  const c = rows.map(r => ({ t: +r[0], o: +r[1], h: +r[2], l: +r[3], c: +r[4], v: +r[5] }));
+  RES5[s] = c.length >= 100 ? { c, rs: Patterns.rangeScalp(c), res: Patterns.analyze(c) } : null;
+  return RES5[s];
+}
+function analyze4(s) {
+  const rows = (live4[s] && live4[s].rows) || [];
+  const c = rows.map(r => ({ t: +r[0], o: +r[1], h: +r[2], l: +r[3], c: +r[4], v: +r[5] }));
+  RES4[s] = c.length >= 100 ? { c, res: Patterns.analyze(c) } : null;
+  return RES4[s];
+}
+function resTf(t, s) { return t === "5m" ? RES5[s] : t === "4H" ? RES4[s] : RES[s]; }
+function analyze(s) {
+  const c = candles(s);
+  RES[s] = c.length >= 100 ? { c, res: Patterns.analyze(c) } : null;
+  return RES[s];
+}
+
+/* ================= trade plan from the current read =================
+ * Same rule as the history test: entry now, stop at the setup's invalidation but never
+ * closer than 0.5 ATR, take profit 1.5 x the risk. */
+function tradePlan(s, pf) {
+  const PR = Patterns.PROFILES[pf], px = livePrice(s);
+  const mk = (dir, stop, minAtr, atr, name) => {
+    if (dir * (px - stop) <= 0) return { kind: "void", dir, name, why: `a ${dir > 0 ? "BUY" : "SELL"} signal (${name}) fired, but price has already gone through its stop (${nf(stop, dp(px))}), so it is cancelled.` };
+    const risk = Math.max(dir * (px - stop), minAtr * (atr || 0));
+    return { kind: "trade", dir, entry: px, sl: px - dir * risk, tp: px + dir * PR.rr * risk, risk, rr: PR.rr, name };
+  };
+  if (pf === "aggressive") {
+    const A5 = RES5[s]; if (!A5 || !A5.rs.state) return { kind: "nodata", why: "5-minute candles are still loading." };
+    const st = A5.rs.state, d = dp(px), hi = st.hi, lo = st.lo;
+    const rangeLines = isFinite(hi) ? [{ p: hi, c: "#8b93a3", t: "4h range high", w: 1, s: 0 }, { p: lo, c: "#8b93a3", t: "4h range low", w: 1, s: 0 }] : [];
+    if (st.trigger) {
+      const P = mk(st.trigger.dir, st.trigger.stop, 0, 0, st.trigger.name);
+      P.why = P.kind === "trade" ? `${st.trigger.name}: price ${st.trigger.dir > 0 ? "fell below" : "rose above"} the day's first 4-hour range and a 5-minute candle just closed back inside it.` : P.why;
+      P.extraLines = rangeLines; return P;
+    }
+    if (st.phase === "forming") return { kind: "wait", why: `The day's range is still being set (05:30–09:30 IST). So far ${nf(lo, d)} – ${nf(hi, d)}.`, lines: rangeLines,
+      levels: `<tr><td colspan="2">Signals start at <b>09:30 IST</b>, when the first 4-hour candle of the day closes.</td></tr>` };
+    if (st.phase === "nodata") return { kind: "none", why: "Today's 4-hour range is incomplete (missing candles), so this profile skips the day." };
+    const parts = [];
+    if (!st.doneS) parts.push(st.upBroken ? `<b class="down">SELL</b> if a 5-minute candle closes back below <b>${nf(hi, d)}</b> (price broke above it; stop would be ${nf(st.upExt, d)})`
+                                          : `<b class="down">SELL</b> if price closes above <b>${nf(hi, d)}</b> and then a 5-minute candle closes back below it`);
+    if (!st.doneL) parts.push(st.dnBroken ? `<b class="up">BUY</b> if a 5-minute candle closes back above <b>${nf(lo, d)}</b> (price broke below it; stop would be ${nf(st.dnExt, d)})`
+                                          : `<b class="up">BUY</b> if price closes below <b>${nf(lo, d)}</b> and then a 5-minute candle closes back above it`);
+    if (!parts.length) return { kind: "none", why: "Both of today's signals have been used. A new range forms tomorrow 05:30–09:30 IST.", lines: rangeLines };
+    return { kind: "wait", why: `Waiting for a false breakout of today's range ${nf(lo, d)} – ${nf(hi, d)}.`, lines: rangeLines,
+      levels: parts.map(x => `<tr><td colspan="2">${x}</td></tr>`).join("") };
+  }
+  const A = RES[s]; if (!A) return { kind: "nodata", why: "Candles are still loading." };
+  const st = A.res.state, d = dp(px);
+  if (st.trigger) {
+    if (pf === "careful") {
+      const chk = Patterns.carefulCheck(A.c, A.res, st.trigger);
+      if (!chk.ok) return { kind: "wait", why: `Neutral sees a ${st.trigger.dir > 0 ? "BUY" : "SELL"} (${st.trigger.name}), but Careful waits: ${chk.why}.` };
+    }
+    const P = mk(st.trigger.dir, st.trigger.stop, PR.minStopAtr, st.atr, st.trigger.name);
+    if (P.kind === "trade") P.why = `${st.trigger.name} on the last closed 15-minute candle, with the 1-hour trend ${P.dir > 0 ? "up" : "down"} and price ${P.dir > 0 ? "above" : "below"} today's VWAP.` +
+      (pf === "careful" ? " The last 24 hours agree and the market is calm enough." : "");
+    return P;
+  }
+  if (st.verdict === "WAIT") {
+    const up = st.trend1h === 1;
+    return { kind: "wait", why: `The 1-hour trend is ${up ? "up" : "down"} and price is ${up ? "above" : "below"} VWAP, but there is no entry signal yet.`,
+      lines: [{ p: up ? st.hi20 : st.lo20, c: up ? "#2fbf71" : "#e5484d", t: up ? "buy trigger" : "sell trigger" }],
+      levels: pf === "careful"
+        ? `<tr><td colspan="2"><b>${up ? "BUY" : "SELL"} becomes possible</b> on a dip ${up ? "to" : "up to"} VWAP <b>${nf(st.vwap, d)}</b> that closes back ${up ? "above" : "below"} it, or a retest of a broken level. Careful ignores raw breakouts.</td></tr>`
+        : `<tr><td colspan="2"><b>${up ? "BUY" : "SELL"} becomes possible</b> if a 15-minute candle closes ${up ? "above" : "below"} <b class="${up ? "up" : "down"}">${nf(up ? st.hi20 : st.lo20, d)}</b>, or price ${up ? "dips" : "bounces"} to VWAP <b>${nf(st.vwap, d)}</b> and closes back ${up ? "above" : "below"} it.</td></tr>` };
+  }
+  return { kind: "none", why: st.trend1h === 0 ? "The 1-hour trend is flat: no direction to follow." : "The 1-hour trend and the side of VWAP disagree.",
+    lines: [{ p: st.hi20, c: "#5c6370", t: "5h high", w: 1 }, { p: st.lo20, c: "#5c6370", t: "5h low", w: 1 }],
+    levels: `<tr><td>Range to watch (last 5h)</td><td class="r">${nf(st.lo20, d)} – ${nf(st.hi20, d)}</td></tr>` };
+}
+
+/* ================= charts ================= */
+function makeChart(el) {
+  const ch = LightweightCharts.createChart(el, {
+    autoSize: true, layout: { background: { color: "#171a21" }, textColor: "#8b93a3" },
+    grid: { vertLines: { color: "#1f232c" }, horzLines: { color: "#1f232c" } },
+    timeScale: { timeVisible: true, secondsVisible: false, borderColor: "#262b35" },
+    rightPriceScale: { borderColor: "#262b35" }, crosshair: { mode: 0 } });
+  const cs = ch.addCandlestickSeries({ upColor: "#2fbf71", downColor: "#e5484d", borderVisible: false, wickUpColor: "#2fbf71", wickDownColor: "#e5484d" });
+  const vw = ch.addLineSeries({ color: "#6ea8fe", lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+  return { ch, cs, vw, lines: [], sym: null };
+}
+const CH = {};
+function setChartData(key, s, keepRange, tf) {
+  const five = tf === "5m", A = resTf(tf, s); if (!A) return;
+  const vw = A.res.vwap;
+  const k = CH[key], d = dp(A.c[A.c.length - 1].c), tm = t => (t + IST_MS) / 1000;
+  const pf = { type: "price", precision: d, minMove: Math.pow(10, -d) };
+  k.cs.applyOptions({ priceFormat: pf }); k.vw.applyOptions({ priceFormat: pf });
+  k.cs.setData(A.c.map(x => ({ time: tm(x.t), open: x.o, high: x.h, low: x.l, close: x.c })));
+  k.vw.setData(A.c.map((x, i) => ({ time: tm(x.t), value: vw[i] })));
+  const sig = s + tf;
+  if (!keepRange || k.sig !== sig) k.ch.timeScale().setVisibleLogicalRange({ from: A.c.length - (five ? 200 : 120), to: A.c.length + 8 });
+  k.sym = s; k.tf = tf; k.sig = sig;
+  if (key === "t") k.cs.setMarkers([]);
+  drawForming(key);
+}
+function drawForming(key) {
+  const k = CH[key]; if (!k || !k.sym) return;
+  const f = (k.tf === "5m" ? forming5 : k.tf === "4H" ? forming4 : forming)[k.sym];
+  const r = k.tf === "5m" ? ((live5[k.sym] && live5[k.sym].rows) || []) : k.tf === "4H" ? ((live4[k.sym] && live4[k.sym].rows) || []) : rowsOf(k.sym), lastT = r.length ? +r[r.length - 1][0] : 0;
+  if (f && f.t > lastT) k.cs.update({ time: (f.t + IST_MS) / 1000, open: f.o, high: f.h, low: f.l, close: f.c });
+}
+function setLines(key, list) {
+  const k = CH[key]; k.lines.forEach(l => k.cs.removePriceLine(l)); k.lines = [];
+  list.forEach(x => k.lines.push(k.cs.createPriceLine({ price: x.p, color: x.c, lineWidth: x.w || 2, lineStyle: x.s === undefined ? 2 : x.s, axisLabelVisible: true, title: x.t })));
+}
+
+/* ================= BUY / SELL view ================= */
+function signalWord(P) { return P.kind === "trade" ? (P.dir > 0 ? "BUY" : "SELL") : P.kind === "wait" || P.kind === "void" ? "WAIT" : P.kind === "nodata" ? "LOADING" : "NO TRADE"; }
+function signalCls(P) { return P.kind === "trade" ? (P.dir > 0 ? "s-buy" : "s-sell") : P.kind === "wait" || P.kind === "void" ? "s-wait" : "s-none"; }
+function profileRecord(s, pf) { const S = STATS && STATS.symbols && STATS.symbols[s]; return S && S.profiles && S.profiles[pf] || null; }
+function recordLine(r) {
+  if (!r || !r.trades) return "No tested record yet.";
+  return `Tested on 180 days: ${r.trades} trades (${r.per_week}/week), ${pc(r.win_rate)} winners, ${rr(r.exp_R_net)} per trade after fees.`;
+}
+function renderProfiles() {
+  $("profiles").innerHTML = PROFS.map(pf => {
+    const PR = Patterns.PROFILES[pf], P = tradePlan(sym, pf), r = profileRecord(sym, pf), open = store.get(posKey(pf, sym), null);
+    return `<div class="pf ${pf === profile ? "on" : ""}" data-pf="${pf}"><span class="nm">${PR.name}</span><span class="tf">${PR.tf} · default ${PR.lev}× · target ${PR.rr}R</span>
+      <div class="sg ${signalCls(P)}">${signalWord(P)}${open ? ` <span class="pill">trade open</span>` : ""}</div>
+      <div class="sub">${esc(PR.desc)}</div><div class="rec">${recordLine(r)}</div></div>`;
+  }).join("");
+  document.querySelectorAll("#profiles .pf").forEach(el => el.onclick = () => {
+    profile = el.dataset.pf; try { localStorage.setItem("radar.profile", profile); } catch (e) {}
+    $("tLev").value = String(Patterns.PROFILES[profile].lev);
+    setTf(Patterns.PROFILES[profile].tf);
+  });
+}
+function renderTrade() {
+  const s = sym, pf = profile, PR = Patterns.PROFILES[pf];
+  $("tSym").textContent = s; $("tProf").textContent = PR.name + " · " + PR.tf + " candles"; $("tTf").textContent = (tf === "4H" ? "4h" : tf) + (pf === "aggressive" && tf === "5m" ? ", grey lines = today's first 4-hour range" : "") + (tf !== PR.tf ? ` — this profile trades on ${PR.tf}; lines still apply` : "");
+  renderProfiles();
+  const P = tradePlan(s, pf), px = livePrice(s), d = dp(px);
+  const { mmr, taker } = contractOf(s);
+  const margin = Math.max(1, +$("tMargin").value || 5), lev = +$("tLev").value || PR.lev, notional = margin * lev;
+  $("tPrice").textContent = nf(px, d);
+  $("tTick").textContent = tick[s] ? `mark ${nf(tick[s].mark, d)} · funding ${(tick[s].funding * 100).toFixed(4)}% / 8h` : "";
+  $("tSignal").textContent = signalWord(P); $("tSignal").className = "signal " + signalCls(P);
+  $("tWhy").textContent = P.why || "";
+  let lines = (P.extraLines || []).concat(P.lines || []), levels = P.levels || "", money = "", warn = "";
+  const fee = notional * taker * 2;
+  if (P.kind === "trade") {
+    const liq = liqPrice(P.entry, P.dir, lev, mmr, taker), riskPct = P.risk / P.entry;
+    const loss = -(notional * riskPct) - fee, gain = notional * riskPct * P.rr - fee;
+    levels = `<tr><td>Entry (now)</td><td class="r"><b>${nf(P.entry, d)}</b></td></tr>
+      <tr><td>Stop loss</td><td class="r down"><b>${nf(P.sl, d)}</b> <span class="sub">(${pc(riskPct, 2)} away)</span></td></tr>
+      <tr><td>Take profit</td><td class="r up"><b>${nf(P.tp, d)}</b> <span class="sub">(${pc(riskPct * P.rr, 2)} away)</span></td></tr>
+      <tr><td>Reward : risk</td><td class="r">${P.rr} : 1</td></tr>`;
+    lines = (P.extraLines || []).concat([{ p: P.entry, c: "#e7e9ee", t: "entry", s: 0, w: 1 }, { p: P.sl, c: "#e5484d", t: "stop loss" }, { p: P.tp, c: "#2fbf71", t: "take profit" }]);
+    const liqFirst = P.dir * (liq - P.sl) > 0;
+    if (liqFirst) lines.push({ p: liq, c: "#f5a524", t: "LIQUIDATION", s: 1, w: 1 });
+    money = `<tr><td>Position size</td><td class="r">${usd(notional)}</td></tr>
+      <tr><td>Fees in + out</td><td class="r">${usd(-fee)}</td></tr>
+      <tr><td>If the stop loss hits</td><td class="r down">${liqFirst ? usd(-margin) + " (liquidated first)" : usd(Math.max(loss, -margin))}</td></tr>
+      <tr><td>If the take profit hits</td><td class="r up">${usd(gain)}</td></tr>
+      <tr><td>Liquidation price</td><td class="r">${nf(liq, d)} (${pc(Math.abs(liq / P.entry - 1), 2)} away)</td></tr>`;
+    if (liqFirst) {
+      let maxL = 1; for (let L = 1; L <= 125; L++) if (P.dir * (liqPrice(P.entry, P.dir, L, mmr, taker) - P.sl) < 0) maxL = L;
+      warn = `<div class="alert"><b>At ${lev}× you get liquidated before your stop loss.</b> Liquidation is ${pc(Math.abs(liq / P.entry - 1), 2)} away but the stop is ${pc(riskPct, 2)} away, so a normal move against you takes the whole ${usd(margin)}. The highest leverage whose liquidation sits beyond this stop is <b>${maxL}×</b>.</div>`;
+    }
+  } else {
+    money = `<tr><td colspan="2" class="sub">${P.kind === "wait" ? "Stop loss and take profit appear when a signal fires." : "Nothing to trade for this profile right now."}</td></tr>`;
+  }
+  $("tLevels").innerHTML = levels; $("tMoney").innerHTML = money; $("tWarn").innerHTML = warn;
+  const r = profileRecord(s, pf);
+  $("tRecord").innerHTML = r && r.trades ? `<span class="pill ${r.exp_R_net > 0.05 && r.first70.exp_R_net > 0 && r.last30.exp_R_net > 0 && r.trades >= 50 ? "good" : r.trades < 50 ? "unknown" : "bad"}">${r.exp_R_net > 0 ? "made money in the test" : "lost money in the test"}</span>
+    ${PR.name} on ${s.replace("USDT", "")}: ${r.trades} trades over 180 days, ${pc(r.win_rate)} winners, average ${rr(r.exp_R_net)} per trade after fees, longest losing run ${r.longest_losing_streak}. Earlier 70%: ${rr(r.first70.exp_R_net)}; later 30%: ${rr(r.last30.exp_R_net)}.` : "";
+
+  const pos = store.get(posKey(pf, s), null);
+  if (pos) {
+    lines = (P.extraLines || []).concat([{ p: pos.entry, c: "#e7e9ee", t: "your entry", s: 0, w: 1 }, { p: pos.sl, c: "#e5484d", t: "your stop loss" }, { p: pos.tp, c: "#2fbf71", t: "your take profit" }]);
+    if (pos.dir * (pos.liq - pos.sl) > 0) lines.push({ p: pos.liq, c: "#f5a524", t: "LIQUIDATION", s: 1, w: 1 });
+  }
+  setLines("t", lines);
+
+  const btn = $("tStart");
+  btn.className = "go" + (P.kind === "trade" ? (P.dir > 0 ? " buy" : " sell") : "");
+  btn.disabled = P.kind !== "trade" || !!pos;
+  btn.textContent = pos ? `${PR.name} trade open on this coin` : P.kind === "trade" ? `Start paper ${P.dir > 0 ? "BUY" : "SELL"} at ${nf(P.entry, d)} (${PR.name})` : "No signal — button unlocks when BUY or SELL appears";
+  btn.onclick = () => openPos(s, pf, margin, lev);
+  renderPos();
+}
+
+/* ================= paper positions ================= */
+function openPos(s, pf, margin, lev) {
+  const P = tradePlan(s, pf);
+  if (P.kind !== "trade" || store.get(posKey(pf, s), null)) return;
+  const { mmr, taker } = contractOf(s), entry = livePrice(s);
+  if (P.dir * (entry - P.sl) <= 0) return;
+  store.set(posKey(pf, s), { sym: s, pf, dir: P.dir, entry, sl: P.sl, tp: P.tp, margin, lev, notional: margin * lev, qty: margin * lev / entry,
+    taker, liq: liqPrice(entry, P.dir, lev, mmr, taker), signal: P.name, opened: Date.now() });
+  renderTrade();
+}
+function closePos(pf, s, price, reason) {
+  const pos = store.get(posKey(pf, s), null); if (!pos) return;
+  const fees = pos.notional * pos.taker + pos.qty * price * pos.taker;
+  let pnl = reason === "liquidated" ? -pos.margin : pos.dir * (price - pos.entry) * pos.qty - fees;
+  pnl = Math.max(pnl, -pos.margin);
+  const log = store.get("radar.log", []);
+  log.unshift({ sym: s, pf, dir: pos.dir, entry: pos.entry, exit: price, pnl, reason, opened: pos.opened, closed: Date.now(), lev: pos.lev, margin: pos.margin, signal: pos.signal });
+  store.set("radar.log", log.slice(0, 300));
+  try { localStorage.removeItem(posKey(pf, s)); } catch (e) {}
+  if (view === "trade") renderTrade();
+  renderLog();
+}
+function checkPos(s, price) {               // runs on every live tick for every coin and profile
+  if (!price) return;
+  PROFS.forEach(pf => {
+    const pos = store.get(posKey(pf, s), null); if (!pos) return;
+    const d = pos.dir;
+    if (d * (price - pos.liq) <= 0 && d * (pos.liq - pos.sl) > 0) return closePos(pf, s, pos.liq, "liquidated");
+    if (d * (price - pos.sl) <= 0) return closePos(pf, s, pos.sl, "stop loss");
+    if (d * (price - pos.tp) >= 0) return closePos(pf, s, pos.tp, "take profit");
+    if (pf === "aggressive" && Date.now() >= (Math.floor(pos.opened / 86400000) + 1) * 86400000) return closePos(pf, s, price, "day ended (05:30 IST)");
+  });
+}
+function renderPos() {
+  const s = sym, pos = store.get(posKey(profile, s), null), el = $("tPos");
+  if (!pos) { el.innerHTML = ""; el.dataset.k = ""; return; }
+  const px = livePrice(s), d = dp(px), fees = pos.notional * pos.taker + pos.qty * px * pos.taker;
+  const pnl = Math.max(pos.dir * (px - pos.entry) * pos.qty - fees, -pos.margin);
+  const k = profile + s + pos.opened;
+  if (el.dataset.k !== k) {                   // build once per position; ticks only update numbers
+    el.dataset.k = k;
+    el.innerHTML = `<div class="ok"><b>Open paper ${pos.dir > 0 ? "BUY" : "SELL"}</b> · ${pos.margin} USDT × ${pos.lev} · entry ${nf(pos.entry, d)} · since ${istT(pos.opened)} IST
+      <div class="pnl" id="tPnl"></div>
+      <div class="sub">Stop loss ${nf(pos.sl, d)} · take profit ${nf(pos.tp, d)}${pos.dir * (pos.liq - pos.sl) > 0 ? ` · <span class="warn">liquidation ${nf(pos.liq, d)} comes first</span>` : ""}</div>
+      <button id="tClose" style="margin-top:8px">Close now</button></div>`;
+    const pf = profile; $("tClose").onclick = () => closePos(pf, s, livePrice(s), "closed by you");
+  }
+  $("tPnl").className = "pnl " + (pnl >= 0 ? "up" : "down");
+  $("tPnl").innerHTML = `${usd(pnl)} <span class="sub">(${pc(pnl / pos.margin, 1)} of margin, after fees) · price ${nf(px, d)}</span>`;
+}
+function renderLog() {
+  const log = store.get("radar.log", []);
+  if (!log.length) { $("tLog").innerHTML = "No trades yet."; return; }
+  const tot = log.reduce((a, x) => a + x.pnl, 0), wins = log.filter(x => x.pnl > 0).length;
+  const byPf = PROFS.map(pf => { const L = log.filter(x => x.pf === pf); return L.length ? `${Patterns.PROFILES[pf].name}: ${L.length} trades, ${usd(L.reduce((a, x) => a + x.pnl, 0))}` : null; }).filter(Boolean).join(" · ");
+  $("tLog").innerHTML = `<div>${log.length} trades · ${wins} winners · total <b class="${tot >= 0 ? "up" : "down"}">${usd(tot)}</b> <span class="sub">${byPf}</span> <button id="tClear" style="margin-left:10px;padding:3px 10px">Clear log</button></div>
+    <table style="margin-top:6px"><tr><th>Closed (IST)</th><th>Profile</th><th>Coin</th><th>Side</th><th>Signal</th><th class="r">Entry</th><th class="r">Exit</th><th>Why</th><th class="r">Result</th></tr>` +
+    log.slice(0, 30).map(x => `<tr><td>${istT(x.closed)}</td><td>${x.pf ? Patterns.PROFILES[x.pf].name : "—"}</td><td>${x.sym.replace("USDT", "")}</td><td class="${x.dir > 0 ? "up" : "down"}">${x.dir > 0 ? "BUY" : "SELL"}</td>
+      <td class="sub">${esc(x.signal || "")}</td><td class="r">${nf(x.entry, dp(x.entry))}</td><td class="r">${nf(x.exit, dp(x.exit))}</td><td>${esc(x.reason)}</td>
+      <td class="r ${x.pnl >= 0 ? "up" : "down"}">${usd(x.pnl)}</td></tr>`).join("") + `</table>`;
+  $("tClear").onclick = () => { if (confirm("Clear the paper trade log?")) { store.set("radar.log", []); renderLog(); } };
+}
+
+/* ================= PATTERNS view ================= */
+function histCells(h) {
+  if (!h) return `<td class="r muted">—</td><td class="r muted">—</td><td class="r muted">—</td><td class="r muted">—</td><td><span class="pill unknown">no history yet</span></td>`;
+  const g = grade(h), e = h.exp_R_net, l = h.last30 ? h.last30.exp_R_net : null;
+  return `<td class="r">${h.n}</td><td class="r">${pc(h.hit16)}</td><td class="r ${e > 0 ? "up" : "down"}">${rr(e)}</td><td class="r ${l > 0 ? "up" : "down"}">${rr(l)}</td><td><span class="pill ${g[0]}">${g[1]}</span></td>`;
+}
+function renderPatterns(keepRange) {
+  const s = sym, A = resTf(tf, s);
+  $("symName").textContent = s + " perpetual";
+  if (!A) { $("verdict").textContent = "NO DATA"; return; }
+  const c = A.c, res = A.res, st = res.state, d = dp(st.price);
+  const showCandle = $("showCandle").checked, showNeutral = $("showNeutral").checked;
+  const vis = e => e.kind === "structure" || (showCandle && (e.dir !== 0 || showNeutral));
+  setChartData("p", s, keepRange, tf);
+  const tm = t => (t + IST_MS) / 1000;
+  CH.p.cs.setMarkers(res.events.filter(vis).map(e => ({ time: tm(e.t), position: e.dir > 0 ? "belowBar" : "aboveBar",
+    color: e.dir > 0 ? "#2fbf71" : e.dir < 0 ? "#e5484d" : "#8b93a3", shape: e.dir > 0 ? "arrowUp" : e.dir < 0 ? "arrowDown" : "circle",
+    size: e.kind === "structure" ? 2 : 1, text: SHORT[e.code] || e.code })));
+  const L = [{ p: st.hi20, c: "#5c6370", t: "20-bar high", w: 1 }, { p: st.lo20, c: "#5c6370", t: "20-bar low", w: 1 }];
+  if (st.watching) L.push({ p: st.watching.level, c: "#f5a524", t: "broken level (watching)", w: 1 });
+  setLines("p", L);
+
+  const cls = { "LONG SETUP": "s-buy", "SHORT SETUP": "s-sell", "WAIT": "s-wait", "NO TRADE": "s-none" }[st.verdict] || "s-none";
+  $("verdict").textContent = st.verdict; $("verdict").className = "signal " + cls; $("verdict").style.fontSize = "26px";
+  $("verdictSub").textContent = `Last closed candle ${fmtBoth(st.time + M15)} · close ${nf(st.price, d)}`;
+  $("reasons").innerHTML = st.reasons.map(r => `<li>${esc(r)}</li>`).join("");
+  $("plan").innerHTML = st.trigger ? `Signal: <b>${esc(st.trigger.name)}</b>. Switch to <b>Buy / Sell</b> for the entry, stop loss and take profit.`
+    : st.verdict === "WAIT" ? `Waiting for a trigger in the trend direction.` : `Nothing to continue: the 1-hour trend and VWAP don't agree.`;
+  const key = st.trend1h === 1 ? "SETUP_LONG" : st.trend1h === -1 ? "SETUP_SHORT" : "SETUP_ANY", h = hist(s, key);
+  $("setupHist").innerHTML = h ? `<span class="pill ${grade(h)[0]}">${grade(h)[1]}</span> <span class="sub">History of ${key === "SETUP_ANY" ? "all full setups" : key === "SETUP_LONG" ? "the full long setup" : "the full short setup"} on ${s}: ${h.n} times; right side 4h later ${pc(h.hit16)}; after fees ${rr(h.exp_R_net)} per trade.</span>` : "";
+
+  const above = st.price > st.vwap, S = STATS && STATS.symbols && STATS.symbols[s], rg = tf === "15m" && S && S.regime;
+  let lean, lh = "";
+  if (st.trend1h === 1 && above) { lean = `<span class="up">UP lean</span>`; if (rg) lh = `When both agreed up in the past, price was higher 4h later ${pc(rg.up.higher_4h_later)} of the time.`; }
+  else if (st.trend1h === -1 && !above) { lean = `<span class="down">DOWN lean</span>`; if (rg) lh = `When both agreed down in the past, price was lower 4h later ${pc(rg.down.lower_4h_later)} of the time.`; }
+  else { lean = `<span class="muted">SIDEWAYS / unclear</span>`; if (rg) lh = `In this mixed state price was higher 4h later ${pc(rg.mixed.higher_4h_later)} of the time.`; }
+  $("lean").innerHTML = lean;
+  $("leanHist").textContent = `1-hour trend ${st.trend1h === 1 ? "up" : st.trend1h === -1 ? "down" : "flat"}, price ${above ? "above" : "below"} VWAP. ${lh} 50% is a coin flip.`;
+  const ch = k => c.length > k ? (c[c.length - 1].c / c[c.length - 1 - k].c - 1) : null;
+  const B = RES.BTCUSDT && RES.BTCUSDT.c, bch = k => B && B.length > k ? (B[B.length - 1].c / B[B.length - 1 - k].c - 1) : null;
+  const sg = x => x === null ? "—" : `<span class="${x >= 0 ? "up" : "down"}">${(x * 100).toFixed(2)}%</span>`;
+  $("levels").innerHTML = `<tr><td>Change 4h / 24h</td><td class="r">${sg(ch(16))} / ${sg(ch(96))}</td></tr>` +
+    (s !== "BTCUSDT" && bch(96) !== null && ch(96) !== null ? `<tr><td>Versus BTC over the same 24h</td><td class="r">${sg(ch(96) - bch(96))} (${ch(96) > bch(96) ? "stronger" : "weaker"})</td></tr>` : "") +
+    `<tr><td>Today's VWAP</td><td class="r">${nf(st.vwap, d)}</td></tr><tr><td>20-bar (5h) high / low</td><td class="r">${nf(st.hi20, d)} / ${nf(st.lo20, d)}</td></tr>` +
+    `<tr><td>Today's high / low (since 05:30 IST)</td><td class="r">${nf(st.sessionHigh, d)} / ${nf(st.sessionLow, d)}</td></tr><tr><td>Typical 15-minute move</td><td class="r">${st.atrPct.toFixed(3)}%</td></tr>`;
+
+  const m = MARKET && MARKET.symbols[s] || {}, tk = m.ticker, ls = m.long_short_accounts || [], tb = m.taker_buy_sell || [];
+  const share = k => { let b = 0, se = 0; tb.slice(-k).forEach(x => { b += x[1]; se += x[2]; }); return b + se > 0 ? b / (b + se) : null; };
+  const meter = (x, l, r) => x === null ? `<div class="sub">no data</div>` : `<div class="meter"><div style="width:${(x * 100).toFixed(1)}%"></div></div><div class="sub">${l} ${(x * 100).toFixed(1)}% · ${r} ${((1 - x) * 100).toFixed(1)}%</div>`;
+  $("crowd").innerHTML = `<b>Accounts holding longs vs shorts</b>${meter(ls.length ? ls[ls.length - 1][1] : null, "long", "short")}` +
+    `<div class="sub">This counts accounts, not money. When most small accounts sit on one side, that side gets squeezed if price goes against it.</div>` +
+    `<div style="margin-top:10px"><b>Market orders, last 1 hour</b>${meter(share(4), "buying", "selling")}</div>` +
+    `<div style="margin-top:6px"><b>Market orders, last 6 hours</b>${meter(share(24), "buying", "selling")}</div>` +
+    (tk ? `<table style="margin-top:10px"><tr><td>24h volume</td><td class="r">${nf(tk.quote_volume_24h / 1e6, 1)} M USDT</td></tr>
+      <tr><td>Open interest</td><td class="r">${nf(tk.open_interest, 0)} ${s.replace("USDT", "")}</td></tr>
+      <tr><td>Funding (per 8h)</td><td class="r">${(tk.funding_rate * 100).toFixed(4)}% — ${tk.funding_rate > 0 ? "longs pay shorts" : "shorts pay longs"}</td></tr></table>` : "") +
+    `<div class="sub" style="margin-top:6px">From the snapshot at ${MARKET ? MARKET.generated_at_utc + " UTC" : "—"} (refreshed every 15 min).</div>`;
+
+  const { mmr, taker } = contractOf(s), base = S && S.baseline;
+  $("lev").innerHTML = `<table><tr><th>$5 at</th><th class="r">Position</th><th class="r">Fees in + out</th><th class="r">Liquidation distance</th><th class="r">= normal 15m moves</th></tr>` +
+    [5, 10, 20, 50, 100].map(Lv => { const q = Patterns.liqDistance(Lv, mmr, taker) * 100, n = q / st.atrPct;
+      return `<tr><td>${Lv}×</td><td class="r">$${5 * Lv}</td><td class="r">$${(5 * Lv * 2 * taker).toFixed(2)}</td><td class="r">${q.toFixed(2)}%</td><td class="r ${n < 3 ? "down" : n < 8 ? "warn" : "up"}">${n.toFixed(1)}</td></tr>`; }).join("") + `</table>` +
+    (base ? `<div class="sub" style="margin-top:6px">History: a 100× long opened at a random time was liquidated within 4 hours ${pc(base.long_liq100)} of the time; a short, ${pc(base.short_liq100)}.</div>` : "");
+
+  const evs = res.events.filter(vis).slice(-25).reverse();
+  $("events").innerHTML = `<tr><th>Time (IST)</th><th>Pattern</th><th>Says</th><th>What it means</th><th class="r">Cases</th><th class="r">Right side 4h</th><th class="r">After fees</th><th class="r">Later 30%</th><th></th></tr>` +
+    evs.map(e => { const al = e.dir !== 0 && e.trend === e.dir, hh = (al && hist(s, e.code + "|T")) || hist(s, e.code);
+      return `<tr><td style="white-space:nowrap">${istT(e.t + M15)}</td><td><b>${esc(e.name)}</b>${al ? ` <span class="pill">with 1h trend</span>` : ""}</td>
+        <td class="${e.dir > 0 ? "up" : e.dir < 0 ? "down" : "muted"}">${e.dir > 0 ? "up" : e.dir < 0 ? "down" : "undecided"}</td>
+        <td class="sub">${esc(Patterns.MEANING[e.code])}</td>${e.dir === 0 ? `<td colspan="5" class="muted">no direction to score</td>` : histCells(hh)}</tr>`; }).join("");
+
+  if (S) {
+    $("statsMeta").textContent = `${s}: ${S.bars.toLocaleString()} candles, ${S.from.slice(0, 10)} → ${S.to.slice(0, 10)}. With no pattern at all, price was higher 4h later ${pc(S.baseline.long_hit16)} of the time.`;
+    $("report").innerHTML = `<tr><th>Pattern</th><th class="r">Cases</th><th class="r">Right side 4h</th><th class="r">After fees</th><th class="r">Later 30%</th><th></th><th class="r">100× wiped</th></tr>` +
+      ["SETUP_LONG", "SETUP_SHORT"].concat(Object.keys(Patterns.NAMES).filter(k => DIR[k] !== 0)).map(k => { const hh = S.patterns[k];
+        const nm = k === "SETUP_LONG" ? "<b>BUY signal</b> (trend up + above VWAP + trigger)" : k === "SETUP_SHORT" ? "<b>SELL signal</b> (trend down + below VWAP + trigger)" : Patterns.NAMES[k];
+        return `<tr><td>${nm}</td>${histCells(hh)}<td class="r">${hh ? pc(hh.liq100) : "—"}</td></tr>`; }).join("");
+  }
+}
+function guide() {
+  $("guide").innerHTML = `<tr><th>Pattern</th><th>Chart label</th><th>Says</th><th>Meaning</th></tr>` + Object.keys(Patterns.NAMES).map(k => { const d = DIR[k];
+    return `<tr><td><b>${Patterns.NAMES[k]}</b></td><td class="muted">${SHORT[k]}</td><td class="${d > 0 ? "up" : d < 0 ? "down" : "muted"}">${d > 0 ? "up" : d < 0 ? "down" : "undecided"}</td><td class="sub">${Patterns.MEANING[k]}</td></tr>`; }).join("");
+}
+
+/* ================= model, indicators, journal ================= */
+function modelProb(s, t) {
+  t = t || "15m";
+  const A = resTf(t, s), M = MODEL && MODEL.tfs && MODEL.tfs[t] ? MODEL.tfs[t].model : (t === "15m" && MODEL && MODEL.model);
+  if (!A || !M) return null;
+  const F = Patterns.featureRows(A.c, A.res), x = F[F.length - 1];
+  return x ? Patterns.predict(M, x) : null;
+}
+function renderModel() {
+  const el = $("modelBody");
+  if (!MODEL || !MODEL.tfs) { el.innerHTML = "The models have not been trained yet (they retrain every day)."; return; }
+  ["5m", "4H"].forEach(t => { if (!resTf(t, sym)) (t === "5m" ? analyze5 : analyze4)(sym); });
+  const P = {}, rows = ["5m", "15m", "4H"].map(t => {
+    const M = MODEL.tfs[t]; if (!M) return `<tr><td>${t}</td><td colspan="5" class="muted">not trained yet</td></tr>`;
+    const p = modelProb(sym, t), T = M.test, Ts = M.test_by_symbol && M.test_by_symbol[sym], beat = T.accuracy - T.coin_flip_best;
+    P[t] = p;
+    const lean = p === null ? "—" : p > 0.5 + M.band ? `<span class="up">UP</span>` : p < 0.5 - M.band ? `<span class="down">DOWN</span>` : `<span class="muted">no clear lean</span>`;
+    return `<tr><td><b>${t === "4H" ? "4h" : t}</b> <span class="sub">next ${esc(M.ahead)}</span></td>
+      <td class="r"><b class="${p > 0.5 ? "up" : "down"}">${p === null ? "—" : pc(p, 1)}</b></td><td>${lean}</td>
+      <td class="r">${pc(T.accuracy, 1)} <span class="sub">vs ${pc(T.coin_flip_best, 1)}</span>${Ts ? ` <span class="sub">(${sym.replace("USDT", "")} ${pc(Ts.accuracy, 1)})</span>` : ""}</td>
+      <td class="r ${T.avg_net_bps > 0 ? "up" : "down"}">${T.avg_net_bps === null ? "—" : T.avg_net_bps + " bps"} <span class="sub">${T.trades} trades</span></td>
+      <td><span class="pill ${beat > 0.02 && T.avg_net_bps > 0 ? "good" : "bad"}">${beat > 0.02 && T.avg_net_bps > 0 ? "held up in testing" : "no edge in testing"}</span></td></tr>`;
+  }).join("");
+  const ok = ["5m", "15m", "4H"].every(t => P[t] !== null && P[t] !== undefined);
+  const agreeNow = !ok ? "—" : ["5m", "15m", "4H"].every(t => P[t] > 0.5) ? `<b class="up">all three lean UP</b>` : ["5m", "15m", "4H"].every(t => P[t] < 0.5) ? `<b class="down">all three lean DOWN</b>` : `<span class="muted">they disagree, so no combined signal</span>`;
+  const G = MODEL.agreement;
+  el.innerHTML = `<table><tr><th>Timeframe</th><th class="r">Chance higher</th><th>Lean</th><th class="r">Right on unseen data</th><th class="r">Trading its calls</th><th></th></tr>${rows}</table>
+    <div style="margin-top:8px"><b>All three together:</b> ${agreeNow}.
+      ${G && G.trades ? `<span class="sub">Tested on unseen data: they agreed ${pc(G.share_of_time)} of the time; trading only then won ${pc(G.win_rate)} of ${G.trades.toLocaleString()} trades and averaged <b class="${G.avg_net_bps > 0 ? "up" : "down"}">${G.avg_net_bps} bps</b> per trade after costs.</span>` : ""}</div>
+    <details><summary>How these models work</summary><div class="sub" style="margin-top:6px">${esc(MODEL.method.note)} "Right on unseen data" is compared with always guessing the more common direction in that test period.
+      "Trading its calls" uses the confidence threshold picked on the training part only (shown as the UP/DOWN lean). bps = hundredths of a percent; 14 bps of costs are included. Retrained ${esc(MODEL.generated_at_utc)} UTC.</div></details>`;
+}
+function renderJournal() {
+  const el = $("journal");
+  if (!JOURNAL || !JOURNAL.trades) { el.innerHTML = "Starts with the next 15-minute run on GitHub."; return; }
+  const S = JOURNAL.summary || {}, open = JOURNAL.trades.filter(t => t.status === "open");
+  const card = p => { const x = S[p] || {}; const PR = Patterns.PROFILES[p];
+    return `<div class="pf" style="cursor:default"><span class="nm">${PR.name}</span><span class="tf">$5 at ${PR.lev}× per trade</span>
+      <div class="sg ${x.usd > 0 ? "up" : x.usd < 0 ? "down" : "muted"}">${x.closed ? usd(x.usd) : "$0.00"}</div>
+      <div class="rec">${x.closed || 0} closed (${x.wins || 0} won) · ${x.open || 0} open · ${x.R >= 0 ? "+" : ""}${(x.R || 0).toFixed(2)}R before fees</div></div>`; };
+  const rows = JOURNAL.trades.slice().reverse().slice(0, 15).map(t => {
+    const d = dp(t.entry);
+    return `<tr><td>${istT(t.entry_time)}</td><td>${Patterns.PROFILES[t.profile].name}</td><td>${t.sym.replace("USDT", "")}</td><td class="${t.dir > 0 ? "up" : "down"}">${t.dir > 0 ? "BUY" : "SELL"}</td>
+      <td class="sub">${esc(t.signal)}</td><td class="r">${nf(t.entry, d)}</td><td class="r">${nf(t.sl, d)} / ${nf(t.tp, d)}</td>
+      <td>${t.status === "open" ? `<span class="warn">open</span>` : esc(t.how)}</td><td class="r ${t.usd > 0 ? "up" : t.usd < 0 ? "down" : ""}">${t.status === "open" ? "—" : usd(t.usd)}</td></tr>`; }).join("");
+  el.innerHTML = `<div>Started ${esc(JOURNAL.started_utc)} UTC · last run ${esc(JOURNAL.updated_utc || "—")} UTC. These are forward results: none of these trades existed when the rules were written.</div>
+    <div class="profiles">${["aggressive", "neutral", "careful"].map(card).join("")}</div>
+    ${rows ? `<table style="margin-top:10px"><tr><th>Entry (IST)</th><th>Profile</th><th>Coin</th><th>Side</th><th>Signal</th><th class="r">Entry</th><th class="r">Stop / target</th><th>Result</th><th class="r">$</th></tr>${rows}</table>` : `<div style="margin-top:8px">No trades yet: waiting for the first signal.</div>`}`;
+}
+const IND_INFO = {
+  EMA: { name: "EMA 20 / 50 (moving averages)", what: "The average price of the last 20 and 50 candles, giving more weight to the newest ones. Price above the EMA, and the 20 above the 50, means the recent trend is up." },
+  VWAP: { name: "VWAP (volume-weighted average price)", what: "The average price everyone has paid today, weighted by how much was traded at each price. Resets at 05:30 IST. Above it, today's buyers are in profit; below it, they are not." },
+  RSI: { name: "RSI 14 (relative strength index)", what: "Compares the size of recent up-moves with recent down-moves on a 0–100 scale. Above 70 = stretched up (\"overbought\"), below 30 = stretched down (\"oversold\"), 50 = balanced. In a strong trend it can stay stretched for a long time." },
+  MACD: { name: "MACD 12, 26, 9", what: "The gap between a fast (12) and a slow (26) moving average, and a 9-candle average of that gap (the signal line). The histogram is the difference: above zero and growing means upward momentum is building." },
+  Stochastic: { name: "Stochastic 14, 3", what: "Where the latest close sits inside the high–low range of the last 14 candles, 0–100. Above 80 = closing near the top of the range, below 20 = near the bottom. Faster and jumpier than RSI." },
+  Bollinger: { name: "Bollinger Bands 20, 2", what: "A 20-candle average with bands two standard deviations above and below. %B shows where price sits (0 = lower band, 1 = upper band). Narrow bands (a \"squeeze\") mean quiet trading, which often comes before a bigger move, in either direction." },
+  ATR: { name: "ATR 14 (average true range)", what: "The typical size of one candle, including jumps between candles. It does not show direction. Use it to size stops (e.g. 1–2× ATR) and to judge whether a leverage level leaves room for normal movement." },
+  ADX: { name: "ADX 14 with +DI / −DI", what: "ADX measures how strong the trend is (0–100) without saying which way: above 25 = strong trend, below 20 = weak or sideways. +DI above −DI means buyers are pushing harder than sellers." },
+  OBV: { name: "OBV (on-balance volume)", what: "A running total that adds the volume of up-candles and subtracts the volume of down-candles. Rising OBV means volume is coming in on the buying side; OBV falling while price rises is a warning." }
+};
+function renderIndicators() {
+  const s = sym, A = resTf(tf, s); $("iSym").textContent = s + " · " + TF_NAME[tf] + " candles";
+  if (!A) return;
+  const c = A.c, i = c.length - 1, ind = Patterns.indicators(c), px = c[i].c, d = dp(px), at = A.res.atr[i], vw = A.res.vwap[i];
+  $("iTime").textContent = istT(c[i].t + M15) + " IST";
+  const f = (x, k = 1) => x === null || x === undefined ? "—" : x.toFixed(k);
+  const obv16 = ind.obv[i] - ind.obv[i - 16];
+  const now = {
+    EMA: [`${nf(ind.ema20[i], d)} / ${nf(ind.ema50[i], d)}`, px > ind.ema20[i] && ind.ema20[i] > ind.ema50[i] ? `<span class="up">uptrend: price above both, 20 above 50</span>` : px < ind.ema20[i] && ind.ema20[i] < ind.ema50[i] ? `<span class="down">downtrend: price below both, 20 below 50</span>` : `<span class="muted">mixed</span>`],
+    VWAP: [nf(vw, d), px > vw ? `<span class="up">price above today's average (${pc(px / vw - 1, 2)})</span>` : `<span class="down">price below today's average (${pc(px / vw - 1, 2)})</span>`],
+    RSI: [f(ind.rsi[i]), ind.rsi[i] > 70 ? `<span class="warn">stretched up</span>` : ind.rsi[i] < 30 ? `<span class="warn">stretched down</span>` : ind.rsi[i] > 55 ? `<span class="up">buyers stronger</span>` : ind.rsi[i] < 45 ? `<span class="down">sellers stronger</span>` : `<span class="muted">balanced</span>`],
+    MACD: [f(ind.macdHist[i], d), ind.macdHist[i] > 0 ? (ind.macdHist[i] > ind.macdHist[i - 1] ? `<span class="up">upward momentum, growing</span>` : `<span class="up">upward momentum, fading</span>`) : (ind.macdHist[i] < ind.macdHist[i - 1] ? `<span class="down">downward momentum, growing</span>` : `<span class="down">downward momentum, fading</span>`)],
+    Stochastic: [`${f(ind.stochK[i])} / ${f(ind.stochD[i])}`, ind.stochK[i] > 80 ? `<span class="warn">near the top of its range</span>` : ind.stochK[i] < 20 ? `<span class="warn">near the bottom of its range</span>` : `<span class="muted">mid-range</span>`],
+    Bollinger: [`%B ${f(ind.pctB[i], 2)} · width ${f(ind.bbWidth[i], 2)}%`, ind.pctB[i] > 1 ? `<span class="warn">above the upper band</span>` : ind.pctB[i] < 0 ? `<span class="warn">below the lower band</span>` : ind.pctB[i] > 0.5 ? `<span class="up">upper half</span>` : `<span class="down">lower half</span>`],
+    ATR: [`${nf(at, d)} (${pc(at / px, 2)})`, `<span class="muted">a normal 15-minute candle moves about ${pc(at / px, 2)}</span>`],
+    ADX: [`${f(ind.adx[i])} · +DI ${f(ind.plusDI[i])} / −DI ${f(ind.minusDI[i])}`, `${ind.adx[i] > 25 ? "strong trend" : ind.adx[i] < 20 ? "weak / sideways" : "moderate"}, ${ind.plusDI[i] > ind.minusDI[i] ? `<span class="up">buyers pushing harder</span>` : `<span class="down">sellers pushing harder</span>`}`],
+    OBV: [obv16 > 0 ? "rising" : "falling", obv16 > 0 ? `<span class="up">volume on the buying side (last 4h)</span>` : `<span class="down">volume on the selling side (last 4h)</span>`]
+  };
+  const MT = MODEL && MODEL.tfs && MODEL.tfs[tf], T = MT ? MT.indicators && MT.indicators[s] : (tf === "15m" && MODEL && MODEL.indicators && MODEL.indicators[s]);
+  const tested = k => { const x = T && T[k]; if (!x || !x.n) return `<td colspan="3" class="muted">${k === "ATR" ? "no buy/sell signal (sizing tool)" : "not tested yet"}</td>`;
+    return `<td class="r">${x.n}</td><td class="r">${pc(x.right_4h)}</td><td class="r ${x.avg_net_bps > 0 ? "up" : "down"}">${x.avg_net_bps} bps <span class="sub">(later ${x.last30.avg_net_bps})</span></td>`; };
+  $("indTable").innerHTML = `<tr><th>Indicator</th><th>Now</th><th>What it says now</th><th>What it means</th><th class="r">Signals</th><th class="r">Right 4h</th><th class="r">After costs</th></tr>` +
+    Object.keys(IND_INFO).map(k => `<tr><td><b>${IND_INFO[k].name}</b></td><td style="white-space:nowrap">${now[k][0]}</td><td>${now[k][1]}</td><td class="sub" style="min-width:280px">${IND_INFO[k].what}</td>${tested(k)}</tr>`).join("");
+  const W = MT ? MT.weights : MODEL && MODEL.weights;
+  $("iWeights").innerHTML = W ? `The ${TF_NAME[tf]} model's biggest inputs (positive = pushes the forecast up when the input is high): ` +
+    W.slice(0, 8).map(w => `<b>${esc(w.feature)}</b> ${w.weight > 0 ? "+" : ""}${w.weight.toFixed(3)}`).join(" · ") + `. Small numbers everywhere mean no single input says much on its own.` : "Model not trained yet.";
+}
+
+/* ================= render orchestration ================= */
+function renderAll(keepRange) {
+  analyze(sym); analyze5(sym); if (sym !== "BTCUSDT") analyze("BTCUSDT");
+  if (tf === "5m" || profile === "aggressive") analyze5(sym);
+  if (tf === "4H") analyze4(sym);
+  if (view === "trade") { setChartData("t", sym, keepRange, tf); renderTrade(); renderModel(); renderJournal(); }
+  else if (view === "indicators") renderIndicators();
+  else renderPatterns(keepRange);
+}
+let lastLight = 0;
+function lightUpdate() {                      // every tick: no re-analysis, just price, P&L, forming candle
+  const now = Date.now(); if (now - lastLight < 250) return; lastLight = now;
+  drawForming(view === "trade" ? "t" : "p");
+  if (view === "trade") {
+    const px = livePrice(sym);
+    $("tPrice").textContent = nf(px, dp(px));
+    if (tick[sym]) $("tTick").textContent = `mark ${nf(tick[sym].mark, dp(px))} · funding ${(tick[sym].funding * 100).toFixed(4)}% / 8h`;
+    renderPos();
+  }
+  setMode();
+}
+
+/* ================= data: REST history + live WebSocket ================= */
+async function fetchRest(s, gran) {
+  gran = gran || "15m"; const step = TF_MS[gran];
+  try {
+    const r = await fetch(`https://api.bitget.com/api/v2/mix/market/candles?symbol=${s}&productType=USDT-FUTURES&granularity=${gran}&limit=1000`);
+    const j = await r.json();
+    if (j.code !== "00000" || !Array.isArray(j.data) || j.data.length < 200) throw new Error(j.msg || "bad response");
+    const now = Date.now(), rows = j.data.map(a => a.slice(0, 6).map(Number)).filter(a => a[0] + step <= now).sort((a, b) => a[0] - b[0]);
+    (gran === "5m" ? live5 : gran === "4H" ? live4 : live)[s] = { rows };
+    return true;
+  } catch (e) { return false; }
+}
+function upsert5(s, r, store) {
+  store = store || live5;
+  if (!store[s]) return false;
+  const rows = store[s].rows, last = rows[rows.length - 1];
+  if (last && last[0] === r[0]) { rows[rows.length - 1] = r; return false; }
+  if (!last || r[0] > last[0]) { rows.push(r); if (rows.length > 1200) rows.shift(); return true; }
+  return false;
+}
+function upsertClosed(s, r) {
+  if (!live[s]) { const snap = MARKET && MARKET.symbols[s] && MARKET.symbols[s].candles15m; if (!snap) return false; live[s] = { rows: snap.map(a => a.slice(0, 6).map(Number)) }; }
+  const rows = live[s].rows, last = rows[rows.length - 1];
+  if (last && last[0] === r[0]) { rows[rows.length - 1] = r; return false; }
+  if (!last || r[0] > last[0]) { rows.push(r); if (rows.length > 1200) rows.shift(); return true; }
+  return false;
+}
+let ws = null, lastMsg = 0, pingT = null, retryT = null, retries = 0;
+function connectStream() {
+  clearTimeout(retryT); clearInterval(pingT);
+  if (ws) { ws.onclose = null; try { ws.close(); } catch (e) {} }
+  try { ws = new WebSocket("wss://ws.bitget.com/v2/ws/public"); } catch (e) { scheduleRetry(); return; }
+  ws.onopen = () => {
+    retries = 0;
+    ws.send(JSON.stringify({ op: "subscribe", args: SYMS.flatMap(s => [
+      { instType: "USDT-FUTURES", channel: "candle15m", instId: s }, { instType: "USDT-FUTURES", channel: "candle5m", instId: s },
+      { instType: "USDT-FUTURES", channel: "ticker", instId: s }]) }));
+    // 4h candles in their own message: if Bitget ever rejected this channel, the 5m/15m streams above are unaffected
+    // (the 4h chart also refreshes from the REST API every 5 minutes).
+    ws.send(JSON.stringify({ op: "subscribe", args: SYMS.map(s => ({ instType: "USDT-FUTURES", channel: "candle4H", instId: s })) }));
+    pingT = setInterval(() => { if (ws && ws.readyState === 1) ws.send("ping"); }, 25000);
+  };
+  ws.onmessage = ev => {
+    lastMsg = Date.now();
+    if (ev.data === "pong") return;
+    let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+    if (!m.arg || !m.data || !SYMS.includes(m.arg.instId)) return;
+    const s = m.arg.instId;
+    if (m.arg.channel === "candle15m") {
+      let closedNew = false;
+      m.data.forEach(a => { const r = a.slice(0, 6).map(Number);
+        if (r[0] + M15 <= Date.now()) closedNew = upsertClosed(s, r) || closedNew;
+        else forming[s] = { t: r[0], o: r[1], h: r[2], l: r[3], c: r[4] }; });
+      if (closedNew && (s === sym || s === "BTCUSDT")) renderAll(true);
+      if (forming[s]) checkPos(s, forming[s].c);
+    } else if (m.arg.channel === "candle5m") {
+      let closedNew = false;
+      m.data.forEach(a => { const r = a.slice(0, 6).map(Number);
+        if (r[0] + 300000 <= Date.now()) closedNew = upsert5(s, r) || closedNew;
+        else forming5[s] = { t: r[0], o: r[1], h: r[2], l: r[3], c: r[4] }; });
+      if (closedNew) { analyze5(s); if (s === sym) { if (view === "trade") { if (tf === "5m") setChartData("t", sym, true, "5m"); renderTrade(); } else if (tf === "5m") renderAll(true); } }
+    } else if (m.arg.channel === "candle4H") {
+      let closedNew = false;
+      m.data.forEach(a => { const r = a.slice(0, 6).map(Number);
+        if (r[0] + TF_MS["4H"] <= Date.now()) closedNew = upsert5(s, r, live4) || closedNew;
+        else forming4[s] = { t: r[0], o: r[1], h: r[2], l: r[3], c: r[4] }; });
+      if (closedNew && s === sym) { analyze4(s); renderAll(true); }
+    } else if (m.arg.channel === "ticker") {
+      const d = m.data[0]; tick[s] = { last: +d.lastPr, mark: +d.markPrice, funding: +d.fundingRate, at: Date.now() };
+      checkPos(s, tick[s].last);
+    }
+    if (s === sym) lightUpdate();
+  };
+  ws.onclose = () => { clearInterval(pingT); setMode(); scheduleRetry(); };
+  ws.onerror = () => { try { ws.close(); } catch (e) {} };
+}
+function scheduleRetry() { clearTimeout(retryT); retryT = setTimeout(connectStream, Math.min(30000, 2000 * Math.pow(2, retries++))); }
+function setMode() {
+  const age = lastMsg ? (Date.now() - lastMsg) / 1000 : null;
+  if (ws && ws.readyState === 1 && age !== null && age < 30) $("mode").innerHTML = `<span class="up">● LIVE</span> · last tick ${istHMS(lastMsg)} IST`;
+  else if (live[sym]) $("mode").innerHTML = `<span class="warn">○ reconnecting to the live stream…</span>`;
+  else $("mode").innerHTML = `<span class="muted">○ snapshot only (this browser could not reach Bitget)</span>`;
+}
+setInterval(() => {
+  setMode();
+  if (ws && ws.readyState === 1 && lastMsg && Date.now() - lastMsg > 40000) connectStream();
+  const f = forming[sym];                     // a candle closed but the stream missed it: fetch it
+  if (f && f.t + M15 + 8000 < Date.now()) { delete forming[sym]; fetchRest(sym).then(() => renderAll(true)); }
+  const f5 = forming5[sym];
+  if (f5 && f5.t + 300000 + 8000 < Date.now()) { delete forming5[sym]; fetchRest(sym, "5m").then(() => renderAll(true)); }
+}, 5000);
+document.addEventListener("visibilitychange", async () => {
+  if (document.visibilityState !== "visible") return;
+  await Promise.all([fetchRest(sym), fetchRest(sym, "5m"), sym !== "BTCUSDT" ? fetchRest("BTCUSDT") : null]);
+  renderAll(true);
+  if (!ws || ws.readyState !== 1 || Date.now() - lastMsg > 30000) connectStream();
+});
+
+async function loadSnapshot() {
+  try { MARKET = await (await fetch("data/market.json?" + Date.now(), { cache: "no-store" })).json(); } catch (e) { MARKET = null; }
+  try { STATS = await (await fetch("data/stats.json?" + Date.now(), { cache: "no-store" })).json(); } catch (e) { STATS = null; }
+  try { MODEL = await (await fetch("data/model.json?" + Date.now(), { cache: "no-store" })).json(); } catch (e) { MODEL = null; }
+  try { JOURNAL = await (await fetch("data/journal.json?" + Date.now(), { cache: "no-store" })).json(); } catch (e) { JOURNAL = null; }
+}
+
+/* ================= wiring ================= */
+document.querySelectorAll("#coins span").forEach(t => t.onclick = async () => {
+  document.querySelectorAll("#coins span").forEach(x => x.classList.remove("on")); t.classList.add("on");
+  sym = t.dataset.sym;
+  renderAll(false);
+  if (!live[sym] || !live5[sym] || !live4[sym]) { await Promise.all([fetchRest(sym), fetchRest(sym, "5m"), fetchRest(sym, "4H")]); renderAll(false); }
+});
+document.querySelectorAll("#views span").forEach(t => t.onclick = () => {
+  document.querySelectorAll("#views span").forEach(x => x.classList.remove("on")); t.classList.add("on");
+  view = t.dataset.view;
+  $("tradeView").classList.toggle("hidden", view !== "trade");
+  $("patternsView").classList.toggle("hidden", view !== "patterns");
+  $("indicatorsView").classList.toggle("hidden", view !== "indicators");
+  renderAll(false);
+});
+function setTf(t) {
+  tf = t;
+  document.querySelectorAll("#tfs span").forEach(x => x.classList.toggle("on", x.dataset.tf === t));
+  renderAll(false);
+}
+document.querySelectorAll("#tfs span").forEach(x => x.onclick = () => setTf(x.dataset.tf));
+$("showCandle").onchange = $("showNeutral").onchange = () => renderAll(true);
+$("tMargin").oninput = $("tLev").onchange = () => renderTrade();
+
+(async () => {
+  CH.t = makeChart($("tChart")); CH.p = makeChart($("chart"));
+  guide(); renderLog();
+  await loadSnapshot();
+  renderAll(false);
+  $("tLev").value = String(Patterns.PROFILES[profile].lev);
+  tf = Patterns.PROFILES[profile].tf; document.querySelectorAll("#tfs span").forEach(x => x.classList.toggle("on", x.dataset.tf === tf));
+  await Promise.all(SYMS.flatMap(x => [fetchRest(x), fetchRest(x, "5m"), fetchRest(x, "4H")]));
+  renderAll(false);
+  connectStream();
+  setInterval(async () => { await loadSnapshot(); if (view === "trade") { renderModel(); renderJournal(); } }, 300000);
+  setInterval(async () => { await Promise.all([fetchRest(sym), fetchRest(sym, "5m"), fetchRest(sym, "4H")]); renderAll(true); }, 300000);
+})();
+</script>
+</body>
+</html>

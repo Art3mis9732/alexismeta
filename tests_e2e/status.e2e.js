@@ -58,6 +58,10 @@ async function main() {
     check("worker page: displayed price equals a /api/ticker value the page just received", recent.includes(shown), `shown ${shown}, last API values ${recent.join(", ")}`);
     await page.locator('#coins span[data-sym="ETHUSDT"]').click();
     await page.waitForFunction(() => /ETH perp/.test(document.getElementById("worker").innerText), null, { timeout: 10000 }).catch(() => {});
+    await page.waitForFunction(() => /No demonstrated edge/.test(document.getElementById("analystsBody").innerText), null, { timeout: 15000 }).catch(() => {});
+    const an = await text(page, "#analystsCard");
+    check("worker page: v1 analysts card shows all three with an explicit 'No demonstrated edge' status and no probability",
+      (an.match(/No demonstrated edge/g) || []).length === 3 && /Risk Taker/.test(an) && /Balanced Trader/.test(an) && /Defensive Trader/.test(an) && !/\d+(\.\d+)?\s*%\s*(chance|probability)/i.test(an), an.slice(0, 200).replace(/\n/g, " "));
     check("worker page: coin switch updates the worker strip", /ETH perp/.test(await text(page, "#worker")), "");
     await page.waitForFunction(() => /LIVE · .*last ETH update/.test(document.getElementById("mode").innerText), null, { timeout: 15000 }).catch(() => {});
     check("worker page: after the switch the label reports ETH data (RECOVERING until the first ETH message is honest)", /LIVE · .*last ETH update/.test(await text(page, "#mode")), await text(page, "#mode"));
@@ -73,6 +77,7 @@ async function main() {
     check("static page: LIVE from the browser stream", /● LIVE/.test(await text(page, "#mode")), await text(page, "#mode"));
     const w = await text(page, "#worker");
     check("static page: says there is no local worker and that execution is analysis only", /No local worker/.test(w) && /analysis only/.test(w), w);
+    check("static page: worker-only analysts card is hidden", !(await page.locator("#analystsCard").isVisible()), "");
     const card = await text(page, "#modelCard");
     check("model card: no 'chance' wording; labelled uncalibrated", !/chance higher|Chance higher|chance the price/i.test(card.replace(/does not mean a 60% chance/, "")) && /uncalibrated/i.test(card), card.slice(0, 160).replace(/\n/g, " "));
     for (const v of ["patterns", "indicators", "trade"]) {

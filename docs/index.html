@@ -75,6 +75,11 @@
 <main>
 <!-- ======================= BUY / SELL VIEW ======================= -->
 <section id="tradeView">
+  <div class="card hidden" id="analystsCard">
+    <h2>Analysts v1 — decided by the local worker at each 15-minute close · paper only · identical evidence for all three</h2>
+    <div id="analystsBody" class="sub">Loading…</div>
+  </div>
+  <div class="sub" id="legacyNote" style="margin-top:10px">Legacy v0 profiles (rules unchanged, shown for continuity; computed in this browser):</div>
   <div class="profiles" id="profiles"></div>
   <div class="card" id="modelCard"><h2>Model scores (uncalibrated, not probabilities) — does the model lean up or down 16 candles ahead, on 5m, 15m and 4h</h2><div id="modelBody" class="sub">Loading…</div></div>
   <div class="row">
@@ -841,9 +846,37 @@ async function workerTick() {
     lastLight = 0; lightUpdate();
   } finally { workerBusy = false; }
 }
-function startWorkerMode() { WMODE = true; if (!workerLoop) workerLoop = setInterval(workerTick, 2000); workerTick(); }
+/* v1 analysts from the worker's paper engine. Everything shown comes from /api/paper (ledger-backed). */
+const AN = { risk_taker: "Risk Taker", balanced: "Balanced Trader", defensive: "Defensive Trader" };
+const INTENT_TXT = { OPEN_LONG: ["OPEN LONG", "s-buy"], OPEN_SHORT: ["OPEN SHORT", "s-sell"], WAIT: ["WAIT", "s-wait"], NO_TRADE: ["NO TRADE", "s-none"] };
+let PAPER = null;
+async function loadPaper() { try { PAPER = await apiJson("api/paper"); } catch (e) { PAPER = null; } renderAnalysts(); }
+function renderAnalysts() {
+  const card = $("analystsCard"); card.classList.toggle("hidden", !WMODE);
+  if (!WMODE) return;
+  if (!PAPER || !PAPER.portfolios) { $("analystsBody").textContent = "The worker's paper engine is not available."; return; }
+  const id = wid(sym), d = dp(livePrice(sym) || 1);
+  const cards = PAPER.portfolios.map(pf => {
+    const dec = (PAPER.recent_decisions || []).find(x => x.analyst === pf.analyst && x.instrument_id === id);
+    const it = dec ? INTENT_TXT[dec.intent] || [dec.intent, "s-none"] : ["NOT YET", "s-none"];
+    const st = dec && dec.setup ? `<div class="sub">entry ≈ ${nf(dec.setup.entry_reference, d)} · stop ${nf(dec.setup.stop, d)} · target ${nf(dec.setup.target, d)} (${dec.setup.rr}R) · valid until ${istT(dec.setup.expires_ts)} IST</div>` : "";
+    const open = (PAPER.open_positions || []).filter(x => x.analyst === pf.analyst);
+    return `<div class="pf" style="cursor:default"><span class="nm">${esc(AN[pf.analyst] || pf.analyst)}</span><span class="tf">${esc(pf.policy)}${pf.kill_switch ? " · KILL SWITCH ON" : ""}</span>
+      <div class="sg ${it[1]}">${esc(it[0])}${dec && dec.intent.startsWith("OPEN") ? ` <span class="pill">paper</span>` : ""}</div>
+      <div class="sub">${dec ? `<b>${esc(dec.code)}</b> — ${esc(dec.why || "")} · bar closed ${istT(dec.bar_close_ts)} IST` : "No decision for this coin since the worker started (decisions happen at each 15-minute close)."}</div>${st}
+      <div class="rec">Paper equity ${nf(pf.equity + pf.unrealised, 2)} USDT (start 1,000) · open ${open.length} · closed ${pf.closed} (${pf.evaluable_closed} evaluable)
+        · <b>${pf.edge_status === "NO_DEMONSTRATED_EDGE" ? "No demonstrated edge" : esc(pf.edge_status)}</b></div></div>`;
+  }).join("");
+  $("analystsBody").innerHTML = `<div class="profiles" style="margin-top:0">${cards}</div>
+    <div class="sub" style="margin-top:8px">Agreement between these three is <b>not</b> independent confirmation: they read the same snapshot. No number here is a probability.
+      Every decision, risk check, fill and outcome is in the append-only ledger (<a href="api/ledger/verify">verify</a>). Accounting day: UTC.</div>`;
+}
+function startWorkerMode() {
+  WMODE = true; if (!workerLoop) workerLoop = setInterval(workerTick, 2000); workerTick();
+  loadPaper(); setInterval(() => { if (WMODE) loadPaper(); }, 10000);
+}
 function leaveWorkerMode() {
-  WMODE = false; clearInterval(workerLoop); workerLoop = null;
+  WMODE = false; clearInterval(workerLoop); workerLoop = null; renderAnalysts();
   connectStream(); setMode();
 }
 
@@ -883,7 +916,7 @@ async function loadSnapshot() {
 document.querySelectorAll("#coins span").forEach(t => t.onclick = async () => {
   document.querySelectorAll("#coins span").forEach(x => x.classList.remove("on")); t.classList.add("on");
   sym = t.dataset.sym;
-  renderAll(false); setMode(); if (WORKER) pollWorker();
+  renderAll(false); setMode(); if (WORKER) pollWorker(); if (WMODE) renderAnalysts();
   if (!live[sym] || !live5[sym] || !live4[sym]) { await Promise.all([fetchRest(sym), fetchRest(sym, "5m"), fetchRest(sym, "4H")]); renderAll(false); }
 });
 document.querySelectorAll("#views span").forEach(t => t.onclick = () => {

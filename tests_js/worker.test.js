@@ -461,3 +461,18 @@ test("coverage: a crash (no shutdown record) is detected on restart and the down
   assert.equal(gaps[0].from_ts, Math.max(lastTicker, store.lastRecvTs(BTC, "trade"), store.lastRecvTs(BTC, "book")), "from the last message of any kind");
   c.col.stop(); store.close(); fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test("collector: a channel that stalls while the socket stays open is recorded as unobserved and triggers a reconnect", async () => {
+  const ck = makeClock(of("trade", "snapshot")[0].ts), store = new Store(":memory:", { now: ck.now });
+  const { col } = await startCollector(store, fakeRest(), ck);
+  const w = FakeWS.instances[0]; w.open(); for (const m of CAP) w.msg(m);
+  const lastTick = col.health.feeds.get(BTC + "|ticker").last_recv_ts;
+  for (let i = 0; i < 15; i++) { ck.advance(1000); w.msg("pong"); }       // pongs only: the supervisor's own watchdog stays quiet
+  assert.equal(FakeWS.instances.length, 1);
+  assert.equal(col.checkStalls(), 1);
+  const g = store.coverage(BTC, "ticker", lastTick - 1, ck.now() + 1).gaps;
+  assert.ok(g.some(x => x.reason === "stalled_channel" && x.from_ts === lastTick));
+  assert.equal(FakeWS.instances.length, 2, "forced reconnect"); assert.ok(w.closed);
+  FakeWS.instances[1].open(); assert.equal(col.checkStalls(), 0, "RECOVERING after reconnect is not a stall");
+  col.stop(); store.close();
+});

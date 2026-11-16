@@ -13,7 +13,7 @@ const RISK_DEFAULTS = Object.freeze({
   riskPerTrade: { defensive: 0.001, balanced: 0.0025, risk_taker: 0.005 },
   maxOpenRiskFrac: 0.01, dailyLossFrac: 0.02, maxDrawdownFrac: 0.05,
   maxEffLev: 2, exchangeLev: 2, mmr: 0.004, taker: 0.0006, slipFrac: 0.0002, liqMultiple: 2,
-  hardMaxSpreadBps: 10, hardMaxAtrPct: 3.0, minNotional: 5
+  hardMaxSpreadBps: 10, hardMaxAtrPct: 3.0, minNotional: 5, maxDepthShare: 0.1
 });
 
 /* ---------- exact step arithmetic ---------- */
@@ -90,6 +90,10 @@ function evaluate({ analyst, setup, snapshot, portfolio, instrument, config = RI
       qty_step: Number(instrument.qty_step), min_notional: Number(instrument.min_notional || config.minNotional),
       exchange_lev: config.exchangeLev, mmr: config.mmr, liq_multiple: config.liqMultiple });
     if (size.code !== "OK") fail(size.code, size.reason);
+    // liquidity: our notional must be small relative to the visible book within 10 bps on the side we take
+    const dep = snapshot.depth_10bps;
+    if (!dep || !Number.isFinite(side > 0 ? dep.ask : dep.bid)) fail("DEPTH_UNKNOWN");
+    else if (size.code === "OK" && size.notional > config.maxDepthShare * (side > 0 ? dep.ask : dep.bid)) fail("SIZE_VS_DEPTH", `${size.notional.toFixed(0)} > ${config.maxDepthShare} x ${(side > 0 ? dep.ask : dep.bid).toFixed(0)}`);
     if (!(side * (entry - setup.stop) > 0)) fail("STOP_ON_WRONG_SIDE");
   }
   return { approved: reasons.length === 0, reasons, size, checks, entry_reference: entry };

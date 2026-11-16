@@ -36,7 +36,7 @@ test("sizing: quantities are exact multiples of the step (no float residue)", ()
 // ---------------------------------------------------------------- gate
 const INS = { instrument_id: "bitget:perp:XRPUSDT", min_qty: "1", qty_step: "1", min_notional: "5" };
 const snap = (o = {}) => ({ instrument_id: "bitget:perp:BTCUSDT", health: { ticker: "HEALTHY", books: "HEALTHY", trade: "HEALTHY" }, book_state: "VALID",
-  coverage_complete: true, coverage_reasons: [], spread_bps: 0.5, atr_pct: 0.3, bid: 64899.9, ask: 64900, ...o });
+  coverage_complete: true, coverage_reasons: [], spread_bps: 0.5, atr_pct: 0.3, bid: 64899.9, ask: 64900, depth_10bps: { bid: 200000, ask: 200000 }, ...o });
 const BTC = { instrument_id: "bitget:perp:BTCUSDT", min_qty: "0.0001", qty_step: "0.0001", min_notional: "5" };
 const pf = (o = {}) => ({ analyst: "balanced", equity: 1000, peak_equity: 1000, day: { start_ts: 0, start_equity: 1000 }, positions: [], kill_switch: false, ...o });
 const long = (stop = 64600) => ({ intent: "OPEN_LONG", stop });
@@ -89,4 +89,10 @@ test("gate: rejects non-open intents and stops on the wrong side; defaults match
   assert.ok(evaluate({ analyst: "balanced", setup: long(65000), snapshot: snap(), portfolio: pf(), instrument: BTC }).reasons.some(c => c === "STOP_ON_WRONG_SIDE" || c === "INVALID_INPUT"));
   assert.deepEqual(RISK_DEFAULTS.riskPerTrade, { defensive: 0.001, balanced: 0.0025, risk_taker: 0.005 });
   assert.equal(RISK_DEFAULTS.maxEffLev, 2); assert.equal(RISK_DEFAULTS.maxOpenRiskFrac, 0.01);
+});
+
+test("gate: position size must be small relative to visible depth on the side taken; unknown depth blocks", () => {
+  assert.ok(evaluate({ analyst: "risk_taker", setup: long(), snapshot: snap({ depth_10bps: { bid: 200000, ask: 5000 } }), portfolio: pf(), instrument: BTC }).reasons.includes("SIZE_VS_DEPTH"));
+  assert.ok(evaluate({ analyst: "risk_taker", setup: long(), snapshot: snap({ depth_10bps: null }), portfolio: pf(), instrument: BTC }).reasons.includes("DEPTH_UNKNOWN"));
+  assert.equal(evaluate({ analyst: "risk_taker", setup: long(), snapshot: snap(), portfolio: pf(), instrument: BTC }).approved, true);
 });

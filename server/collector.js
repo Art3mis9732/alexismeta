@@ -212,6 +212,25 @@ class BitgetCollector {
     }
   }
 
+  /** A connection can stay alive (pongs) while subscriptions stop delivering. If a high-cadence feed (ticker, book)
+   * goes STALE while the socket is open, that period is UNOBSERVED: record a gap from its last data and reconnect. */
+  checkStalls() {
+    if (this.health.socket.state !== "open") return 0;
+    let n = 0;
+    const snap = this.health.snapshot().feeds;
+    for (const id of Object.values(this.idOf)) {
+      const st = k => snap.find(f => f.feed === `${id}|${k}`);
+      const stale = ["ticker", "books"].map(st).filter(f => f && f.state === "STALE" && f.last_recv_ts !== null);
+      if (!stale.length) continue;
+      const from = Math.min(...stale.map(f => f.last_recv_ts)), now = this.now();
+      for (const kind of ["trade", "ticker", "book"]) this.store.addGap(id, kind, from, now, "stalled_channel");
+      this.store.feedEvent(`${id}|ws`, "stalled_channel", stale.map(f => f.feed).join(","));
+      n++;
+    }
+    if (n) { this.log(`stalled feed(s) on an open socket; reconnecting`); this.downSince = null; this.sup.connect(); }
+    return n;
+  }
+
   bookSummaries() { return Object.values(this.books).map(b => b.summary()); }
   bookTop(id, n) { const b = this.books[id]; return b ? { ...b.summary(), ...b.top(n) } : null; }
   bookValid(id) { const b = this.books[id]; return !!b && b.state === BOOK.VALID; }

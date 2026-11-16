@@ -175,3 +175,17 @@ Each entry records: revision · command/procedure · when (UTC) · expected · o
   discovered times. Playwright **21/21** including "official news listed with https .gov links opened safely (noopener)".
 * Limits: two official sources only. No CFTC/COT, FRED, ETF issuer data or exchange announcements yet. No
   interpretation; news does not feed any policy (any future use must be evaluated by ablation, per the prompt).
+
+## V-015 Engine hardening + replay verification — 2026-11-16 ~08:43 UTC
+* Final-candle stability (offline check of `long.db`): of 45 1m bars from 08:15–08:29, 28 were finalised by the stream
+  and the rest by REST; the 08:30:34 restart's REST backfill found **identical values for all 45** (0 rewritten).
+  D-009 holds on this sample.
+* Stalled channel: if ticker or book goes STALE while the socket stays open (pongs only), the collector records a
+  `stalled_channel` gap from the last data and forces a reconnect (fixture test). Previously only total silence
+  triggered a reconnect, and no gap was written.
+* Time exit now requires a ticker under 10 s old and a healthy ticker feed; an exit while the feed is unhealthy (an
+  outage whose gap row is written only on reconnect) is marked unevaluable.
+* Decision payloads now include the policy context (`position_open`, `cooldown_until`).
+* Risk gate: `DEPTH_UNKNOWN` and `SIZE_VS_DEPTH` (notional ≤ 10% of the visible depth within 10 bps on the side taken).
+* `server/replay.js --verify`: for a real builder snapshot, 3/3 recorded decisions reproduced exactly; editing the stored
+  snapshot is detected (hash mismatch). `npm test` **97 pass, 0 fail**.

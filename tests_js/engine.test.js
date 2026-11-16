@@ -94,7 +94,7 @@ test("engine: time exit at the bid; funding charged at settlement while open", (
     bid_sz: "1", ask_sz: "1", mark: "64951", index_px: "64952", funding_rate: "0.0005", next_funding_ts: CLOSE + 4 * 3600000, open_interest: "1", oi_unit: "base_coin",
     source: "test", schema_version: 1, quality: [] }); r.store.flush();
   r.engine.onBarClose(ID, CLOSE, CLOSE + 3000);
-  r.at(CLOSE + 4 * 3600000 + 1000); r.engine.manage();
+  r.at(CLOSE + 4 * 3600000 + 1000); r.collector.latestTicker[ID] = { last: "64950", bid: "64899.9", ask: "64950", recv_ts: r.now() - 500 }; r.engine.manage();
   const f = pos(r.store, "balanced").funding;
   assert.ok(f < 0, "a long pays positive funding"); assert.ok(Math.abs(f + 0.0005 * Number(pos(r.store, "balanced").qty) * 64950) < 1e-9);
   assert.equal(pos(r.store, "risk_taker").exit_reason, "time_exit", "Risk Taker's 4h time exit falls at the same moment");
@@ -139,4 +139,40 @@ test("engine: tick() decides once per bar, only after the start, and never on ba
   r.at(CLOSE + BAR + 61000); r.setSnap(snapOf({ bar_close_ts: CLOSE + BAR }));
   r.engine.tick(); r.engine.tick();
   assert.equal(r.store.db.prepare("SELECT COUNT(*) n FROM ledger_entries WHERE kind='decision'").get().n, 3, "one decision per analyst for the new bar");
+});
+
+test("engine: a time exit waits for a FRESH price; an unhealthy feed at exit makes the outcome unevaluable; decision context is ledgered", () => {
+  const r = rig(); r.engine.onBarClose(ID, CLOSE, CLOSE + 3000);
+  const dec = JSON.parse(r.store.db.prepare("SELECT payload FROM ledger_entries WHERE entry_id LIKE 'decision:balanced%'").get().payload);
+  assert.deepEqual(dec.context, { position_open: false, cooldown_until: null }, "inputs needed to re-derive the decision");
+  r.at(CLOSE + 16 * BAR + 5000);                                         // Risk Taker due; ticker is hours old
+  r.engine.manage();
+  assert.equal(pos(r.store, "risk_taker").state, "OPEN", "no exit at a stale price");
+  r.engine.health = { snapshot: () => ({ feeds: [] }), isHealthy: () => false };   // outage in progress (gap row not yet written)
+  r.collector.latestTicker[ID] = { last: "64950", bid: "64940", ask: "64950", recv_ts: r.now() - 100 };
+  r.engine.manage();
+  assert.equal(pos(r.store, "risk_taker").state, "OPEN", "a fresh ticker during an unhealthy feed is still not trusted for the time exit");
+  r.trade(64590, 1000); r.engine.manage();                               // a real trade crosses the stop while unhealthy
+  const p = pos(r.store, "balanced");
+  assert.equal(p.exit_reason, "stop"); assert.equal(p.evaluable, 0); assert.match(p.note, /not healthy/);
+});
+
+test("replay: every recorded decision is re-derived exactly from its stored snapshot and context; edits are detected", () => {
+  const { verifyReplay } = require("../server/replay");
+  const { buildFromInputs } = require("../server/evidence");
+  // use a REAL builder output so the stored snapshot hash is genuine
+  let x = 7; const rnd = () => (x = (x * 1103515245 + 12345) % 2147483648) / 2147483648; let p = 65000; const rows = [];
+  for (let i = 0; i < 400; i++) { const o = p, c = o * (1 + (rnd() - 0.5) * 0.004); rows.push({ open_ts: CLOSE - (400 - i) * BAR, o: o.toFixed(1), h: (Math.max(o, c) * 1.0005).toFixed(1), l: (Math.min(o, c) * 0.9995).toFixed(1), c: c.toFixed(1), base_vol: "10", final: 1 }); p = c; }
+  const real = buildFromInputs({ instrumentId: ID, barCloseTs: CLOSE, decisionTs: CLOSE + 3000, candles: rows,
+    ticker: { recv_ts: CLOSE + 2000, bid: "64899.9", ask: "64900", last: "64900", mark: "64900", index_px: "64900", funding_rate: "0.0001" },
+    book: { state: "VALID", recv_ts: CLOSE + 2500, bids: [["64899.9", "5"]], asks: [["64900", "5"]] }, health: { ticker: "HEALTHY", books: "HEALTHY", trade: "HEALTHY", candle15m: "HEALTHY" },
+    coverage: [{ complete: true, reasons: [] }] });
+  const r = rig({ snap: real }); r.engine.onBarClose(ID, CLOSE, CLOSE + 3000);
+  r.setSnap({ ...real }); r.engine.onBarClose(ID, CLOSE, CLOSE + 3000);       // retried bar: duplicates, nothing new
+  let v = verifyReplay(r.store);
+  assert.equal(v.decisions, 3); assert.equal(v.reproduced, 3, JSON.stringify(v)); assert.equal(v.ok, true);
+  const j = JSON.parse(r.store.db.prepare("SELECT json FROM evidence_snapshots").get().json); j.spread_bps = 99;
+  r.store.db.prepare("UPDATE evidence_snapshots SET json=?").run(JSON.stringify(j));
+  v = verifyReplay(r.store);
+  assert.equal(v.ok, false); assert.equal(v.snapshot_tampered.length, 3, "an edited snapshot no longer matches the hash in the ledger");
 });

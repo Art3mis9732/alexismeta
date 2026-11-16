@@ -116,7 +116,7 @@ async function main() {
   await collector.start({ unclean, prevStopTs: prev && prev.event === "shutdown" ? prev.ts : null });
   log(`collecting ${a.symbols.join(", ")} from Bitget public v2`);
   engineRef.current = new PaperEngine({ store, ledger, collector, health, log });
-  timers.push(setInterval(() => { try { engineRef.current.tick(); } catch (e) { log("engine: " + e.message); } }, 5000));
+  timers.push(setInterval(() => { try { collector.checkStalls(); engineRef.current.tick(); } catch (e) { log("engine: " + e.message); } }, 5000));
   log("paper engine running: decisions at each 15m bar close; execution mode PAPER");
   news.poll().catch(e => log("news: " + e.message));
   timers.push(setInterval(() => { news.poll().catch(e => log("news: " + e.message)); }, 60000));   // each source polls every 10 min

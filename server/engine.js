@@ -96,7 +96,7 @@ class PaperEngine {
     const versions = { policy: d.version, evidence: EVIDENCE_VERSION, risk: "risk-v1", engine: "paper-v1" };
     const entry = this.ledger.append({ entry_id: decisionId, kind: "decision", data_cutoff_ts: snap.data_cutoff_ts === null ? undefined : Math.min(snap.data_cutoff_ts, this.now()),
       versions, payload: { analyst, intent: d.intent, code: d.code, why: d.why, setup: d.setup, instrument_id: id, bar_close_ts: close, evidence_hash: snap.hash,
-        execution_mode: "PAPER", probability: null } });
+        context: ctx, execution_mode: "PAPER", probability: null } });
     if (entry.duplicate) return { analyst, decisionId, intent: d.intent, duplicate: true };       // retry/restart: no second trigger
     if (d.intent !== "OPEN_LONG" && d.intent !== "OPEN_SHORT") return { analyst, decisionId, intent: d.intent, code: d.code };
     const instrument = this.store.instrument(id);
@@ -151,20 +151,24 @@ class PaperEngine {
       this.db.prepare("UPDATE paper_positions SET last_trade_ts=?, last_trade_id=? WHERE position_id=?").run(cursor.ts, cursor.id, p.position_id);
     if (t >= p.time_exit_ts) {
       const tk = this.collector.latestTicker[p.instrument_id] || this.store.latestTicker(p.instrument_id);
+      const fresh = tk && t - tk.recv_ts <= 10000 && this.feedHealthy(p.instrument_id);
       const px = tk ? Number(p.side > 0 ? tk.bid : tk.ask) : NaN;
-      if (Number.isFinite(px) && px > 0) return this.close(p, px * (1 - p.side * slip), t, "time_exit", funding);
-      this.store.feedEvent(p.position_id, "time_exit_waiting_for_price", null);
+      if (fresh && Number.isFinite(px) && px > 0) return this.close(p, px * (1 - p.side * slip), t, "time_exit", funding);
+      this.store.feedEvent(p.position_id, "time_exit_waiting_for_fresh_price", tk ? `ticker age ${t - tk.recv_ts} ms` : "no ticker");
     }
   }
+
+  feedHealthy(id) { return !this.health || typeof this.health.isHealthy !== "function" || this.health.isHealthy(`${id}|ticker`); }
 
   close(p, exitPrice, exitTs, reason, funding) {
     const qty = Number(p.qty), exitFee = qty * exitPrice * this.config.taker;
     const gross = p.side * (exitPrice - p.entry) * qty, pnl = gross - p.entry_fee - exitFee + funding;
     const cov = this.store.coverage(p.instrument_id, "trade", p.opened_ts, exitTs);
-    const gapped = cov.gaps.length > 0, evaluable = gapped ? 0 : 1;
+    const unhealthyNow = !this.feedHealthy(p.instrument_id);   // an ongoing outage has no gap row yet (written on reconnect)
+    const gapped = cov.gaps.length > 0 || unhealthyNow, evaluable = gapped ? 0 : 1;
     const riskPerUnit = Math.abs(p.entry - p.stop), R = riskPerUnit > 0 ? (p.side * (exitPrice - p.entry)) / riskPerUnit : null;
     this.db.prepare(`UPDATE paper_positions SET state='CLOSED', exit_price=?, exit_ts=?, exit_reason=?, exit_fee=?, pnl=?, funding=?, evaluable=?, note=? WHERE position_id=?`)
-      .run(exitPrice, exitTs, reason, exitFee, pnl, funding, evaluable, gapped ? "trade-feed gap while open: exit may differ from reality" : null, p.position_id);
+      .run(exitPrice, exitTs, reason, exitFee, pnl, funding, evaluable, gapped ? (unhealthyNow ? "feed not healthy at exit: exit may differ from reality" : "trade-feed gap while open: exit may differ from reality") : null, p.position_id);
     const pf = this.db.prepare("SELECT equity, peak_equity FROM paper_portfolios WHERE analyst=?").get(p.analyst);
     const eq = pf.equity + pnl;
     this.db.prepare("UPDATE paper_portfolios SET equity=?, peak_equity=?, updated_ts=? WHERE analyst=?").run(eq, Math.max(pf.peak_equity, eq), this.now(), p.analyst);

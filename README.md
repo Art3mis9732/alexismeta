@@ -30,7 +30,7 @@ node --test tests_js/patterns.test.js
 ```
 
 ## Local worker (optional, runs on your PC)
-Needs Node.js 22.13 or later (only 22.23 has actually been tested) and **no** npm packages. While the PC is on it:
+Needs Node.js 22.23 or later (the tested version) and **no** npm packages. While the PC is on it:
 * collects Bitget public data (BTC/ETH/XRP USDT perpetuals: ticker, trades, full order book, 1m/5m/15m/4h candles) into
   `data/worker/market.db`, with health checks, gap records and book-integrity checks;
 * at every 15-minute close, has three analysts (Risk Taker, Balanced, Defensive, v1) read one shared evidence snapshot,

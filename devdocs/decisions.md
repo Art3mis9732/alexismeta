@@ -90,3 +90,12 @@ as taker at the target minus slippage. A recorded trade-feed gap makes the outco
 ## D-014 Paper risk defaults = master prompt §11 engineering defaults; exchange leverage setting 2x (2026-11-16)
 Not personalised advice and not shown to be optimal. The legacy browser profiles still show 50x/10x/3x on $5 for
 continuity; the v1 analysts never exceed 2x notional/equity.
+
+## D-015 Coverage required = coverage of what the features consume (2026-11-16, after a live 1-second disconnect)
+A real disconnect at 08:36:47 (reconnected within 1 s) put a gap inside the 15-minute window, and the original rule
+then blocked every decision for 15 minutes. That is stricter than the evidence needs: evidence-v1 reads REST-complete
+candles and the ticker and book **at decision time**, and no trade-tape features. New rule: ticker and book must be
+observed continuously for the last 60 s, so any reconnect in that minute means NO_TRADE, because the book may not be
+resynchronised. Trade coverage is required only by features that use trades; v1 has none. Paper exits still mark any
+trade gap while a position is open as unevaluable. Future trade-based features (CVD, trade-size percentiles) must
+declare their own coverage window.

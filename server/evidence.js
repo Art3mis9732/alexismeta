@@ -82,16 +82,21 @@ function buildFromInputs({ instrumentId, barCloseTs, decisionTs, candles, ticker
 }
 
 /** Live: gather inputs from the store and the collector at decision time. */
-function buildLive({ store, collector, health, instrumentId, barCloseTs, decisionTs, coverageWindowMs = 15 * 60000 }) {
+/* Coverage requirement = what the features consume (decision D-015). evidence-v1 uses REST-complete candles plus the
+ * ticker and order book AT decision time, and no trade-tape features. So: ticker + book must have been observed
+ * continuously for the last COVERAGE.ticker_book_ms (a reconnect inside that window means the book may not be
+ * re-synchronised); trade coverage is required only by features that read trades (none in v1). */
+const COVERAGE = { ticker_book_ms: 60000, trade_ms: 0 };
+function buildLive({ store, collector, health, instrumentId, barCloseTs, decisionTs, coverage: cov = COVERAGE }) {
   const candles = store.candles(instrumentId, "15m", LOOKBACK, barCloseTs - BAR + 1);
   const ticker = collector.latestTicker[instrumentId] || null;
   const b = collector.books[instrumentId];
   const book = b ? { state: b.state, recv_ts: b.recvTs, ...b.top(1000) } : null;
   const hs = health.snapshot().feeds.filter(f => f.feed.startsWith(instrumentId + "|"));
   const H = {}; for (const f of hs) H[f.kind] = f.state;
-  const from = decisionTs - coverageWindowMs;
-  const coverage = ["ticker", "book", "trade"].map(k => store.coverage(instrumentId, k, from, decisionTs));
+  const coverage = ["ticker", "book"].map(k => store.coverage(instrumentId, k, decisionTs - cov.ticker_book_ms, decisionTs));
+  if (cov.trade_ms > 0) coverage.push(store.coverage(instrumentId, "trade", decisionTs - cov.trade_ms, decisionTs));
   return buildFromInputs({ instrumentId, barCloseTs, decisionTs, candles, ticker, book, health: H, coverage });
 }
 
-module.exports = { EVIDENCE_VERSION, buildFromInputs, buildLive, BAR };
+module.exports = { EVIDENCE_VERSION, buildFromInputs, buildLive, BAR, COVERAGE };

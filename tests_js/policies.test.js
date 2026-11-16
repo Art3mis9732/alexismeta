@@ -127,3 +127,24 @@ test("evidence: a later (forming) bar in the store is ignored; the snapshot for 
   assert.equal(sa.coverage_complete, false, "nothing was observed live in this store, so coverage is incomplete");
   a.close(); b.close();
 });
+
+test("evidence: coverage is required for what v1 consumes (ticker + book, last 60 s); an older 1 s disconnect no longer blocks", () => {
+  const { Store } = require("../server/store");
+  const { buildLive, COVERAGE } = require("../server/evidence");
+  const id = "bitget:perp:BTCUSDT", st = new Store(":memory:", { now: () => dec });
+  for (const r of synth(400, close)) st.enqueue({ type: "candle", instrument_id: id, interval: "15m", open_ts: r.open_ts, o: r.o, h: r.h, l: r.l, c: r.c,
+    base_vol: r.base_vol, quote_vol: null, final: 1, exch_ts: close, recv_ts: close, source: "synthetic-test", schema_version: 1, quality: [] });
+  for (const kind of ["ticker", "book_top"]) st.enqueue(kind === "ticker"
+    ? { type: "ticker", instrument_id: id, exch_ts: close - 3600000, recv_ts: close - 3600000, last: "1", bid: "1", ask: "1", bid_sz: null, ask_sz: null, mark: null, index_px: null, funding_rate: null, next_funding_ts: null, open_interest: null, oi_unit: "base_coin", source: "t", schema_version: 1, quality: [] }
+    : { type: "book_top", instrument_id: id, exch_ts: close - 3600000, recv_ts: close - 3600000, seq: 1, levels: 1, bids_json: "[]", asks_json: "[]", source: "t", schema_version: 1, quality: [] });
+  st.flush();
+  const coll = { latestTicker: { [id]: tk }, books: { [id]: { state: "VALID", recvTs: book.recv_ts, top: () => ({ bids: book.bids, asks: book.asks }) } } };
+  const health = { snapshot: () => ({ feeds: Object.entries(H).map(([kind, state]) => ({ feed: id + "|" + kind, kind, state })) }) };
+  for (const k of ["trade", "ticker", "book"]) st.addGap(id, k, dec - 8 * 60000, dec - 8 * 60000 + 1000, "ws_disconnect");   // 8 min ago, 1 s
+  assert.equal(buildLive({ store: st, collector: coll, health, instrumentId: id, barCloseTs: close, decisionTs: dec }).coverage_complete, true);
+  st.addGap(id, "book", dec - 30000, dec - 29000, "ws_disconnect");                                                          // inside the last 60 s
+  const s2 = buildLive({ store: st, collector: coll, health, instrumentId: id, barCloseTs: close, decisionTs: dec });
+  assert.equal(s2.coverage_complete, false); assert.ok(s2.coverage_reasons.includes("gap_in_window"));
+  assert.deepEqual(COVERAGE, { ticker_book_ms: 60000, trade_ms: 0 });
+  st.close();
+});

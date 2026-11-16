@@ -189,3 +189,15 @@ Each entry records: revision · command/procedure · when (UTC) · expected · o
 * Risk gate: `DEPTH_UNKNOWN` and `SIZE_VS_DEPTH` (notional ≤ 10% of the visible depth within 10 bps on the side taken).
 * `server/replay.js --verify`: for a real builder snapshot, 3/3 recorded decisions reproduced exactly; editing the stored
   snapshot is detected (hash mismatch). `npm test` **97 pass, 0 fail**.
+
+## V-016 Live bar-close decisions + a real disconnect (long-run worker, port 8790) — 2026-11-16
+* **08:45 bar:** 9 decisions written at 08:45:07 (bar close + 7 s), 3 analysts × 3 coins, **one evidence hash per coin
+  shared by all three analysts**. All `NO_TRADE COVERAGE_GAP`: the worker restarted at 08:30:34, inside the 15-minute
+  window used by that build. Snapshots: `missing: []` (final, contiguous candles); `data_cutoff_ts` 44–45 ms before
+  the decision; full-book depth within 10 bps (min side): BTC ≈ 21.4 M, ETH ≈ 6.1 M, XRP ≈ 0.25 M USDT; spreads
+  0.015 / 0.055 / 1.046 bps. Only the abstention path was exercised live; fills and exits are fixture-verified only.
+* **Real disconnect at 08:36:47:** the socket closed (cause unknown: server or proxy side). The worker reconnected within
+  1 s, wrote `ws_disconnect` gaps (08:36:47–08:36:48) for trade/ticker/book × 3 coins, re-ran the REST candle backfill
+  and logged `possible_trade_gap`. This is live evidence of the reconnect path.
+* That 1-second gap would have blocked decisions for 15 minutes under the original rule, so coverage was re-scoped to
+  what v1 consumes (D-015). Fixture test added; `npm test` **98 pass**.

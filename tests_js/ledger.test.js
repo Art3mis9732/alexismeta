@@ -85,7 +85,7 @@ test("ledger: an existing v1 database upgrades to v2 without losing market data"
   raw.exec(MIGRATIONS[0]); raw.exec("PRAGMA user_version=1");
   raw.prepare("INSERT INTO feed_events (ts, feed, event, detail) VALUES (1,'x','y',NULL)").run(); raw.close();
   const st = new Store(f);
-  assert.equal(st.db.prepare("PRAGMA user_version").get().user_version, 2);
+  assert.equal(st.db.prepare("PRAGMA user_version").get().user_version, require("../server/store").MIGRATIONS.length);
   assert.equal(st.count("feed_events"), 1); assert.equal(st.count("ledger_entries"), 0);
   st.close(); fs.rmSync(dir, { recursive: true, force: true });
 });
@@ -99,4 +99,18 @@ test("ledger: survives a restart and continues the same chain", () => {
   const v = led.verify(); assert.equal(v.ok, true); assert.equal(v.entries, 2);
   assert.equal(led.get("fc:r2").prev_hash, led.get("fc:r1").hash);
   st.close(); fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("ledger: data_mode is part of the hashed row; replay outcomes cannot attach to live originals", () => {
+  const { store, led, at } = setup();
+  led.append(forecast("fc:live"));
+  led.append(forecast("fc:replay", { data_mode: "REPLAY" }));
+  assert.equal(led.get("fc:replay").data_mode, "REPLAY"); assert.equal(led.get("fc:live").data_mode, "LIVE");
+  assert.throws(() => led.append(forecast("fc:x", { data_mode: "SIMULATED" })), /LIVE or REPLAY/);
+  at(T0 + 3600000);
+  assert.throws(() => led.append({ entry_id: "fc:live:o", kind: "outcome", ref_id: "fc:live", data_mode: "REPLAY", versions: V, payload: {} }), /must match/);
+  assert.equal(led.append(forecast("fc:live")).duplicate, true);
+  store.db.exec("DROP TRIGGER ledger_no_update");
+  store.db.prepare("UPDATE ledger_entries SET data_mode='LIVE' WHERE entry_id='fc:replay'").run();   // relabel replay as live
+  const v = led.verify(); assert.equal(v.ok, false); assert.equal(v.firstBadSeq, led.get("fc:replay").seq);
 });

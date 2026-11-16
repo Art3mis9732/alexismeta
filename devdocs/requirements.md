@@ -17,7 +17,7 @@ Evidence references point to `verification.md` entries (V-xxx).
 | G-05 | P2§15 | No push/merge/deploy/paid/live trading without approval | – | A | all | `remote actions` log in progress.md | IN_PROGRESS | – |
 | G-06 | P2§8 | Small verified milestones, diff review per milestone | – | A | all | progress.md | IN_PROGRESS | – |
 | G-07 | P2§14 | Rollback plan per risky change | – | A | all | runbook | IN_PROGRESS | – |
-| G-08 | P1§19 | Windows PowerShell startup instructions matching repo | partial (README) | A | 1,12 | instructions reviewed; not executed on Windows (no Windows host) | IMPLEMENTED_UNVERIFIED | – |
+| G-08 | P1§19 | Windows PowerShell startup instructions matching repo | partial (README) | A | 1,12 | instructions reviewed; not executed on Windows (no Windows host); Node 22.13 minimum untested | IMPLEMENTED_UNVERIFIED | V-010 |
 
 ## Architecture & data (P1§3–5, P2 phase 2)
 
@@ -34,9 +34,9 @@ Evidence references point to `verification.md` entries (V-xxx).
 | D-09 | P1§5 | Endpoint rate limits, bounded queues, backpressure | partial (python min interval) | A | 2 | tests | PARTIAL (global REST spacing, not per-endpoint; bounded queue verified) | V-004 |
 | D-10 | P1§5 | Idempotent writes, dedupe, out-of-order handling | none | A | 2 | dup/out-of-order tests | VERIFIED | V-004, V-006 |
 | D-11 | P1§5 | Clock-offset monitoring | none | A | 2 | test + /api/health | IMPLEMENTED_UNVERIFIED (live value observed; no alert threshold yet) | V-005 |
-| D-12 | P1§5 | Gap detection & recovery (REST refill) | gap report only | A | 2 | gap test | PARTIAL (candles refilled; trade gaps flagged, not refilled) | V-004 |
+| D-12 | P1§5 | Gap detection & recovery (REST refill) | gap report only | A | 2 | gap test | PARTIAL: candles refilled and finalised from REST (V-009); trade/ticker/book gaps recorded in `coverage_gaps` with a `coverage()` query (V-010), not refilled | V-004, V-009, V-010 |
 | D-13 | P1§5 | Schema validation & quarantine | none | A | 2 | malformed-msg test | VERIFIED | V-004 |
-| D-14 | P1§5 | Graceful shutdown, restart recovery | none | A | 2 | restart test | VERIFIED (SIGINT path exercised by --smoke exit; kill -9 recovery relies on SQLite WAL, not tested) | V-004, V-006 |
+| D-14 | P1§5 | Graceful shutdown, restart recovery | none | A | 2 | restart test | VERIFIED: real SIGINT live (V-010); crash detection + downtime gap in fixtures; a real kill -9 of the process is not tested | V-004, V-006, V-010 |
 | D-15 | P1§5 | Order book snapshot/delta, seq checks, crossed/negative detection, invalidate→resync | none | A | 2 | seq-gap fixtures | VERIFIED (continuity rule observed, not documented: D-007) | V-004, V-005 |
 | D-16 | P1§5 | Missing ≠ zero, unknown ≠ neutral; gap flags propagate | violated (A-03) | A | 2,4 | tests | IN_PROGRESS | – |
 | D-17 | P1§5 | Data mode LIVE/DELAYED/REPLAY/SIMULATED; health HEALTHY/STALE/DISCONNECTED/RECOVERING; exec ANALYSIS_ONLY/PAPER | none | A | 2,3 | health tests + UI | PARTIAL (worker API + browser LIVE/STALE/RECOVERING/DISCONNECTED verified; REPLAY/SIMULATED modes not built yet) | V-004, V-008 |

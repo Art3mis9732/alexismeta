@@ -89,3 +89,35 @@ Each entry records: revision · command/procedure · when (UTC) · expected · o
   to ETH within about 1 s showed `◐ RECOVERING` until the first ETH message arrived about 1 s later. The label was true at
   that moment. The e2e test now also asserts that the label then reports ETH data.
 * Not verified: Firefox/Safari, mobile layouts, keyboard navigation, screen readers.
+
+## V-009 Steady-run candle finality — a real bug, found and fixed (2026-11-16 08:13–08:20 UTC)
+* **Finding:** after 1 min 18 s of uninterrupted running, the 08:13 BTC 1m bar was still `final=0` at 08:14:46. Its last
+  WS push was at 08:13:57, before the close, and nothing finalised it. All earlier runs were under 30 s and restarts
+  re-finalised bars through REST, so the fixture tests and the smoke runs had not exposed this.
+* **Fix:** collector finaliser. When a new bar opens on the stream, closed bars still `final=0` are re-fetched over
+  REST 2.5 s later; REST rows are final by `requestTime`, and the store's upsert rules let a final row replace the
+  partial one. A 30 s sweep is the backstop. Bars REST cannot return yet are logged (`candle_not_finalized`).
+* **Live result (same container, restarted with the fix):** XRP 08:15 was finalised by REST at 08:16:03. Some BTC bars
+  (08:14, 08:15) were finalised by the stream itself, because Bitget pushed an update stamped exactly at the bar close
+  (08:15:00, 08:16:00). Both paths now end with `final=1`.
+* Fixture test: "a bar the stream never finalised is finalised from REST after the next bar opens". Removing the trigger
+  makes it fail (mutation check).
+
+## V-010 Coverage gaps, real SIGINT, unclean-stop detection
+* A real `SIGINT` (`pkill -INT`) of the long-running worker logged `shutdown`; the restart recorded per-instrument
+  `downtime` gaps for trade, ticker and book starting at the logged shutdown time. **D-14 SIGINT path verified live.**
+* Fixture tests: a disconnect gap starts at the last frame received (not at the close event); an invalid book creates a
+  `book_invalid` gap until a fresh snapshot; a simulated power loss (DB closed without stop or shutdown) is detected on
+  restart (`lastWorkerEvent()` = start), and the gap starts at the last message of **any** kind, because a quiet trade
+  channel is not unobserved time; `coverage()` reports `gap_in_window` and `observation_started_after_window_start`.
+* First live run showed the original rule started the XRP trade gap at the last XRP trade (8 s before shutdown),
+  marking observed time as unobserved. Corrected as above.
+* Ledger `data_mode` (LIVE/REPLAY) is hashed. Relabelling a replay row as LIVE after dropping the trigger is detected by
+  `verify()`, and a REPLAY outcome cannot attach to a LIVE original.
+* `npm test`: **59 pass, 0 fail**.
+
+## Unverified claims (explicit)
+* **Node 22.13.0 minimum:** the suite has only run on Node 22.23.4. Fetching and running a 22.13.0 binary in this
+  container was refused by the session's permission classifier, so the stated minimum (`engines`, CI pin, README) is
+  the documented `node:sqlite` unflagging version, **not a tested one**. CI (`tests.yml`, pinned to 22.13) will test it
+  on the first PR or main push.

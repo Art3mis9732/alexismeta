@@ -12,6 +12,10 @@
  *   - data_cutoff_ts <= created_ts (no information from after the decision)
  *   - an outcome cannot be appended before the original's eval_due_ts
  *   - SHA-256 hash chain over (prev_hash, canonical row) -> verify() detects edits made outside the app
+ *   - data_mode LIVE | REPLAY is part of the hashed row: a replayed decision can never pass as a forward one
+ * Convention for callers: entry_id is DETERMINISTIC from (policy, version, instrument, bar close), e.g.
+ *   "setup:balanced-v1:bitget:perp:BTCUSDT:1794816000000" - so a retry after a reconnect or restart hits the
+ *   idempotency rule above instead of creating a second trigger.
  * A local SQLite file can still be replaced wholesale by someone with file access; backups plus the chain's
  * head hash (recorded elsewhere) are what make that detectable. */
 
@@ -30,7 +34,7 @@ function canonical(v) {
 }
 
 function rowHash(prevHash, r) {
-  const body = canonical({ entry_id: r.entry_id, kind: r.kind, ref_id: r.ref_id, created_ts: r.created_ts, data_cutoff_ts: r.data_cutoff_ts,
+  const body = canonical({ entry_id: r.entry_id, kind: r.kind, data_mode: r.data_mode, ref_id: r.ref_id, created_ts: r.created_ts, data_cutoff_ts: r.data_cutoff_ts,
     eval_due_ts: r.eval_due_ts, code_rev: r.code_rev, versions: r.versions, payload: r.payload });
   return crypto.createHash("sha256").update(prevHash + "\n" + body).digest("hex");
 }
@@ -41,8 +45,8 @@ class Ledger {
     this.st = {
       head: this.db.prepare("SELECT hash FROM ledger_entries ORDER BY seq DESC LIMIT 1"),
       byId: this.db.prepare("SELECT * FROM ledger_entries WHERE entry_id = ?"),
-      insert: this.db.prepare(`INSERT INTO ledger_entries (entry_id, kind, ref_id, created_ts, data_cutoff_ts, eval_due_ts, code_rev, versions, payload, prev_hash, hash)
-                               VALUES (:entry_id, :kind, :ref_id, :created_ts, :data_cutoff_ts, :eval_due_ts, :code_rev, :versions, :payload, :prev_hash, :hash)`),
+      insert: this.db.prepare(`INSERT INTO ledger_entries (entry_id, kind, data_mode, ref_id, created_ts, data_cutoff_ts, eval_due_ts, code_rev, versions, payload, prev_hash, hash)
+                               VALUES (:entry_id, :kind, :data_mode, :ref_id, :created_ts, :data_cutoff_ts, :eval_due_ts, :code_rev, :versions, :payload, :prev_hash, :hash)`),
       all: this.db.prepare("SELECT * FROM ledger_entries ORDER BY seq"),
       recent: this.db.prepare("SELECT * FROM ledger_entries ORDER BY seq DESC LIMIT ?"),
       refs: this.db.prepare("SELECT * FROM ledger_entries WHERE ref_id = ? ORDER BY seq")
@@ -54,14 +58,16 @@ class Ledger {
     if (!e || typeof e.entry_id !== "string" || !/^[A-Za-z0-9:._|-]{1,200}$/.test(e.entry_id)) throw new Error("ledger: bad entry_id");
     if (!ORIGINAL.has(e.kind) && e.kind !== "status" && e.kind !== "outcome") throw new Error("ledger: bad kind " + e.kind);
     if (!e.versions || typeof e.versions !== "object") throw new Error("ledger: versions required (strategy/model/config)");
+    const mode = e.data_mode === undefined ? "LIVE" : e.data_mode;
+    if (mode !== "LIVE" && mode !== "REPLAY") throw new Error("ledger: data_mode must be LIVE or REPLAY");
     const created = this.now();
-    const row = { entry_id: e.entry_id, kind: e.kind, ref_id: e.ref_id || null, created_ts: created,
+    const row = { entry_id: e.entry_id, kind: e.kind, data_mode: mode, ref_id: e.ref_id || null, created_ts: created,
       data_cutoff_ts: e.data_cutoff_ts === undefined ? null : e.data_cutoff_ts, eval_due_ts: e.eval_due_ts === undefined ? null : e.eval_due_ts,
       code_rev: e.code_rev || this.codeRev, versions: canonical(e.versions), payload: canonical(e.payload === undefined ? null : e.payload) };
 
     const existing = this.st.byId.get(row.entry_id);
     if (existing) {
-      const same = existing.kind === row.kind && existing.ref_id === row.ref_id && existing.payload === row.payload && existing.versions === row.versions &&
+      const same = existing.kind === row.kind && existing.data_mode === row.data_mode && existing.ref_id === row.ref_id && existing.payload === row.payload && existing.versions === row.versions &&
         existing.data_cutoff_ts === row.data_cutoff_ts && existing.eval_due_ts === row.eval_due_ts;
       if (same) return { ...existing, duplicate: true };
       throw new Error(`ledger: entry ${row.entry_id} already exists with different content (originals cannot be rewritten; append a status/new version instead)`);
@@ -73,6 +79,7 @@ class Ledger {
       const orig = this.st.byId.get(row.ref_id);
       if (!orig) throw new Error("ledger: referenced entry " + row.ref_id + " does not exist");
       if (!ORIGINAL.has(orig.kind)) throw new Error("ledger: status/outcome must reference an original, not another status/outcome");
+      if (orig.data_mode !== row.data_mode) throw new Error("ledger: status/outcome data_mode must match the original's");
       if (row.kind === "outcome" && orig.eval_due_ts !== null && created < orig.eval_due_ts) throw new Error("ledger: outcome before the evaluation due time");
     }
 

@@ -167,7 +167,7 @@ test("store: data survives a restart; migrations are idempotent", () => {
   let st = new Store(f); st.enqueue(trade("7", 5000)); st.enqueue(candle(60000, "100", 1, 120000)); st.close();
   st = new Store(f);
   assert.equal(st.count("trades"), 1); assert.equal(st.count("candles"), 1);
-  assert.equal(st.db.prepare("PRAGMA user_version").get().user_version, 2);
+  assert.equal(st.db.prepare("PRAGMA user_version").get().user_version, require("../server/store").MIGRATIONS.length);
   assert.equal(st.db.prepare("PRAGMA journal_mode").get().journal_mode, "wal");
   assert.equal(st.lastFinalCandleTs(BTC, "1m"), 60000);
   st.close(); fs.rmSync(dir, { recursive: true, force: true });
@@ -394,4 +394,70 @@ test("http: health/API work on localhost only; methods, hosts, paths and params 
       assert.ok(!/stack|\/home\/|\\Users\\/.test(b), "internal detail leaked in " + p);
     }
   } finally { server.close(); col.stop(); store.close(); delete process.env.ALEXISMETA_TEST_SECRET; }
+});
+
+// ---------------------------------------------------------------- finality & coverage (added after the steady-run finding)
+test("collector: a bar the stream never finalised is finalised from REST after the next bar opens", async () => {
+  const ck = makeClock(of("trade", "snapshot")[0].ts), store = new Store(":memory:", { now: ck.now });
+  const t0 = 60000 * Math.floor(ck.now() / 60000);
+  // REST stub returns the closed bar t0 as final (requestTime after its end) plus the forming bar
+  const rest = fakeRest(); const restCandles = rest.candles.bind(rest); let armed = false;
+  rest.candles = async (sym, pt, gran, opts) => {
+    if (gran !== "1m" || !armed) return restCandles(sym, pt, gran, opts);
+    rest.calls.push("1m-finalize");
+    return { body: { code: "00000", requestTime: t0 + 61000, data: [[String(t0), "100", "105", "99", "104", "9.5", "950"], [String(t0 + 60000), "104", "104", "104", "104", "0.1", "10"]] }, recvTs: t0 + 61050 };
+  };
+  const { col } = await startCollector(store, rest, ck);
+  col.setTimer = ck.setTimer; col.clearTimer = ck.clearTimer; armed = true;
+  const w = FakeWS.instances[0]; w.open();
+  const push = (open, c, ts) => w.msg({ action: "update", arg: { instType: "USDT-FUTURES", channel: "candle1m", instId: "BTCUSDT" }, ts, data: [[String(open), "100", "105", "99", c, "9", "900"]] });
+  ck.advance(5000); push(t0, "103", ck.now());                 // last push for bar t0 arrives BEFORE its close
+  store.flush();
+  let row = store.candles(BTC, "1m", 200).find(r => r.open_ts === t0);
+  assert.equal(row.final, 0); assert.equal(row.c, "103");
+  ck.advance(t0 + 61000 - ck.now()); push(t0 + 60000, "104", ck.now());  // next bar opens -> finaliser scheduled
+  ck.advance(3000); await new Promise(r => setImmediate(r)); await new Promise(r => setImmediate(r));
+  row = store.candles(BTC, "1m", 200).find(r => r.open_ts === t0);
+  assert.equal(row.final, 1, "finalised"); assert.equal(row.c, "104", "REST close replaces the stale last push"); assert.equal(row.source, "bitget_rest_v2");
+  assert.ok(rest.calls.includes("1m-finalize"));
+  col.stop(); store.close();
+});
+
+test("coverage: disconnects, invalid books and downtime become gaps; coverage() reports them", async () => {
+  const ck = makeClock(of("trade", "snapshot")[0].ts), store = new Store(":memory:", { now: ck.now });
+  const { col } = await startCollector(store, fakeRest(), ck);
+  const w = FakeWS.instances[0]; w.open();
+  for (const m of CAP) w.msg(m); store.flush();
+  const t1 = ck.now();
+  ck.advance(2000); w.drop();                                   // last frame at t1 -> gap starts at t1, not at the drop
+  ck.advance(1000); const w2 = FakeWS.instances[1]; w2.open();
+  const g = store.coverage(BTC, "ticker", t1 - 1, ck.now() + 1);
+  assert.equal(g.complete, false); assert.ok(g.reasons.includes("gap_in_window"));
+  assert.equal(g.gaps[0].from_ts, t1); assert.equal(g.gaps[0].reason, "ws_disconnect");
+  const books = of("books");                                    // book invalid -> gap until a fresh snapshot
+  w2.msg(books[0]); w2.msg(books[2]); ck.advance(500); w2.msg(books[0]);
+  assert.ok(store.coverage(BTC, "book", 0, ck.now() + 1).gaps.some(x => x.reason === "book_invalid"));
+  const before = store.coverage(BTC, "trade", 0, t1);
+  assert.ok(before.reasons.includes("observation_started_after_window_start"), "nothing observed before the first message");
+  col.stop(); store.close();
+});
+
+test("coverage: a crash (no shutdown record) is detected on restart and the downtime is a gap from the last message of any kind", async () => {
+  const dir = tmpdir(), f = path.join(dir, "m.db"), ck = makeClock(of("trade", "snapshot")[0].ts);
+  let store = new Store(f, { now: ck.now });
+  store.feedEvent("worker", "start", "x");
+  let c = await startCollector(store, fakeRest(), ck);
+  FakeWS.instances[0].open(); for (const m of CAP) FakeWS.instances[0].msg(m); store.flush();
+  const lastTicker = store.lastRecvTs(BTC, "ticker");
+  store.db.close();                                             // simulated power loss: no shutdown event, no stop()
+  ck.advance(60000);
+  store = new Store(f, { now: ck.now });
+  const prev = store.lastWorkerEvent();
+  assert.equal(prev.event, "start", "previous run never recorded a shutdown");
+  c = await startCollector(store, fakeRest(), ck);
+  c.col.recordDowntime(true, null);
+  const gaps = store.coverage(BTC, "trade", 0, ck.now() + 1).gaps.filter(x => x.reason === "downtime_after_unclean_stop");
+  assert.ok(gaps.length >= 1);
+  assert.equal(gaps[0].from_ts, Math.max(lastTicker, store.lastRecvTs(BTC, "trade"), store.lastRecvTs(BTC, "book")), "from the last message of any kind");
+  c.col.stop(); store.close(); fs.rmSync(dir, { recursive: true, force: true });
 });

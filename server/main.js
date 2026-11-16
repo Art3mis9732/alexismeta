@@ -80,6 +80,7 @@ async function main() {
   const timers = [
     setInterval(() => { try { store.flush(); } catch (e) { log("flush failed: " + e.message); } }, 250),
     setInterval(async () => { try { const c = await rest.clockOffset(); health.setClock(c.offset_ms, c.rtt_ms); } catch (e) { log("clock: " + e.message); } }, 300000),
+    setInterval(() => { collector.finalizeSweep().catch(e => log("finalize: " + e.message)); }, 30000),
     setInterval(() => { try { const r = store.prune(); store.feedEvent("store", "prune", JSON.stringify(r)); } catch (e) { log("prune: " + e.message); } }, 3600000)
   ];
   let stopping = false;
@@ -97,8 +98,10 @@ async function main() {
 
   await new Promise((res, rej) => { server.once("error", rej); server.listen(a.port, "127.0.0.1", res); });
   log(`listening on http://127.0.0.1:${a.port}  db=${a.db}`);
+  const prev = store.lastWorkerEvent(), unclean = !!prev && prev.event === "start";
+  if (unclean) { store.feedEvent("worker", "unclean_shutdown_detected", "previous run started at " + prev.ts + " and never recorded a shutdown"); log("previous run did not shut down cleanly; downtime recorded as a gap"); }
   store.feedEvent("worker", "start", VERSION);
-  await collector.start();
+  await collector.start({ unclean, prevStopTs: prev && prev.event === "shutdown" ? prev.ts : null });
   log(`collecting ${a.symbols.join(", ")} from Bitget public v2`);
 
   if (a.smoke) {

@@ -60,3 +60,16 @@ unsorted levels.
 Official classic docs found so far do not define `side`. Third-party wire-format docs say it is the taker side.
 Stored as `venue_side`. Any CVD or aggressor feature carries the flag `aggressor_semantics=unverified` until an
 official source confirms it.
+
+## D-009 Candle finality comes from bar-end evidence, never from "a newer bar appeared" (2026-11-16)
+A bar is final only when a message stamped at or after its close says so: a WS push or a REST `requestTime`. When a
+newer bar opens, the collector does **not** mark the old bar final with its last partial values; it re-fetches over
+REST (V-009). Reason: the last WS push can come seconds before the close, so its values can be incomplete.
+
+## D-010 Coverage gaps are explicit rows; observation end = last frame / clean shutdown time (2026-11-16)
+Downtime, disconnects and invalid books are written to `coverage_gaps`. Features and replay must call `coverage()`
+and return UNKNOWN on incomplete windows. A silent trade channel while ticker and book flow is *observed*, not a gap.
+
+## D-011 Ledger rows carry a hashed `data_mode` (LIVE | REPLAY) (2026-11-16)
+Added in schema v3 before any ledger row existed outside tests, so no hashes had to be migrated. Replay runs may use
+the same DB, but their entries can never verify as LIVE.

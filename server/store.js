@@ -50,7 +50,15 @@ const MIGRATIONS = [
      CHECK ((kind IN ('status','outcome')) = (ref_id IS NOT NULL)));
    CREATE INDEX IF NOT EXISTS ledger_by_ref ON ledger_entries (ref_id);
    CREATE TRIGGER IF NOT EXISTS ledger_no_update BEFORE UPDATE ON ledger_entries BEGIN SELECT RAISE(ABORT, 'ledger is append-only'); END;
-   CREATE TRIGGER IF NOT EXISTS ledger_no_delete BEFORE DELETE ON ledger_entries BEGIN SELECT RAISE(ABORT, 'ledger is append-only'); END;`
+   CREATE TRIGGER IF NOT EXISTS ledger_no_delete BEFORE DELETE ON ledger_entries BEGIN SELECT RAISE(ABORT, 'ledger is append-only'); END;`,
+  // v3: (a) coverage gaps: periods when a feed was NOT observed (downtime, disconnects, invalid books), so that
+  //     features and replay can tell "no data" from "nothing happened"; (b) ledger data_mode (LIVE / REPLAY), part
+  //     of the hashed row, so replayed decisions can never be mistaken for recorded forward decisions.
+  `CREATE TABLE IF NOT EXISTS coverage_gaps (
+     id INTEGER PRIMARY KEY, instrument_id TEXT NOT NULL, kind TEXT NOT NULL, from_ts INTEGER NOT NULL, to_ts INTEGER NOT NULL,
+     reason TEXT NOT NULL, CHECK (to_ts >= from_ts));
+   CREATE INDEX IF NOT EXISTS coverage_gaps_by_feed ON coverage_gaps (instrument_id, kind, from_ts);
+   ALTER TABLE ledger_entries ADD COLUMN data_mode TEXT NOT NULL DEFAULT 'LIVE' CHECK (data_mode IN ('LIVE', 'REPLAY'));`
 ];
 
 const DEFAULT_RETENTION_MS = {
@@ -156,6 +164,11 @@ class Store {
       : this.db.prepare("SELECT * FROM candles WHERE instrument_id=? AND interval=? AND open_ts<? ORDER BY open_ts DESC LIMIT ?").all(instrumentId, interval, before, limit);
     return rows.reverse();
   }
+  /** Non-final candles whose interval has already ended by `refTs` (they need a REST finalisation). */
+  unfinalized(instrumentId, interval, intervalMs, refTs) {
+    return this.db.prepare("SELECT open_ts FROM candles WHERE instrument_id=? AND interval=? AND final=0 AND open_ts + ? <= ? ORDER BY open_ts")
+      .all(instrumentId, interval, intervalMs, refTs).map(r => r.open_ts);
+  }
   lastFinalCandleTs(instrumentId, interval) {
     const r = this.db.prepare("SELECT MAX(open_ts) AS t FROM candles WHERE instrument_id=? AND interval=? AND final=1").get(instrumentId, interval);
     return r && r.t !== null ? r.t : null;
@@ -166,7 +179,40 @@ class Store {
     if (!/^[a-z_]+$/.test(table)) throw new Error("bad table");
     return this.db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n;
   }
+  lastWorkerEvent() { return this.db.prepare("SELECT * FROM feed_events WHERE feed='worker' AND event IN ('start','shutdown') ORDER BY id DESC LIMIT 1").get() || null; }
   feedEvents(limit = 50) { return this.db.prepare("SELECT * FROM feed_events ORDER BY id DESC LIMIT ?").all(limit); }
+
+  // ---------- coverage ----------
+  /** kind: trade | ticker | book. A gap means "not observed", never "nothing happened". */
+  addGap(instrumentId, kind, fromTs, toTs, reason) {
+    if (!(toTs >= fromTs)) return false;
+    this.db.prepare("INSERT INTO coverage_gaps (instrument_id, kind, from_ts, to_ts, reason) VALUES (?,?,?,?,?)").run(instrumentId, kind, fromTs, toTs, reason);
+    return true;
+  }
+  /** Most recent receipt time of persisted data for a feed kind (used to measure downtime after a restart/crash). */
+  lastRecvTs(instrumentId, kind) {
+    const t = { trade: "trades", ticker: "tickers", book: "book_tops" }[kind];
+    if (!t) throw new Error("bad kind");
+    const r = this.db.prepare(`SELECT MAX(recv_ts) AS t FROM ${t} WHERE instrument_id=?`).get(instrumentId);
+    return r && r.t !== null ? r.t : null;
+  }
+  firstRecvTs(instrumentId, kind) {
+    const t = { trade: "trades", ticker: "tickers", book: "book_tops" }[kind];
+    const r = this.db.prepare(`SELECT MIN(recv_ts) AS t FROM ${t} WHERE instrument_id=?`).get(instrumentId);
+    return r && r.t !== null ? r.t : null;
+  }
+  /** Was [fromTs, toTs] fully observed for this feed? Complete only if observation started before fromTs, no
+   * recorded gap overlaps the window, and (when `liveUntil` is given) the feed was observed up to toTs. */
+  coverage(instrumentId, kind, fromTs, toTs, { liveUntil = null } = {}) {
+    const gaps = this.db.prepare("SELECT from_ts, to_ts, reason FROM coverage_gaps WHERE instrument_id=? AND kind=? AND to_ts > ? AND from_ts < ? ORDER BY from_ts")
+      .all(instrumentId, kind, fromTs, toTs).map(g => ({ ...g }));
+    const first = this.firstRecvTs(instrumentId, kind);
+    const reasons = [];
+    if (first === null || first > fromTs) reasons.push("observation_started_after_window_start");
+    if (gaps.length) reasons.push("gap_in_window");
+    if (liveUntil !== null && liveUntil < toTs) reasons.push("not_observed_until_window_end");
+    return { complete: reasons.length === 0, reasons, gaps, first_observed_ts: first };
+  }
 
   /** Delete rows past their retention window. Returns rows deleted per table. */
   prune(now = this.now()) {

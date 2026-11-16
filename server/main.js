@@ -13,6 +13,7 @@ const { Health } = require("./health");
 const { BitgetRest } = require("./adapters/bitget");
 const { BitgetCollector } = require("./collector");
 const { createServer } = require("./http");
+const { Ledger } = require("./ledger");
 
 const ROOT = path.resolve(__dirname, "..");
 const VERSION = "worker-0.1.0";
@@ -31,7 +32,7 @@ function args(argv) {
   return a;
 }
 
-function buildApi({ store, health, collector, startedAt }) {
+function buildApi({ store, health, collector, startedAt, ledger }) {
   const num = v => v === null || v === undefined ? null : Number(v);
   return {
     hasInstrument: id => !!store.instrument(id),
@@ -58,7 +59,9 @@ function buildApi({ store, health, collector, startedAt }) {
     },
     trades: (id, n) => ({ instrument_id: id, note: "venue_side is Bitget's raw `side`; whether it denotes the taker is UNVERIFIED (D-008)",
       trades: store.trades(id, n).map(t => ({ ...t, quality: JSON.parse(t.quality) })) }),
-    book: (id, n) => collector.bookTop(id, n)
+    book: (id, n) => collector.bookTop(id, n),
+    ledgerRecent: n => ledger ? { note: "append-only; originals are never modified, outcomes are separate rows", entries: ledger.recent(n) } : { entries: [] },
+    ledgerVerify: () => ledger ? ledger.verify() : { ok: false, reason: "ledger not configured" }
   };
 }
 
@@ -70,7 +73,8 @@ async function main() {
   const health = new Health();
   const rest = new BitgetRest();
   const collector = new BitgetCollector({ rest, store, health, symbols: a.symbols, log });
-  const api = buildApi({ store, health, collector, startedAt });
+  const ledger = new Ledger(store, { codeRev: gitRev() });
+  const api = buildApi({ store, health, collector, startedAt, ledger });
   const server = createServer({ api, staticDir: path.join(ROOT, "docs"), port: a.port });
 
   const timers = [
@@ -125,6 +129,11 @@ async function smokeCheck(port, collector) {
   out.health_feeds = h.feeds.map(f => `${f.feed}: ${f.state} age ${f.receipt_age_ms}ms max_gap ${f.max_gap_ms}ms n=${f.messages}`);
   out.clock = h.clock; out.store = h.store;
   return out;
+}
+
+function gitRev() {
+  try { return require("node:child_process").execFileSync("git", ["rev-parse", "--short=12", "HEAD"], { cwd: ROOT, stdio: ["ignore", "pipe", "ignore"] }).toString().trim(); }
+  catch (e) { return "unknown"; }
 }
 
 function fetchLocal(port, p) {

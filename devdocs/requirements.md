@@ -79,7 +79,7 @@ Evidence references point to `verification.md` entries (V-xxx).
 | S-04 | P1§10 | Setup/order/position state machines, transitions w/ reason codes, no duplicate triggers, versioned supersession | none | A | 8 | tests | NOT_STARTED |
 | R-01 | P1§11 | Independent risk engine: per-trade, open risk, exposure, correlation, daily loss, drawdown, leverage ≤2×, liquidity, staleness, kill switch, persisted state | lab sizing only | A | 5→8 | tests | NOT_STARTED |
 | R-02 | P1§11 | NO_TRADE when min size breaches budget | lab has min-size | A | 8 | test | NOT_STARTED |
-| L-01 | P1§13 | Append-only prediction/decision ledger (DB triggers + hash chain), backups | none (journal rewritten) | A | 2 | tamper tests | IN_PROGRESS |
+| L-01 | P1§13 | Append-only prediction/decision ledger (DB triggers + hash chain), backups | none (journal rewritten) | A | 2 | tamper tests | VERIFIED for storage rules (V-007); nothing writes forecasts to it yet; off-machine head anchoring pending |
 | B-01 | P1§14 | Event-driven replay reusing live code; purged chronological splits; locked test | lab has dev/holdout for 4H | A | 2→9 | determinism tests | NOT_STARTED |
 | B-02 | P1§14 | Execution sim: spread, fees, slippage, latency, funding at settlement, ambiguous bars conservative | lab partial | A | 9 | tests | PARTIAL (lab) |
 | B-03 | P1§14 | Metrics incl. block bootstrap, baselines, "no demonstrated edge" status | lab partial | A | 9 | tests | PARTIAL (lab) |

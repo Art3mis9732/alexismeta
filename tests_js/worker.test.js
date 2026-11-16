@@ -167,7 +167,7 @@ test("store: data survives a restart; migrations are idempotent", () => {
   let st = new Store(f); st.enqueue(trade("7", 5000)); st.enqueue(candle(60000, "100", 1, 120000)); st.close();
   st = new Store(f);
   assert.equal(st.count("trades"), 1); assert.equal(st.count("candles"), 1);
-  assert.equal(st.db.prepare("PRAGMA user_version").get().user_version, 1);
+  assert.equal(st.db.prepare("PRAGMA user_version").get().user_version, 2);
   assert.equal(st.db.prepare("PRAGMA journal_mode").get().journal_mode, "wal");
   assert.equal(st.lastFinalCandleTs(BTC, "1m"), 60000);
   st.close(); fs.rmSync(dir, { recursive: true, force: true });
@@ -354,7 +354,9 @@ test("http: health/API work on localhost only; methods, hosts, paths and params 
   const ck = makeClock(of("trade", "snapshot")[0].ts), store = new Store(":memory:", { now: ck.now });
   const { col, health } = await startCollector(store, fakeRest(), ck);
   FakeWS.instances[0].open(); for (const m of CAP) FakeWS.instances[0].msg(m); store.flush();
-  const api = buildApi({ store, health, collector: col, startedAt: 0 });
+  const ledger = new (require("../server/ledger").Ledger)(store, { now: ck.now });
+  ledger.append({ entry_id: "t:1", kind: "decision", versions: { v: 1 }, payload: { intent: "NO_TRADE" } });
+  const api = buildApi({ store, health, collector: col, startedAt: 0, ledger });
   const server = createServer({ api, staticDir: path.join(__dirname, "..", "docs") });
   await new Promise(r => server.listen(0, "127.0.0.1", r));
   const port = server.address().port;
@@ -381,6 +383,9 @@ test("http: health/API work on localhost only; methods, hosts, paths and params 
     assert.ok(tk.ticker.spread_bps >= 0);
     assert.notEqual((await req("/../server/main.js")).code, 200);
     assert.notEqual((await req("/%2e%2e/server/main.js")).code, 200);
+    const lv = JSON.parse((await req("/api/ledger/verify")).body);
+    assert.equal(lv.ok, true); assert.equal(lv.entries, 1);
+    assert.equal(JSON.parse((await req("/api/ledger?limit=5")).body).entries.length, 1);
     const idx = await req("/");
     assert.equal(idx.code, 200); assert.match(idx.body, /<html/i);
     for (const p of ["/api/health", "/api/instruments", `/api/trades?instrument=${BTC}`, `/api/book?instrument=${BTC}`, "/api/feed-events"]) {

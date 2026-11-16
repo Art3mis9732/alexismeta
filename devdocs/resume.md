@@ -1,14 +1,15 @@
 # Resume here
 
 **Branch:** `claude/friendly-dirac-ouvgn4` (local commits; see `progress.md` for push status)
-**Phase:** 2 — market data slice (Bitget BTCUSDT perp)
-**Last verified checkpoint:** Phase 0/1 docs committed; baseline 23 Node + 22 pytest pass.
+**Phase:** 3 — UI honesty (worker-aware status strip; fix A-01 LIVE label, A-02 "chance" label)
+**Last verified checkpoint:** worker (Phase 2 perps) + ledger (2b) committed and pushed; `npm test` 55/55; live smoke pass.
 
 ## Next exact steps
-1. `server/` zero-dependency Node worker per `roadmap.md` module list; tests in `tests_js/worker.*.test.js`.
-2. Fixture tests for duplicate, out-of-order, seq-gap, stale, restart and quarantine.
-3. Live smoke `NODE_USE_ENV_PROXY=1 node server/main.js --smoke` (proxy flag needed in the cloud container only).
-4. Then Phase 2b: append-only ledger.
+1. `docs/index.html`: probe same-origin `/api/health`; if present show worker feed states; otherwise label
+   "browser stream / static snapshot". LIVE only from data messages (not pong). Relabel the model card as an
+   uncalibrated score. Verify with Playwright (static mode + worker mode) and keep existing workflows working.
+2. Then Phase 4 feature specs, starting with spread/depth bands from `book_tops` and the realized-vol fixtures.
+3. Live smoke in the cloud container needs `NODE_USE_ENV_PROXY=1`.
 
 ## Running processes
 None.

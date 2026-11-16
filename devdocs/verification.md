@@ -56,3 +56,15 @@ Each entry records: revision · command/procedure · when (UTC) · expected · o
   re-delivered candle rows were recognised as **unchanged** (no duplicates). 0 quarantined. Exactly one forming
   candle per series; latest 1m open advanced to 07:59.
 * Not covered live: a mid-run network cut. Disconnect/reconnect is covered by fixture tests only (V-004).
+
+## V-007 Append-only ledger (Phase 2b) — 2026-11-16 ~08:05 UTC
+* `npm test`: **55 pass, 0 fail** (8 new ledger tests + an HTTP ledger check).
+* Verified: DB triggers reject UPDATE/DELETE (including from the app); retention never touches the ledger; identical
+  re-append is idempotent while changed content under the same id is refused; `data_cutoff_ts > created_ts` refused;
+  an outcome before `eval_due_ts` is refused; status/outcome must reference an existing original; SHA-256 chain
+  verifies and **detects an edit made after dropping the trigger** (first bad seq reported); the chain continues
+  across a restart; an existing v1 DB upgrades to v2 without losing data.
+* Live: the smoke DB from V-005/V-006 (schema v1) was opened by the new build, migrated to v2, and the 8 s live smoke
+  passed.
+* Limitation: a local file can be replaced wholesale. Detection needs the chain head stored elsewhere (e.g. committed
+  daily or written to the backup log). Not yet implemented; listed in the roadmap.

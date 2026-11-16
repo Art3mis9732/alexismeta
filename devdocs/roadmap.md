@@ -27,8 +27,8 @@ the canonical events, so live and replay share the same code path.
 |---|---|---|---|
 | 0 Discovery | Audit, baseline, isolation | Source/deploy facts documented; user work preserved; local work cannot mutate prod | **VERIFIED** (V-001, V-002); remote Pages settings unknown (release blocker) |
 | 1 Requirements | Traceability matrix, architecture, feasibility | Every material requirement has a destination, dependency, verification, status | **VERIFIED** for this revision (`requirements.md`); revisit when scope changes |
-| 2 Market data | Bitget BTCUSDT perp end to end, then ETH/XRP, then spot | Real observation → SQLite → API → UI with correct identity and timestamps; fixture tests for duplicate, out-of-order, reconnect, restart, stale and seq-gap pass; live smoke recorded separately | IN_PROGRESS |
-| 2b Ledger | Append-only decisions before any forecast | UPDATE/DELETE on original rows rejected by the DB; hash chain verifies; outcomes appended separately | NOT_STARTED |
+| 2 Market data | Bitget BTCUSDT perp end to end, then ETH/XRP, then spot | Real observation → SQLite → API → UI with correct identity and timestamps; fixture tests for duplicate, out-of-order, reconnect, restart, stale and seq-gap pass; live smoke recorded separately | **PARTIAL**: perps exchange→SQLite→API VERIFIED (V-004..006); UI wiring = Phase 3; spot NOT_STARTED |
+| 2b Ledger | Append-only decisions before any forecast | UPDATE/DELETE on original rows rejected by the DB; hash chain verifies; outcomes appended separately | **VERIFIED** (V-007); head anchoring pending |
 | 3 UI | Honest status strip, TZ selector, fix A-01/A-02 | Values match backend; simulated/stale can't show LIVE; existing workflows still pass (Playwright) | NOT_STARTED |
 | 4 Features/hypotheses | Specified, tested features; flow hypotheses | Reference fixtures match; causality tests; missing → UNKNOWN | NOT_STARTED |
 | 5 Analysts | 3 versioned policies on one evidence snapshot; paper portfolios; minimal replay | Crafted disagreement scenarios; no double-fill; shared limits | NOT_STARTED |

@@ -37,7 +37,20 @@ const MIGRATIONS = [
    CREATE TABLE IF NOT EXISTS quarantine (
      id INTEGER PRIMARY KEY, recv_ts INTEGER NOT NULL, source TEXT NOT NULL, reason TEXT NOT NULL, raw TEXT NOT NULL);
    CREATE TABLE IF NOT EXISTS feed_events (
-     id INTEGER PRIMARY KEY, ts INTEGER NOT NULL, feed TEXT NOT NULL, event TEXT NOT NULL, detail TEXT);`
+     id INTEGER PRIMARY KEY, ts INTEGER NOT NULL, feed TEXT NOT NULL, event TEXT NOT NULL, detail TEXT);`,
+  // v2: append-only decision ledger (see server/ledger.js). The triggers make UPDATE and DELETE fail for every
+  // writer, including this application. They do not make a locally editable file independently immutable;
+  // the hash chain is what detects tampering.
+  `CREATE TABLE IF NOT EXISTS ledger_entries (
+     seq INTEGER PRIMARY KEY, entry_id TEXT NOT NULL UNIQUE, kind TEXT NOT NULL, ref_id TEXT REFERENCES ledger_entries(entry_id),
+     created_ts INTEGER NOT NULL, data_cutoff_ts INTEGER, eval_due_ts INTEGER, code_rev TEXT NOT NULL, versions TEXT NOT NULL,
+     payload TEXT NOT NULL, prev_hash TEXT NOT NULL, hash TEXT NOT NULL UNIQUE,
+     CHECK (kind IN ('forecast','setup','decision','status','outcome')),
+     CHECK (data_cutoff_ts IS NULL OR data_cutoff_ts <= created_ts),
+     CHECK ((kind IN ('status','outcome')) = (ref_id IS NOT NULL)));
+   CREATE INDEX IF NOT EXISTS ledger_by_ref ON ledger_entries (ref_id);
+   CREATE TRIGGER IF NOT EXISTS ledger_no_update BEFORE UPDATE ON ledger_entries BEGIN SELECT RAISE(ABORT, 'ledger is append-only'); END;
+   CREATE TRIGGER IF NOT EXISTS ledger_no_delete BEFORE DELETE ON ledger_entries BEGIN SELECT RAISE(ABORT, 'ledger is append-only'); END;`
 ];
 
 const DEFAULT_RETENTION_MS = {
@@ -193,4 +206,4 @@ const TICKER_COLS = ["instrument_id", "exch_ts", "recv_ts", "persist_ts", "last"
 const BOOK_COLS = ["instrument_id", "exch_ts", "recv_ts", "persist_ts", "seq", "levels", "bids_json", "asks_json", "source", "schema_version", "quality"];
 function pick(o, cols) { const r = {}; for (const c of cols) r[c] = o[c] === undefined ? null : o[c]; return r; }
 
-module.exports = { Store, DEFAULT_RETENTION_MS };
+module.exports = { Store, DEFAULT_RETENTION_MS, MIGRATIONS };

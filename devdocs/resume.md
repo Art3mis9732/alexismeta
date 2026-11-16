@@ -1,7 +1,7 @@
 # Resume here
 
-**Branch:** `claude/friendly-dirac-ouvgn4`. Remote is at `ae70a94`. Session 3 work (news-v2, News tab, schema v7+v8, docs) is
-committed locally only and needs the user's approval before any push. No PR, merge or deploy.
+**Branch:** `claude/friendly-dirac-ouvgn4`. Remote is at `fbc2de9` (pushed 2026-11-16 with explicit approval for `0e5ecd4` + `fbc2de9`: News tab,
+news-v2, schema v7+v8, tooling guard, docs). Each further push needs its own approval. No PR, merge or deploy; `main` is `8de2e2a`.
 **State:** milestones A (reconciliation, UI repair) and B (news diagnosis + News Intelligence) done and verified. `npm test` 151/151,
 pytest 22/22, `tests_e2e/monitor.e2e.js` 36/36 (forward + TEST), `tests_e2e/status.e2e.js` 23/23.
 Records: `news-diagnosis.md`, `defect-inventory.md`, V-025…V-027, D-020…D-022, requirements P4-01…P4-13.

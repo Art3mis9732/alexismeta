@@ -88,6 +88,13 @@ async function main() {
       const vis = await page.locator(`#${v === "trade" ? "tradeView" : v + "View"}`).isVisible();
       check(`view '${v}' renders`, vis, "");
     }
+    await page.selectOption("#tzSel", "UTC");
+    await page.waitForTimeout(500);
+    const m = await text(page, "#mode");
+    check("timezone selector: switching to UTC relabels live times (default is Asia/Kolkata)", /UTC/.test(m) && !/ IST /.test(m), m);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    check("timezone selector: choice persists across reload", (await page.locator("#tzSel").inputValue()) === "UTC", "");
+    await page.selectOption("#tzSel", "IST");
     await page.waitForTimeout(1500);
     check("static page: no page errors", errors.length === 0, errors.join(" | "));
     if (shots) await page.screenshot({ path: shots + "/static-mode.png", fullPage: false });

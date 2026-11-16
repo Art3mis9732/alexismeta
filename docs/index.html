@@ -66,6 +66,7 @@
     <div class="seg" id="coins"><span class="on" data-sym="BTCUSDT">BTC</span><span data-sym="ETHUSDT">ETH</span><span data-sym="XRPUSDT">XRP</span></div>
     <div class="seg" id="tfs" title="Chart timeframe"><span data-tf="5m">5m</span><span class="on" data-tf="15m">15m</span><span data-tf="4H">4h</span></div>
     <div class="seg" id="views"><span class="on" data-view="trade">Buy / Sell</span><span data-view="patterns">Patterns</span><span data-view="indicators">Indicators</span></div>
+    <label class="sub" for="tzSel">Times</label> <select id="tzSel" aria-label="Display timezone" style="width:auto"><option value="IST">Asia/Kolkata (IST)</option><option value="UTC">UTC</option></select>
     <span class="sub" id="mode">connecting…</span>
   </div>
   <div class="sub" id="worker" style="margin-top:6px" aria-live="polite"></div>
@@ -107,7 +108,7 @@
     </div>
   </div>
   <div class="card">
-    <h2>Live chart (<span id="tTf">15m</span>) — <span class="muted">green dashed = take profit · red dashed = stop loss · white = entry · blue line = today's VWAP · times in IST</span></h2>
+    <h2>Live chart (<span id="tTf">15m</span>) — <span class="muted">green dashed = take profit · red dashed = stop loss · white = entry · blue line = today's VWAP · times in <span class="tzl">IST</span></span></h2>
     <div class="chart" id="tChart"></div>
   </div>
   <div class="card">
@@ -185,7 +186,10 @@
 <script src="patterns.js"></script>
 <script>
 "use strict";
-const SYMS = ["BTCUSDT", "ETHUSDT", "XRPUSDT"], IST_MS = 19800000, M15 = 900000, RR = 1.5, MIN_STOP_ATR = 0.5;
+/* Display timezone (all storage and logic is UTC). Fixed-offset zones only, so no daylight-saving ambiguity. */
+const TZS = { IST: { ms: 19800000, label: "IST", name: "Asia/Kolkata (UTC+05:30)" }, UTC: { ms: 0, label: "UTC", name: "UTC" } };
+let TZ = (function () { try { return TZS[localStorage.getItem("radar.tz")] || TZS.IST; } catch (e) { return TZS.IST; } })();
+const SYMS = ["BTCUSDT", "ETHUSDT", "XRPUSDT"], M15 = 900000, RR = 1.5, MIN_STOP_ATR = 0.5;
 const SHORT = { DOJI:"Doji", SPIN:"Spin", MARU_UP:"Maru", MARU_DN:"Maru", HAMMER:"Hammer", HANGING:"Hang", STAR_SHOOT:"Star",
   INV_HAMMER:"InvH", ENGULF_UP:"Engulf", ENGULF_DN:"Engulf", PIERCING:"Pierce", DARK_CLOUD:"DCloud", HARAMI_UP:"Harami",
   HARAMI_DN:"Harami", MORNING_STAR:"M-Star", EVENING_STAR:"E-Star", BO_UP:"BREAKOUT", BO_DN:"BREAKDOWN", BO_UP_WEAK:"breakout?",
@@ -208,9 +212,9 @@ const dp = p => p >= 1000 ? 1 : p >= 10 ? 2 : 4;
 const nf = (x, d) => (x === null || x === undefined || isNaN(x)) ? "—" : Number(x).toLocaleString("en-US", { maximumFractionDigits: d, minimumFractionDigits: d });
 const pc = (x, d = 0) => (x === null || x === undefined || isNaN(x)) ? "—" : (x * 100).toFixed(d) + "%";
 const usd = x => (x < 0 ? "−$" : "$") + Math.abs(x).toFixed(2);
-const istT = ms => new Date(ms + IST_MS).toISOString().slice(5, 16).replace("T", " ");
-const istHMS = ms => new Date(ms + IST_MS).toISOString().slice(11, 19);
-const fmtBoth = ms => new Date(ms).toISOString().slice(0, 16).replace("T", " ") + " UTC / " + new Date(ms + IST_MS).toISOString().slice(11, 16) + " IST";
+const istT = ms => new Date(ms + TZ.ms).toISOString().slice(5, 16).replace("T", " ");
+const istHMS = ms => new Date(ms + TZ.ms).toISOString().slice(11, 19);
+const fmtBoth = ms => new Date(ms).toISOString().slice(0, 16).replace("T", " ") + " UTC" + (TZ.ms ? " / " + new Date(ms + TZ.ms).toISOString().slice(11, 16) + " " + TZ.label : "");
 const esc = s => String(s).replace(/[&<>]/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[m]));
 const fundTxt = x => Number.isFinite(x) ? (x * 100).toFixed(4) + "%" : "unknown";   // missing funding is unknown, never 0
 const rr = x => (x === null || x === undefined) ? "—" : (x > 0 ? "+" : "") + x.toFixed(2) + "R";
@@ -278,15 +282,15 @@ function tradePlan(s, pf) {
       P.why = P.kind === "trade" ? `${st.trigger.name}: price ${st.trigger.dir > 0 ? "fell below" : "rose above"} the day's first 4-hour range and a 5-minute candle just closed back inside it.` : P.why;
       P.extraLines = rangeLines; return P;
     }
-    if (st.phase === "forming") return { kind: "wait", why: `The day's range is still being set (05:30–09:30 IST). So far ${nf(lo, d)} – ${nf(hi, d)}.`, lines: rangeLines,
-      levels: `<tr><td colspan="2">Signals start at <b>09:30 IST</b>, when the first 4-hour candle of the day closes.</td></tr>` };
+    if (st.phase === "forming") return { kind: "wait", why: `The day's range is still being set (00:00–04:00 UTC = 05:30–09:30 IST). So far ${nf(lo, d)} – ${nf(hi, d)}.`, lines: rangeLines,
+      levels: `<tr><td colspan="2">Signals start at <b>04:00 UTC (09:30 IST)</b>, when the first 4-hour candle of the day closes.</td></tr>` };
     if (st.phase === "nodata") return { kind: "none", why: "Today's 4-hour range is incomplete (missing candles), so this profile skips the day." };
     const parts = [];
     if (!st.doneS) parts.push(st.upBroken ? `<b class="down">SELL</b> if a 5-minute candle closes back below <b>${nf(hi, d)}</b> (price broke above it; stop would be ${nf(st.upExt, d)})`
                                           : `<b class="down">SELL</b> if price closes above <b>${nf(hi, d)}</b> and then a 5-minute candle closes back below it`);
     if (!st.doneL) parts.push(st.dnBroken ? `<b class="up">BUY</b> if a 5-minute candle closes back above <b>${nf(lo, d)}</b> (price broke below it; stop would be ${nf(st.dnExt, d)})`
                                           : `<b class="up">BUY</b> if price closes below <b>${nf(lo, d)}</b> and then a 5-minute candle closes back above it`);
-    if (!parts.length) return { kind: "none", why: "Both of today's signals have been used. A new range forms tomorrow 05:30–09:30 IST.", lines: rangeLines };
+    if (!parts.length) return { kind: "none", why: "Both of today's signals have been used. A new range forms tomorrow 00:00–04:00 UTC (05:30–09:30 IST).", lines: rangeLines };
     return { kind: "wait", why: `Waiting for a false breakout of today's range ${nf(lo, d)} – ${nf(hi, d)}.`, lines: rangeLines,
       levels: parts.map(x => `<tr><td colspan="2">${x}</td></tr>`).join("") };
   }
@@ -330,7 +334,7 @@ const CH = {};
 function setChartData(key, s, keepRange, tf) {
   const five = tf === "5m", A = resTf(tf, s); if (!A) return;
   const vw = A.res.vwap;
-  const k = CH[key], d = dp(A.c[A.c.length - 1].c), tm = t => (t + IST_MS) / 1000;
+  const k = CH[key], d = dp(A.c[A.c.length - 1].c), tm = t => (t + TZ.ms) / 1000;
   const pf = { type: "price", precision: d, minMove: Math.pow(10, -d) };
   k.cs.applyOptions({ priceFormat: pf }); k.vw.applyOptions({ priceFormat: pf });
   k.cs.setData(A.c.map(x => ({ time: tm(x.t), open: x.o, high: x.h, low: x.l, close: x.c })));
@@ -345,7 +349,7 @@ function drawForming(key) {
   const k = CH[key]; if (!k || !k.sym) return;
   const f = (k.tf === "5m" ? forming5 : k.tf === "4H" ? forming4 : forming)[k.sym];
   const r = k.tf === "5m" ? ((live5[k.sym] && live5[k.sym].rows) || []) : k.tf === "4H" ? ((live4[k.sym] && live4[k.sym].rows) || []) : rowsOf(k.sym), lastT = r.length ? +r[r.length - 1][0] : 0;
-  if (f && f.t > lastT) k.cs.update({ time: (f.t + IST_MS) / 1000, open: f.o, high: f.h, low: f.l, close: f.c });
+  if (f && f.t > lastT) k.cs.update({ time: (f.t + TZ.ms) / 1000, open: f.o, high: f.h, low: f.l, close: f.c });
 }
 function setLines(key, list) {
   const k = CH[key]; k.lines.forEach(l => k.cs.removePriceLine(l)); k.lines = [];
@@ -458,7 +462,7 @@ function checkPos(s, price) {               // runs on every live tick for every
     if (d * (price - pos.liq) <= 0 && d * (pos.liq - pos.sl) > 0) return closePos(pf, s, pos.liq, "liquidated");
     if (d * (price - pos.sl) <= 0) return closePos(pf, s, pos.sl, "stop loss");
     if (d * (price - pos.tp) >= 0) return closePos(pf, s, pos.tp, "take profit");
-    if (pf === "aggressive" && Date.now() >= (Math.floor(pos.opened / 86400000) + 1) * 86400000) return closePos(pf, s, price, "day ended (05:30 IST)");
+    if (pf === "aggressive" && Date.now() >= (Math.floor(pos.opened / 86400000) + 1) * 86400000) return closePos(pf, s, price, "UTC day ended (05:30 IST)");
   });
 }
 function renderPos() {
@@ -469,7 +473,7 @@ function renderPos() {
   const k = profile + s + pos.opened;
   if (el.dataset.k !== k) {                   // build once per position; ticks only update numbers
     el.dataset.k = k;
-    el.innerHTML = `<div class="ok"><b>Open paper ${pos.dir > 0 ? "BUY" : "SELL"}</b> · ${pos.margin} USDT × ${pos.lev} · entry ${nf(pos.entry, d)} · since ${istT(pos.opened)} IST
+    el.innerHTML = `<div class="ok"><b>Open paper ${pos.dir > 0 ? "BUY" : "SELL"}</b> · ${pos.margin} USDT × ${pos.lev} · entry ${nf(pos.entry, d)} · since ${istT(pos.opened)} ${TZ.label}
       <div class="pnl" id="tPnl"></div>
       <div class="sub">Stop loss ${nf(pos.sl, d)} · take profit ${nf(pos.tp, d)}${pos.dir * (pos.liq - pos.sl) > 0 ? ` · <span class="warn">liquidation ${nf(pos.liq, d)} comes first</span>` : ""}</div>
       <button id="tClose" style="margin-top:8px">Close now</button></div>`;
@@ -484,7 +488,7 @@ function renderLog() {
   const tot = log.reduce((a, x) => a + x.pnl, 0), wins = log.filter(x => x.pnl > 0).length;
   const byPf = PROFS.map(pf => { const L = log.filter(x => x.pf === pf); return L.length ? `${Patterns.PROFILES[pf].name}: ${L.length} trades, ${usd(L.reduce((a, x) => a + x.pnl, 0))}` : null; }).filter(Boolean).join(" · ");
   $("tLog").innerHTML = `<div>${log.length} trades · ${wins} winners · total <b class="${tot >= 0 ? "up" : "down"}">${usd(tot)}</b> <span class="sub">${byPf}</span> <button id="tClear" style="margin-left:10px;padding:3px 10px">Clear log</button></div>
-    <table style="margin-top:6px"><tr><th>Closed (IST)</th><th>Profile</th><th>Coin</th><th>Side</th><th>Signal</th><th class="r">Entry</th><th class="r">Exit</th><th>Why</th><th class="r">Result</th></tr>` +
+    <table style="margin-top:6px"><tr><th>Closed (${TZ.label})</th><th>Profile</th><th>Coin</th><th>Side</th><th>Signal</th><th class="r">Entry</th><th class="r">Exit</th><th>Why</th><th class="r">Result</th></tr>` +
     log.slice(0, 30).map(x => `<tr><td>${istT(x.closed)}</td><td>${x.pf ? Patterns.PROFILES[x.pf].name : "—"}</td><td>${x.sym.replace("USDT", "")}</td><td class="${x.dir > 0 ? "up" : "down"}">${x.dir > 0 ? "BUY" : "SELL"}</td>
       <td class="sub">${esc(x.signal || "")}</td><td class="r">${nf(x.entry, dp(x.entry))}</td><td class="r">${nf(x.exit, dp(x.exit))}</td><td>${esc(x.reason)}</td>
       <td class="r ${x.pnl >= 0 ? "up" : "down"}">${usd(x.pnl)}</td></tr>`).join("") + `</table>`;
@@ -505,7 +509,7 @@ function renderPatterns(keepRange) {
   const showCandle = $("showCandle").checked, showNeutral = $("showNeutral").checked;
   const vis = e => e.kind === "structure" || (showCandle && (e.dir !== 0 || showNeutral));
   setChartData("p", s, keepRange, tf);
-  const tm = t => (t + IST_MS) / 1000;
+  const tm = t => (t + TZ.ms) / 1000;
   CH.p.cs.setMarkers(res.events.filter(vis).map(e => ({ time: tm(e.t), position: e.dir > 0 ? "belowBar" : "aboveBar",
     color: e.dir > 0 ? "#2fbf71" : e.dir < 0 ? "#e5484d" : "#8b93a3", shape: e.dir > 0 ? "arrowUp" : e.dir < 0 ? "arrowDown" : "circle",
     size: e.kind === "structure" ? 2 : 1, text: SHORT[e.code] || e.code })));
@@ -535,7 +539,7 @@ function renderPatterns(keepRange) {
   $("levels").innerHTML = `<tr><td>Change 4h / 24h</td><td class="r">${sg(ch(16))} / ${sg(ch(96))}</td></tr>` +
     (s !== "BTCUSDT" && bch(96) !== null && ch(96) !== null ? `<tr><td>Versus BTC over the same 24h</td><td class="r">${sg(ch(96) - bch(96))} (${ch(96) > bch(96) ? "stronger" : "weaker"})</td></tr>` : "") +
     `<tr><td>Today's VWAP</td><td class="r">${nf(st.vwap, d)}</td></tr><tr><td>20-bar (5h) high / low</td><td class="r">${nf(st.hi20, d)} / ${nf(st.lo20, d)}</td></tr>` +
-    `<tr><td>Today's high / low (since 05:30 IST)</td><td class="r">${nf(st.sessionHigh, d)} / ${nf(st.sessionLow, d)}</td></tr><tr><td>Typical 15-minute move</td><td class="r">${st.atrPct.toFixed(3)}%</td></tr>`;
+    `<tr><td>Today's high / low (since 00:00 UTC = 05:30 IST)</td><td class="r">${nf(st.sessionHigh, d)} / ${nf(st.sessionLow, d)}</td></tr><tr><td>Typical 15-minute move</td><td class="r">${st.atrPct.toFixed(3)}%</td></tr>`;
 
   const m = MARKET && MARKET.symbols[s] || {}, tk = m.ticker, ls = m.long_short_accounts || [], tb = m.taker_buy_sell || [];
   const share = k => { let b = 0, se = 0; tb.slice(-k).forEach(x => { b += x[1]; se += x[2]; }); return b + se > 0 ? b / (b + se) : null; };
@@ -556,7 +560,7 @@ function renderPatterns(keepRange) {
     (base ? `<div class="sub" style="margin-top:6px">History: a 100× long opened at a random time was liquidated within 4 hours ${pc(base.long_liq100)} of the time; a short, ${pc(base.short_liq100)}.</div>` : "");
 
   const evs = res.events.filter(vis).slice(-25).reverse();
-  $("events").innerHTML = `<tr><th>Time (IST)</th><th>Pattern</th><th>Says</th><th>What it means</th><th class="r">Cases</th><th class="r">Right side 4h</th><th class="r">After fees</th><th class="r">Later 30%</th><th></th></tr>` +
+  $("events").innerHTML = `<tr><th>Time (${TZ.label})</th><th>Pattern</th><th>Says</th><th>What it means</th><th class="r">Cases</th><th class="r">Right side 4h</th><th class="r">After fees</th><th class="r">Later 30%</th><th></th></tr>` +
     evs.map(e => { const al = e.dir !== 0 && e.trend === e.dir, hh = (al && hist(s, e.code + "|T")) || hist(s, e.code);
       return `<tr><td style="white-space:nowrap">${istT(e.t + M15)}</td><td><b>${esc(e.name)}</b>${al ? ` <span class="pill">with 1h trend</span>` : ""}</td>
         <td class="${e.dir > 0 ? "up" : e.dir < 0 ? "down" : "muted"}">${e.dir > 0 ? "up" : e.dir < 0 ? "down" : "undecided"}</td>
@@ -624,11 +628,11 @@ function renderJournal() {
       <td>${t.status === "open" ? `<span class="warn">open</span>` : esc(t.how)}</td><td class="r ${t.usd > 0 ? "up" : t.usd < 0 ? "down" : ""}">${t.status === "open" ? "—" : usd(t.usd)}</td></tr>`; }).join("");
   el.innerHTML = `<div>Started ${esc(JOURNAL.started_utc)} UTC · last run ${esc(JOURNAL.updated_utc || "—")} UTC. These are forward results: none of these trades existed when the rules were written.</div>
     <div class="profiles">${["aggressive", "neutral", "careful"].map(card).join("")}</div>
-    ${rows ? `<table style="margin-top:10px"><tr><th>Entry (IST)</th><th>Profile</th><th>Coin</th><th>Side</th><th>Signal</th><th class="r">Entry</th><th class="r">Stop / target</th><th>Result</th><th class="r">$</th></tr>${rows}</table>` : `<div style="margin-top:8px">No trades yet: waiting for the first signal.</div>`}`;
+    ${rows ? `<table style="margin-top:10px"><tr><th>Entry (${TZ.label})</th><th>Profile</th><th>Coin</th><th>Side</th><th>Signal</th><th class="r">Entry</th><th class="r">Stop / target</th><th>Result</th><th class="r">$</th></tr>${rows}</table>` : `<div style="margin-top:8px">No trades yet: waiting for the first signal.</div>`}`;
 }
 const IND_INFO = {
   EMA: { name: "EMA 20 / 50 (moving averages)", what: "The average price of the last 20 and 50 candles, giving more weight to the newest ones. Price above the EMA, and the 20 above the 50, means the recent trend is up." },
-  VWAP: { name: "VWAP (volume-weighted average price)", what: "The average price everyone has paid today, weighted by how much was traded at each price. Resets at 05:30 IST. Above it, today's buyers are in profit; below it, they are not." },
+  VWAP: { name: "VWAP (volume-weighted average price)", what: "The average price everyone has paid today, weighted by how much was traded at each price. Resets at 00:00 UTC (05:30 IST). Above it, today's buyers are in profit; below it, they are not." },
   RSI: { name: "RSI 14 (relative strength index)", what: "Compares the size of recent up-moves with recent down-moves on a 0–100 scale. Above 70 = stretched up (\"overbought\"), below 30 = stretched down (\"oversold\"), 50 = balanced. In a strong trend it can stay stretched for a long time." },
   MACD: { name: "MACD 12, 26, 9", what: "The gap between a fast (12) and a slow (26) moving average, and a 9-candle average of that gap (the signal line). The histogram is the difference: above zero and growing means upward momentum is building." },
   Stochastic: { name: "Stochastic 14, 3", what: "Where the latest close sits inside the high–low range of the last 14 candles, 0–100. Above 80 = closing near the top of the range, below 20 = near the bottom. Faster and jumpier than RSI." },
@@ -641,7 +645,7 @@ function renderIndicators() {
   const s = sym, A = resTf(tf, s); $("iSym").textContent = s + " · " + TF_NAME[tf] + " candles";
   if (!A) return;
   const c = A.c, i = c.length - 1, ind = Patterns.indicators(c), px = c[i].c, d = dp(px), at = A.res.atr[i], vw = A.res.vwap[i];
-  $("iTime").textContent = istT(c[i].t + M15) + " IST";
+  $("iTime").textContent = istT(c[i].t + M15) + " " + TZ.label;
   const f = (x, k = 1) => x === null || x === undefined ? "—" : x.toFixed(k);
   const obv16 = ind.obv[i] - ind.obv[i - 16];
   const now = {
@@ -771,13 +775,13 @@ function scheduleRetry() { clearTimeout(retryT); retryT = setTimeout(connectStre
 function setMode() {
   if (WMODE) {                                // all market data comes from the local worker; this tab has no Bitget socket
     const t = lastData[sym], age = t ? Date.now() - t : null, c = sym.replace("USDT", "");
-    if (age !== null && age < DATA_STALE_MS) $("mode").innerHTML = `<span class="up">● LIVE</span> · via local worker · last ${c} update received ${istHMS(t)} IST (${(age / 1000).toFixed(1)} s ago)`;
+    if (age !== null && age < DATA_STALE_MS) $("mode").innerHTML = `<span class="up">● LIVE</span> · via local worker · last ${c} update received ${istHMS(t)} ${TZ.label} (${(age / 1000).toFixed(1)} s ago)`;
     else if (t) $("mode").innerHTML = `<span class="warn">◐ STALE</span> · the local worker has no new ${c} data for ${Math.round(age / 1000)} s · prices below may be old`;
     else $("mode").innerHTML = `<span class="warn">◐ RECOVERING</span> · waiting for the local worker's first ${c} data`;
     return;
   }
   const open = ws && ws.readyState === 1, t = lastData[sym], age = t ? Date.now() - t : null;
-  if (open && age !== null && age < DATA_STALE_MS) $("mode").innerHTML = `<span class="up">● LIVE</span> · Bitget public data · last ${sym.replace("USDT", "")} update ${istHMS(t)} IST (${(age / 1000).toFixed(1)} s ago)`;
+  if (open && age !== null && age < DATA_STALE_MS) $("mode").innerHTML = `<span class="up">● LIVE</span> · Bitget public data · last ${sym.replace("USDT", "")} update ${istHMS(t)} ${TZ.label} (${(age / 1000).toFixed(1)} s ago)`;
   else if (open && t) $("mode").innerHTML = `<span class="warn">◐ STALE</span> · connected, but no ${sym.replace("USDT", "")} market data for ${Math.round(age / 1000)} s · prices below may be old`;
   else if (open) $("mode").innerHTML = `<span class="warn">◐ RECOVERING</span> · connected, waiting for the first market data`;
   else if (live[sym]) $("mode").innerHTML = `<span class="warn">○ DISCONNECTED</span> · reconnecting to the live stream… prices below are from the last update`;
@@ -862,7 +866,7 @@ function renderNews() {
   if (!NEWS || !NEWS.items) { $("newsBody").textContent = "News is not available from the worker."; return; }
   if (!NEWS.items.length) { $("newsBody").textContent = "No items fetched yet (sources are polled every 10 minutes)."; return; }
   const coin = sym.replace("USDT", "");
-  $("newsBody").innerHTML = `<table><tr><th>Published (IST)</th><th>Seen here</th><th>Publisher</th><th>Headline</th><th>Type</th><th>Tags</th></tr>` +
+  $("newsBody").innerHTML = `<table><tr><th>Published (${TZ.label})</th><th>Seen here</th><th>Publisher</th><th>Headline</th><th>Type</th><th>Tags</th></tr>` +
     NEWS.items.map(n => `<tr><td style="white-space:nowrap">${n.published_ts ? istT(n.published_ts) : "unknown"}</td><td style="white-space:nowrap">${istT(n.discovered_ts)}</td>
       <td>${esc(n.source === "sec_press" ? "SEC" : n.source === "fed_press_all" ? "Federal Reserve" : n.publisher)}</td>
       <td><a href="${attr(n.url)}" target="_blank" rel="noopener noreferrer">${esc(n.title)}</a>${n.revisions_known ? ` <span class="pill">revised</span>` : ""}</td>
@@ -878,11 +882,11 @@ function renderAnalysts() {
   const cards = PAPER.portfolios.map(pf => {
     const dec = (PAPER.recent_decisions || []).find(x => x.analyst === pf.analyst && x.instrument_id === id);
     const it = dec ? INTENT_TXT[dec.intent] || [dec.intent, "s-none"] : ["NOT YET", "s-none"];
-    const st = dec && dec.setup ? `<div class="sub">entry ≈ ${nf(dec.setup.entry_reference, d)} · stop ${nf(dec.setup.stop, d)} · target ${nf(dec.setup.target, d)} (${dec.setup.rr}R) · valid until ${istT(dec.setup.expires_ts)} IST</div>` : "";
+    const st = dec && dec.setup ? `<div class="sub">entry ≈ ${nf(dec.setup.entry_reference, d)} · stop ${nf(dec.setup.stop, d)} · target ${nf(dec.setup.target, d)} (${dec.setup.rr}R) · valid until ${istT(dec.setup.expires_ts)} ${TZ.label}</div>` : "";
     const open = (PAPER.open_positions || []).filter(x => x.analyst === pf.analyst);
     return `<div class="pf" style="cursor:default"><span class="nm">${esc(AN[pf.analyst] || pf.analyst)}</span><span class="tf">${esc(pf.policy)}${pf.kill_switch ? " · KILL SWITCH ON" : ""}</span>
       <div class="sg ${it[1]}">${esc(it[0])}${dec && dec.intent.startsWith("OPEN") ? ` <span class="pill">paper</span>` : ""}</div>
-      <div class="sub">${dec ? `<b>${esc(dec.code)}</b> — ${esc(dec.why || "")} · bar closed ${istT(dec.bar_close_ts)} IST` : "No decision for this coin since the worker started (decisions happen at each 15-minute close)."}</div>${st}
+      <div class="sub">${dec ? `<b>${esc(dec.code)}</b> — ${esc(dec.why || "")} · bar closed ${istT(dec.bar_close_ts)} ${TZ.label}` : "No decision for this coin since the worker started (decisions happen at each 15-minute close)."}</div>${st}
       <div class="rec">Paper equity ${nf(pf.equity + pf.unrealised, 2)} USDT (start 1,000) · open ${open.length} · closed ${pf.closed} (${pf.evaluable_closed} evaluable)
         · <b>${pf.edge_status === "NO_DEMONSTRATED_EDGE" ? "No demonstrated edge" : esc(pf.edge_status)}</b></div></div>`;
   }).join("");
@@ -955,6 +959,10 @@ function setTf(t) {
 document.querySelectorAll("#tfs span").forEach(x => x.onclick = () => setTf(x.dataset.tf));
 $("showCandle").onchange = $("showNeutral").onchange = () => renderAll(true);
 $("tMargin").oninput = $("tLev").onchange = () => renderTrade();
+$("tzSel").value = TZ.label;
+document.querySelectorAll(".tzl").forEach(e => e.textContent = TZ.label);
+$("tzSel").onchange = () => { TZ = TZS[$("tzSel").value] || TZS.IST; try { localStorage.setItem("radar.tz", TZ.label); } catch (e) {}
+  document.querySelectorAll(".tzl").forEach(e => e.textContent = TZ.label); renderAll(false); renderLog(); setMode(); if (WMODE) { renderAnalysts(); renderNews(); } };
 
 (async () => {
   CH.t = makeChart($("tChart")); CH.p = makeChart($("chart"));

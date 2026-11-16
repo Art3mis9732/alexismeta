@@ -201,3 +201,10 @@ Each entry records: revision · command/procedure · when (UTC) · expected · o
   and logged `possible_trade_gap`. This is live evidence of the reconnect path.
 * That 1-second gap would have blocked decisions for 15 minutes under the original rule, so coverage was re-scoped to
   what v1 consumes (D-015). Fixture test added; `npm test` **98 pass**.
+
+## V-017 Display timezone selector — 2026-11-16 ~08:48 UTC
+* Header selector: Asia/Kolkata (default) or UTC; fixed offsets, so there is no daylight-saving ambiguity. Storage and
+  logic stay in UTC ms. Chart axis, live labels, tables and analyst/news cards follow the choice, and it persists
+  across reloads. Explanatory fixed times now give both zones (e.g. "00:00–04:00 UTC = 05:30–09:30 IST").
+* Playwright **23/23** against a current-code worker (port 8787) and the static server. Against the older long-run
+  worker (8790, started before the news code) the news check fails only because that build has no `/api/news`.

@@ -27,7 +27,7 @@ Evidence references point to `verification.md` entries (V-xxx).
 | D-02 | P1§3 | Canonical event/feature schema shared by live/replay/backtest | none | A | 2 | schema tests | PARTIAL (market events done; replay/features pending) | V-004 |
 | D-03 | P1§4 | Capability registry with live probe results, access dates | partial (SOURCES.md for rules only) | A | 2 | `data-sources.md` | IN_PROGRESS | – |
 | D-04 | P1§5 | Observation fields: venue, native id, base/quote/settle, class, linear/inverse, multiplier, exch ts, recv ts, persist ts, seq/trade id, source, schema ver, quality flags | none | A | 2 | schema + tests | VERIFIED (raw-record reference = quarantine copy only for rejected msgs) | V-004, V-005 |
-| D-05 | P1§5 | UTC internal; selectable display TZ default Asia/Kolkata | IST hard-coded | A | 3 | UI test | PARTIAL (worker stores UTC ms; UI still fixed IST, no selector yet) | – |
+| D-05 | P1§5 | UTC internal; selectable display TZ default Asia/Kolkata | IST hard-coded | A | 3 | UI test | VERIFIED for Asia/Kolkata + UTC (fixed offsets; persisted choice; Playwright V-017). Arbitrary/DST zones not offered |
 | D-06 | P1§5 | last/bid/ask/mark/index kept distinct | partly (ticker) | A | 2 | schema | VERIFIED | V-004, V-005 |
 | D-07 | P1§5 | REST snapshots + paginated backfill | partial (python) | A | 2 | tests + smoke | PARTIAL (≤1000-candle window backfill; deeper pagination stays in python scripts; unrecoverable gaps logged) | V-004 |
 | D-08 | P1§5 | WS heartbeat, supervision, backoff+jitter | partial (browser, no jitter) | A | 2 | fault tests | VERIFIED (worker; browser stream unchanged) | V-004 |

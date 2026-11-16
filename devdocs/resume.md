@@ -1,7 +1,7 @@
 # Resume here
 
-**Branch:** `claude/friendly-dirac-ouvgn4`. Remote is at `bb5ff34`; **later commits are local only** until the user
-approves a push (third prompt: the earlier push approval is not blanket). No PR, merge or deploy.
+**Branch:** `claude/friendly-dirac-ouvgn4`. Remote is at `e3034ae` (pushed 2026-11-16 11:31 UTC with explicit approval
+for that range). Each further push needs its own approval (third prompt). No PR, merge or deploy.
 **State:** stages A–C of the third prompt verified; D partial. `npm test` 129/129; `tests_e2e/monitor.e2e.js` 28/28;
 `tests_e2e/status.e2e.js` 23/23; pytest 22/22. Evidence V-019…V-023; audit in `financial-audit.md`; tabs in
 `tab-inventory.md`.

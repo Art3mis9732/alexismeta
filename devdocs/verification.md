@@ -289,3 +289,12 @@ Each entry records: revision · command/procedure · when (UTC) · expected · o
 * Expectation from the legacy 180-day history of the same entry rule (legacy Neutral = Balanced v1's entry): 28–33
   entries per week per coin, so a natural Balanced entry is likely within hours of continuous running. The same history
   shows that rule **lost money after fees (−0.47R to −0.71R per trade)**.
+
+## V-024 Real unclean stop of the forward worker (2026-11-16 ~11:10–11:32 UTC)
+* The cloud session's process was restarted, which killed the forward worker without a shutdown record (last database
+  write 11:10). On the next start (11:31:58, build `e3034ae487d0`, fingerprint = working tree) the worker logged
+  `unclean_shutdown_detected` and recorded the downtime as a coverage gap. This is the first real, unplanned crash
+  recovery of the worker; previously only a fixture covered it.
+* Consequence for the forward track: the 11:15 and 11:30 UTC bars have **no decisions (missed)**. They are not
+  reconstructed; a replay made now would not be an original forward decision.
+* Forward ledger at 11:32: 36 original decisions (08:45, 09:00, 10:45, 11:00), 0 positions, 0 fills.

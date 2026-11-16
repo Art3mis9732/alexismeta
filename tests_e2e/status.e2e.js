@@ -44,6 +44,7 @@ async function main() {
   // 1. worker-served
   if (workerUrl) {
     const { ctx, page, errors, sockets, tickerBodies } = await open(workerUrl);
+    await page.locator('#views span[data-view="trade"]').click();   // the paper monitor is the default view in worker mode; these checks cover the Buy/Sell view
     await page.waitForFunction(() => /LIVE/.test(document.getElementById("mode").innerText), null, { timeout: 30000 }).catch(() => {});
     const mode = await text(page, "#mode");
     check("worker page: LIVE from real data", /● LIVE/.test(mode) && /s ago/.test(mode), mode);

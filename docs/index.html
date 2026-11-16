@@ -57,6 +57,18 @@
   .pf .nm { font-weight:700; } .pf .tf { font-size:11px; color:var(--muted); margin-left:6px; }
   .pf .sg { font-size:22px; font-weight:800; margin-top:4px; }
   .pf .rec { font-size:12px; color:var(--muted); margin-top:4px; }
+  /* paper monitor */
+  .paperbar { border:1px dashed var(--warn); color:var(--warn); padding:6px 10px; border-radius:8px; font-weight:700; letter-spacing:.04em; }
+  .testbar { border:2px solid var(--down); background:repeating-linear-gradient(45deg,#2a1214,#2a1214 10px,#1c0d0e 10px,#1c0d0e 20px); color:#ffb4b6; padding:8px 12px; border-radius:8px; font-weight:800; margin-bottom:8px; }
+  .chips { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  .chip { border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-size:12px; min-width:150px; }
+  .chip b { display:block; font-size:11px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.05em; }
+  .chip.ok { border-color:#2a4a38; } .chip.warnc { border-color:var(--warn); } .chip.bad { border-color:var(--down); }
+  .mrow { cursor:pointer; } .mrow:hover, .mrow:focus { background:#1c2029; outline:1px solid var(--accent); }
+  .num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .frozen { opacity:.55; }
+  .kv td:first-child { color:var(--muted); width:42%; }
+  button:focus-visible, select:focus-visible, .seg span:focus-visible, a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 </style>
 </head>
 <body>
@@ -65,7 +77,7 @@
   <div class="bar2">
     <div class="seg" id="coins"><span class="on" data-sym="BTCUSDT">BTC</span><span data-sym="ETHUSDT">ETH</span><span data-sym="XRPUSDT">XRP</span></div>
     <div class="seg" id="tfs" title="Chart timeframe"><span data-tf="5m">5m</span><span class="on" data-tf="15m">15m</span><span data-tf="4H">4h</span></div>
-    <div class="seg" id="views"><span class="on" data-view="trade">Buy / Sell</span><span data-view="patterns">Patterns</span><span data-view="indicators">Indicators</span></div>
+    <div class="seg" id="views" role="tablist" aria-label="Views"><span data-view="monitor" tabindex="0" role="tab">Paper monitor</span><span class="on" data-view="trade" tabindex="0" role="tab">Buy / Sell</span><span data-view="patterns" tabindex="0" role="tab">Patterns</span><span data-view="indicators" tabindex="0" role="tab">Indicators</span></div>
     <label class="sub" for="tzSel">Times</label> <select id="tzSel" aria-label="Display timezone" style="width:auto"><option value="IST">Asia/Kolkata (IST)</option><option value="UTC">UTC</option></select>
     <span class="sub" id="mode">connecting…</span>
   </div>
@@ -74,6 +86,28 @@
 </header>
 
 <main>
+<!-- ======================= PAPER MONITOR (worker-backed; the browser only renders backend views) ======================= -->
+<section id="monitorView" class="hidden" aria-label="Live paper-trading monitor">
+  <div class="card">
+    <div id="mTest"></div>
+    <div class="paperbar" role="note">PAPER · SIMULATED EXECUTION — no orders are sent to any exchange. Not real-money performance.</div>
+    <div class="chips" id="mStatus" aria-live="polite"></div>
+    <div class="sub" id="mBuild" style="margin-top:6px"></div>
+  </div>
+  <div class="card"><h2>Paper accounts — independent portfolios, shown side by side, never added together</h2><div id="mAccounts" class="sub">Waiting for the local worker…</div></div>
+  <div class="card"><h2>Open paper positions <span class="muted" id="mPosAsOf"></span></h2><div id="mPositions" class="sub"></div></div>
+  <div class="card hidden" id="mDetailCard"><h2>Position detail <button id="mDetailClose" style="float:right;padding:2px 10px">Close detail</button></h2><div id="mDetail"></div>
+    <div class="sub" id="mChartNote" style="margin-top:8px"></div><div class="chart" id="mChart" style="height:260px"></div></div>
+  <div class="card"><h2>Why there is or is not a trade — last decision per analyst for <span id="mDiagSym"></span></h2><div id="mDiag" class="sub"></div></div>
+  <div class="card"><h2>Activity timeline
+      <label class="sub" style="text-transform:none;letter-spacing:0;margin-left:10px">Type <select id="mFType" style="width:auto"><option value="">all</option></select></label>
+      <label class="sub" style="text-transform:none;letter-spacing:0">Analyst <select id="mFAnalyst" style="width:auto"><option value="">all</option><option value="risk_taker">Risk Taker</option><option value="balanced">Balanced</option><option value="defensive">Defensive</option></select></label>
+      <label class="sub" style="text-transform:none;letter-spacing:0">Coin <select id="mFCoin" style="width:auto"><option value="">all</option><option>BTCUSDT</option><option>ETHUSDT</option><option>XRPUSDT</option></select></label></h2>
+    <div id="mActivity" class="sub"></div></div>
+  <div class="card"><h2>Closed paper positions</h2><div id="mClosed" class="sub"></div></div>
+  <div class="card"><h2>Strategy and model registry · research jobs</h2><div id="mRegistry" class="sub"></div></div>
+</section>
+
 <!-- ======================= BUY / SELL VIEW ======================= -->
 <section id="tradeView">
   <div class="card hidden" id="analystsCard">
@@ -116,7 +150,7 @@
     <div id="journal" class="sub">Loading…</div>
   </div>
   <div class="card">
-    <h2>Your own paper trades (saved in this browser)</h2>
+    <h2>Manual sandbox trades — this browser only, not the worker's paper ledger, not part of any account total</h2>
     <div id="tLog" class="sub">No trades yet.</div>
   </div>
 </section>
@@ -184,6 +218,7 @@
 
 <script src="vendor/lightweight-charts.standalone.production.js"></script>
 <script src="patterns.js"></script>
+<script src="monitor.js"></script>
 <script>
 "use strict";
 /* Display timezone (all storage and logic is UTC). Fixed-offset zones only, so no daylight-saving ambiguity. */
@@ -676,6 +711,7 @@ function renderAll(keepRange) {
   if (tf === "4H") analyze4(sym);
   if (view === "trade") { setChartData("t", sym, keepRange, tf); renderTrade(); renderModel(); renderJournal(); }
   else if (view === "indicators") renderIndicators();
+  else if (view === "monitor") renderMonitor(true);
   else renderPatterns(keepRange);
 }
 let lastLight = 0;
@@ -773,6 +809,12 @@ function connectStream() {
 }
 function scheduleRetry() { clearTimeout(retryT); retryT = setTimeout(connectStream, Math.min(30000, 2000 * Math.pow(2, retries++))); }
 function setMode() {
+  if (WORKER_LOST && !WMODE) {                // the page came from a worker that is now gone: only raw prices are live
+    const open = ws && ws.readyState === 1, t = lastData[sym], age = t ? Date.now() - t : null, fresh = open && age !== null && age < DATA_STALE_MS;
+    $("mode").innerHTML = `<span class="down">○ WORKER DISCONNECTED</span> · analysts, paper engine and ledger are <b>not</b> live · ` +
+      (fresh ? `market prices only, from this browser's own Bitget feed (${istHMS(t)} ${TZ.label})` : `market prices stale too`);
+    return;
+  }
   if (WMODE) {                                // all market data comes from the local worker; this tab has no Bitget socket
     const t = lastData[sym], age = t ? Date.now() - t : null, c = sym.replace("USDT", "");
     if (age !== null && age < DATA_STALE_MS) $("mode").innerHTML = `<span class="up">● LIVE</span> · via local worker · last ${c} update received ${istHMS(t)} ${TZ.label} (${(age / 1000).toFixed(1)} s ago)`;
@@ -807,7 +849,7 @@ document.addEventListener("visibilitychange", async () => {
  * When this page is served by server/main.js, it reads tickers and candles from the worker's API and opens NO
  * connection to Bitget itself: one collector per machine, however many tabs are open. Candles marked final=1 by the
  * worker are the closed bars; the newest final=0 bar is the forming one. */
-let WMODE = false, workerLoop = null;
+let WMODE = false, workerLoop = null, WORKER_LOST = false;
 const wid = s => "bitget:perp:" + s;
 async function apiJson(p) { const r = await fetch(p, { cache: "no-store" }); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }
 async function workerCandles(s, gran, limit) {
@@ -896,11 +938,12 @@ function renderAnalysts() {
 }
 function startWorkerMode() {
   WMODE = true; if (!workerLoop) workerLoop = setInterval(workerTick, 2000); workerTick();
-  loadPaper(); setInterval(() => { if (WMODE) loadPaper(); }, 10000);
-  loadNews(); setInterval(() => { if (WMODE) loadNews(); }, 60000);
+  loadPaper();
+  loadNews(); if (!startWorkerMode.timers) { startWorkerMode.timers = true; setInterval(() => { if (WMODE) loadPaper(); }, 10000); setInterval(() => { if (WMODE) loadNews(); }, 60000); }
+  monitorStart();
 }
 function leaveWorkerMode() {
-  WMODE = false; clearInterval(workerLoop); workerLoop = null; renderAnalysts(); renderNews();
+  WMODE = false; WORKER_LOST = true; clearInterval(workerLoop); workerLoop = null; renderAnalysts(); renderNews(); monitorLost();
   connectStream(); setMode();
 }
 
@@ -913,6 +956,10 @@ async function pollWorker() {
   const first = WORKER === undefined; WORKER = h;
   const el = $("worker");
   if (!h && WMODE) { leaveWorkerMode(); el.innerHTML = `<span class="down">Local worker stopped responding</span> — switched to this browser's own Bitget stream.`; return; }
+  if (h && WORKER_LOST && !WMODE) {            // the worker is back: return to backend data and reconcile from a fresh snapshot
+    WORKER_LOST = false; if (ws) { ws.onclose = null; try { ws.close(); } catch (e) {} ws = null; } clearTimeout(retryT); clearInterval(pingT);
+    startWorkerMode();                           // monitorStart() inside reloads the backend snapshot ("worker recovered")
+  }
   if (!h) {
     el.innerHTML = first || !workerT ? `Execution: <b>analysis only</b> — no orders are ever sent to Bitget (paper trades below are simulated in this browser). No local worker on this page.`
                                      : `<span class="down">Local worker not responding</span> — the page falls back to this browser's own stream.`;
@@ -946,6 +993,7 @@ document.querySelectorAll("#coins span").forEach(t => t.onclick = async () => {
 document.querySelectorAll("#views span").forEach(t => t.onclick = () => {
   document.querySelectorAll("#views span").forEach(x => x.classList.remove("on")); t.classList.add("on");
   view = t.dataset.view;
+  $("monitorView").classList.toggle("hidden", view !== "monitor");
   $("tradeView").classList.toggle("hidden", view !== "trade");
   $("patternsView").classList.toggle("hidden", view !== "patterns");
   $("indicatorsView").classList.toggle("hidden", view !== "indicators");
@@ -957,6 +1005,8 @@ function setTf(t) {
   renderAll(false);
 }
 document.querySelectorAll("#tfs span").forEach(x => x.onclick = () => setTf(x.dataset.tf));
+document.querySelectorAll("#views span, #coins span, #tfs span").forEach(x => { if (!x.hasAttribute("tabindex")) x.tabIndex = 0;
+  x.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); x.click(); } }); });
 $("showCandle").onchange = $("showNeutral").onchange = () => renderAll(true);
 $("tMargin").oninput = $("tLev").onchange = () => renderTrade();
 $("tzSel").value = TZ.label;
@@ -975,7 +1025,7 @@ $("tzSel").onchange = () => { TZ = TZS[$("tzSel").value] || TZS.IST; try { local
   tf = Patterns.PROFILES[profile].tf; document.querySelectorAll("#tfs span").forEach(x => x.classList.toggle("on", x.dataset.tf === tf));
   await Promise.all(SYMS.flatMap(x => [fetchRest(x), fetchRest(x, "5m"), fetchRest(x, "4H")]));
   renderAll(false);
-  if (WMODE) startWorkerMode(); else connectStream();
+  if (WMODE) { startWorkerMode(); document.querySelector('#views span[data-view="monitor"]').click(); } else { connectStream(); renderMonitor(true); }
   setInterval(async () => { await loadSnapshot(); if (view === "trade") { renderModel(); renderJournal(); } }, 300000);
   setInterval(async () => { await Promise.all([fetchRest(sym), fetchRest(sym, "5m"), fetchRest(sym, "4H")]); renderAll(true); }, 300000);
 })();

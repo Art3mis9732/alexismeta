@@ -36,6 +36,10 @@ function args(argv) {
 
 function buildApi({ store, health, collector, startedAt, ledger, getEngine = () => null, news = null }) {
   const num = v => v === null || v === undefined ? null : Number(v);
+  let counts = null, countsAt = 0;                      // COUNT(*) over millions of rows is slow: refresh at most once a minute
+  const rowCounts = () => { if (!counts || Date.now() - countsAt > 60000) { countsAt = Date.now();
+    counts = { trades: store.count("trades"), candles: store.count("candles"), tickers: store.count("tickers"), book_tops: store.count("book_tops"), quarantine: store.count("quarantine"), as_of: countsAt }; }
+    return counts; };
   return {
     hasInstrument: id => !!store.instrument(id),
     health: () => ({
@@ -46,7 +50,7 @@ function buildApi({ store, health, collector, startedAt, ledger, getEngine = () 
       books: collector.bookSummaries(),
       news_sources: news ? news.status() : [],
       store: { db_bytes: store.sizeBytes(), queue: store.queue.length, ...store.stats,
-        rows: { trades: store.count("trades"), candles: store.count("candles"), tickers: store.count("tickers"), book_tops: store.count("book_tops"), quarantine: store.count("quarantine") } },
+        rows: rowCounts() },
       upstream: { ws: collector.sup.stats, rest: collector.rest.stats }
     }),
     instruments: () => store.instruments().map(i => { const { raw_json, ...rest } = i; return rest; }),

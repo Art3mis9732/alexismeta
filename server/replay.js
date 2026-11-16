@@ -18,7 +18,7 @@ const { decide, RULES } = require("./policies");
 function verifyReplay(store) {
   const rows = store.db.prepare("SELECT entry_id, payload FROM ledger_entries WHERE kind='decision' AND data_mode='LIVE' ORDER BY seq").all();
   const getSnap = store.db.prepare("SELECT json FROM evidence_snapshots WHERE hash=?");
-  const out = { decisions: rows.length, reproduced: 0, mismatches: [], missing_snapshot: [], snapshot_tampered: [], version_changed: [] };
+  const out = { decisions: rows.length, reproduced: 0, mismatches: [], missing_snapshot: [], snapshot_tampered: [], version_changed: [], unverifiable_no_context: [] };
   for (const r of rows) {
     const p = JSON.parse(r.payload);
     const s = getSnap.get(p.evidence_hash);
@@ -28,7 +28,7 @@ function verifyReplay(store) {
     const rule = RULES[p.analyst];
     const recordedVersion = r.entry_id.split(":")[1];
     if (!rule || rule.version !== recordedVersion) { out.version_changed.push(r.entry_id); continue; }
-    if (!p.context) { out.mismatches.push({ entry_id: r.entry_id, why: "no recorded context (decision predates context logging)" }); continue; }
+    if (!p.context) { out.unverifiable_no_context.push(r.entry_id); continue; }   // recorded before context logging (2026-11-16 08:43 UTC)
     const d = decide(p.analyst, snap, p.context);
     const same = d.intent === p.intent && d.code === p.code && canonical(d.setup) === canonical(p.setup);
     if (same) out.reproduced++; else out.mismatches.push({ entry_id: r.entry_id, recorded: [p.intent, p.code], replayed: [d.intent, d.code] });

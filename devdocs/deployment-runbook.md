@@ -40,3 +40,15 @@ python -m pytest -q
   behaviour. The site keeps working without the worker (D-006).
 * Data: delete `data\worker\` to reset the worker DB. **Never** delete the ledger without a backup once Phase 2b
   exists.
+
+## Storage projection (measured 2026-11-16, 10-minute sample, BTC+ETH+XRP perps; NOT a long-run study)
+| table | rows/hour | retention | steady-state rows | approx size |
+|---|---|---|---|---|
+| trades | ~47,000 | 3 days | ~3.4 M | ~0.7 GB |
+| book_tops (20 levels, 1/s) | ~10,400 | 2 days | ~0.5 M | ~0.75 GB |
+| tickers (1/s) | ~10,000 | 7 days | ~1.7 M | ~0.4 GB |
+| candles (1m/5m/15m/4h) | ~290 | 1m: 90 days, others kept | ~0.4 M after 90 days | small |
+Expect roughly **2 GB** of disk at steady state (average ~300 bytes/row including indexes, from a 20 MB DB holding
+~57k rows). Busy markets produce more trades. Lower the retention in `server/store.js` (`DEFAULT_RETENTION_MS`) on small
+disks. Known limit: retention runs hourly as one DELETE per table, so the first prune after a long downtime can pause
+the worker briefly. Health row counts are cached for 60 s for the same reason.

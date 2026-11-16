@@ -208,3 +208,16 @@ Each entry records: revision · command/procedure · when (UTC) · expected · o
   across reloads. Explanatory fixed times now give both zones (e.g. "00:00–04:00 UTC = 05:30–09:30 IST").
 * Playwright **23/23** against a current-code worker (port 8787) and the static server. Against the older long-run
   worker (8790, started before the news code) the news check fails only because that build has no `/api/news`.
+
+## V-018 First fully covered live decisions — 09:00 UTC bar, 2026-11-16
+* 9 decisions at 09:00:07 (3 analysts × 3 coins), one evidence hash per coin. Snapshots: `missing: []`,
+  `coverage_complete: true`, data cut-off 24–38 ms before the decision, full-book depth within 10 bps (min side): BTC
+  ≈ 25.6 M, ETH ≈ 10.5 M, XRP ≈ 0.27 M USDT.
+* All three analysts: `WAIT NO_TRIGGER` on all coins (1h trend down and price below VWAP, but no accepted trigger;
+  XRP's bar had a bearish engulfing pattern, which is not an entry trigger for any v1 policy). The analysts agreed
+  because the evidence offered nothing to disagree about; disagreement is shown in the fixture scenarios (V-012).
+* Post-checks ~09:00:15: recomputed `candles.rows_hash` equals the stored value for all 6 snapshots (08:45 and 09:00),
+  so the final candles did not change after the decision; `verify-ledger` ok (18 entries); replay found 0 mismatches and
+  0 tampered snapshots, but all 18 rows are `unverifiable_no_context` because this worker build predates context
+  logging (08:43). Builds from `bffede2` on record context, and replay re-derives them exactly (fixture-verified).
+* Still not exercised live: a fill, an exit, an outcome.

@@ -14,6 +14,7 @@ const { BitgetRest } = require("./adapters/bitget");
 const { BitgetCollector } = require("./collector");
 const { createServer } = require("./http");
 const { Ledger } = require("./ledger");
+const { PaperEngine } = require("./engine");
 
 const ROOT = path.resolve(__dirname, "..");
 const VERSION = "worker-0.1.0";
@@ -32,7 +33,7 @@ function args(argv) {
   return a;
 }
 
-function buildApi({ store, health, collector, startedAt, ledger }) {
+function buildApi({ store, health, collector, startedAt, ledger, getEngine = () => null }) {
   const num = v => v === null || v === undefined ? null : Number(v);
   return {
     hasInstrument: id => !!store.instrument(id),
@@ -61,7 +62,12 @@ function buildApi({ store, health, collector, startedAt, ledger }) {
       trades: store.trades(id, n).map(t => ({ ...t, quality: JSON.parse(t.quality) })) }),
     book: (id, n) => collector.bookTop(id, n),
     ledgerRecent: n => ledger ? { note: "append-only; originals are never modified, outcomes are separate rows", entries: ledger.recent(n) } : { entries: [] },
-    ledgerVerify: () => ledger ? ledger.verify() : { ok: false, reason: "ledger not configured" }
+    ledgerVerify: () => ledger ? ledger.verify() : { ok: false, reason: "ledger not configured" },
+    paper: () => getEngine() ? { execution_mode: "PAPER (simulated; no orders are sent anywhere)", accounting_day: "UTC",
+      portfolios: getEngine().summary(), open_positions: store.db.prepare("SELECT * FROM paper_positions WHERE state='OPEN' ORDER BY opened_ts").all(),
+      recent_closed: store.db.prepare("SELECT * FROM paper_positions WHERE state='CLOSED' ORDER BY exit_ts DESC LIMIT 20").all(),
+      recent_decisions: store.db.prepare("SELECT entry_id, created_ts, payload FROM ledger_entries WHERE kind='decision' ORDER BY seq DESC LIMIT 30").all()
+        .map(r => ({ entry_id: r.entry_id, created_ts: r.created_ts, ...JSON.parse(r.payload) })) } : { portfolios: [] }
   };
 }
 
@@ -74,7 +80,8 @@ async function main() {
   const rest = new BitgetRest();
   const collector = new BitgetCollector({ rest, store, health, symbols: a.symbols, log });
   const ledger = new Ledger(store, { codeRev: gitRev() });
-  const api = buildApi({ store, health, collector, startedAt, ledger });
+  const engineRef = { current: null };    // the paper engine starts once instruments are loaded
+  const api = buildApi({ store, health, collector, startedAt, ledger, getEngine: () => engineRef.current });
   const server = createServer({ api, staticDir: path.join(ROOT, "docs"), port: a.port });
 
   const timers = [
@@ -103,6 +110,9 @@ async function main() {
   store.feedEvent("worker", "start", VERSION);
   await collector.start({ unclean, prevStopTs: prev && prev.event === "shutdown" ? prev.ts : null });
   log(`collecting ${a.symbols.join(", ")} from Bitget public v2`);
+  engineRef.current = new PaperEngine({ store, ledger, collector, health, log });
+  timers.push(setInterval(() => { try { engineRef.current.tick(); } catch (e) { log("engine: " + e.message); } }, 5000));
+  log("paper engine running: decisions at each 15m bar close; execution mode PAPER");
 
   if (a.smoke) {
     await new Promise(r => setTimeout(r, a.smoke * 1000));

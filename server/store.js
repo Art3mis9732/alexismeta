@@ -58,7 +58,22 @@ const MIGRATIONS = [
      id INTEGER PRIMARY KEY, instrument_id TEXT NOT NULL, kind TEXT NOT NULL, from_ts INTEGER NOT NULL, to_ts INTEGER NOT NULL,
      reason TEXT NOT NULL, CHECK (to_ts >= from_ts));
    CREATE INDEX IF NOT EXISTS coverage_gaps_by_feed ON coverage_gaps (instrument_id, kind, from_ts);
-   ALTER TABLE ledger_entries ADD COLUMN data_mode TEXT NOT NULL DEFAULT 'LIVE' CHECK (data_mode IN ('LIVE', 'REPLAY'));`
+   ALTER TABLE ledger_entries ADD COLUMN data_mode TEXT NOT NULL DEFAULT 'LIVE' CHECK (data_mode IN ('LIVE', 'REPLAY'));`,
+  // v4: paper trading working state. The LEDGER is the audit trail (every transition is appended there); these tables
+  //     are the current state that must survive a restart (risk limits, open positions, kill switch).
+  `CREATE TABLE IF NOT EXISTS evidence_snapshots (
+     hash TEXT PRIMARY KEY, instrument_id TEXT NOT NULL, bar_close_ts INTEGER NOT NULL, created_ts INTEGER NOT NULL, json TEXT NOT NULL);
+   CREATE INDEX IF NOT EXISTS evidence_by_bar ON evidence_snapshots (instrument_id, bar_close_ts);
+   CREATE TABLE IF NOT EXISTS paper_portfolios (
+     analyst TEXT PRIMARY KEY, equity REAL NOT NULL, peak_equity REAL NOT NULL, day_start_ts INTEGER NOT NULL, day_start_equity REAL NOT NULL,
+     kill_switch INTEGER NOT NULL DEFAULT 0, updated_ts INTEGER NOT NULL);
+   CREATE TABLE IF NOT EXISTS paper_positions (
+     position_id TEXT PRIMARY KEY, decision_id TEXT NOT NULL, analyst TEXT NOT NULL, instrument_id TEXT NOT NULL, side INTEGER NOT NULL,
+     qty TEXT NOT NULL, entry REAL NOT NULL, stop REAL NOT NULL, target REAL NOT NULL, time_exit_ts INTEGER NOT NULL, opened_ts INTEGER NOT NULL,
+     entry_fee REAL NOT NULL, funding REAL NOT NULL DEFAULT 0, last_trade_ts INTEGER NOT NULL, last_trade_id TEXT, next_funding_ts INTEGER,
+     state TEXT NOT NULL CHECK (state IN ('OPEN','CLOSED')), exit_price REAL, exit_ts INTEGER, exit_reason TEXT, exit_fee REAL, pnl REAL,
+     evaluable INTEGER, note TEXT);
+   CREATE INDEX IF NOT EXISTS paper_positions_open ON paper_positions (state, analyst);`
 ];
 
 const DEFAULT_RETENTION_MS = {

@@ -59,3 +59,18 @@ the canonical events, so live and replay share the same code path.
     `ANALYSIS_ONLY`.
 11. The live smoke test (from this cloud container) connects to Bitget, persists at least one real trade, ticker and
     candle, and reads them back through the HTTP API. It is reported separately from the CI tests.
+
+## Analyst disagreement scenarios (written 2026-11-16 BEFORE the v1 policies; expected outcomes are fixed)
+All three analysts read the **same** evidence snapshot. Agreement between them is not independent confirmation.
+| # | Evidence (15m bar close) | Risk Taker v1 | Balanced v1 | Defensive v1 |
+|---|---|---|---|---|
+| S1 | 1h trend up, above VWAP, fresh `BO_UP` (above-average volume), spread ok, ATR in the top 25% of 10 days | OPEN_LONG | OPEN_LONG | WAIT (raw breakout not accepted; volatility too high) |
+| S2 | 1h trend up, above VWAP, `BO_UP_WEAK` (below-average volume) | OPEN_LONG (accepts incomplete confirmation) | WAIT | WAIT |
+| S3 | 1h trend up, above VWAP, `RETEST_UP`, last 24 h up, ATR percentile ≈ 40, spread 0.5 bps, book valid | OPEN_LONG | OPEN_LONG | OPEN_LONG |
+| S4 | 1h trend flat, `FAIL_DN` (failed breakdown), ATR percentile ≤ 50 | OPEN_LONG (explicit reclaim rule; the only countertrend allowance) | NO_TRADE (no trend) | NO_TRADE |
+| S5 | S3, but the ticker feed is STALE | NO_TRADE `DATA_STALE` | NO_TRADE `DATA_STALE` | NO_TRADE `DATA_STALE` |
+| S6 | S3, but the book is INVALID | NO_TRADE `BOOK_INVALID` | NO_TRADE `BOOK_INVALID` | NO_TRADE `BOOK_INVALID` |
+| S7 | S3, but the spread is 2.5 bps | OPEN_LONG (limit 5 bps) | OPEN_LONG (limit 3 bps) | NO_TRADE `SPREAD` (limit 1.5 bps) |
+| S8 | S3 on XRP with a wide stop, Defensive budget 0.10% × 1,000 USDT = 1 USDT | – | – | risk gate: NO_TRADE `MIN_SIZE_EXCEEDS_BUDGET` |
+Mandatory data controls (fresh feeds, valid book, complete coverage) are identical for all three; Risk Taker is
+earlier and looser on *confirmation*, never on data integrity or portfolio limits.

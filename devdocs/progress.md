@@ -1,0 +1,14 @@
+# Progress
+
+## Remote / production actions log
+| When (UTC) | Action | Approved by |
+|---|---|---|
+| 2026-11-16 | Created personal cloud environment `alexismeta` (network allowlist: Bitget, OKX, Fed, SEC) | User (approval prompt) |
+| – | No push, merge, PR, deploy, workflow run or paid service | – |
+
+## Milestones
+| Date | Milestone | State | Evidence |
+|---|---|---|---|
+| 2026-11-16 | Phase 0 audit + baseline | VERIFIED | V-001, V-002, V-003 |
+| 2026-11-16 | Phase 1 matrix + architecture | VERIFIED (this revision) | requirements.md, decisions.md |
+| 2026-11-16 | Phase 2 slice: Bitget BTCUSDT perp → SQLite → API | IN_PROGRESS | – |

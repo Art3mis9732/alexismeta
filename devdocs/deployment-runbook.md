@@ -14,6 +14,16 @@ npm test                            # all JS tests (engine + worker); npm ships 
 npm start                           # collector + http://127.0.0.1:8787   (or: node server\main.js)
 npm run smoke                       # 30 s live check against Bitget, prints a pass/fail report
 ```
+Admin (safe while the worker runs):
+```powershell
+node server\admin.js status
+node server\admin.js kill-switch on all      # or: on balanced / off all
+node server\admin.js verify-ledger
+node server\admin.js backup data\backups\market-2026-11-16.db
+```
+Restore = stop the worker, copy a backup over `data\worker\market.db`, start the worker. The restart is logged and
+the downtime is recorded as a coverage gap. A restore drill has **not** been run yet.
+
 Then open http://127.0.0.1:8787 in a browser. Stop with Ctrl+C (graceful shutdown flushes and closes the DB).
 Data is stored in `data\worker\market.db` (do not commit it).
 

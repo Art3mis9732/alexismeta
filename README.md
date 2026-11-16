@@ -30,13 +30,24 @@ node --test tests_js/patterns.test.js
 ```
 
 ## Local worker (optional, runs on your PC)
-Needs Node.js 22.13 or later and **no** npm packages. It collects Bitget public data continuously while the PC is on,
-stores it in `data/worker/market.db`, keeps an append-only decision ledger, and serves the site with live
-feed-health labels. It contains no order-placement code.
+Needs Node.js 22.13 or later (only 22.23 has actually been tested) and **no** npm packages. While the PC is on it:
+* collects Bitget public data (BTC/ETH/XRP USDT perpetuals: ticker, trades, full order book, 1m/5m/15m/4h candles) into
+  `data/worker/market.db`, with health checks, gap records and book-integrity checks;
+* at every 15-minute close, has three analysts (Risk Taker, Balanced, Defensive, v1) read one shared evidence snapshot,
+  runs an independent risk gate, and **paper**-trades approved setups in separate 1,000 USDT virtual portfolios;
+* records every decision, risk check, fill and outcome in an append-only, hash-chained ledger;
+* lists official Federal Reserve and SEC press releases as context (not a trading signal);
+* serves this site at http://127.0.0.1:8787 with prices taken from the worker (one exchange connection per PC).
+
+It contains **no order-placement code**. Paper results so far are far too few to show any edge: the site says
+"No demonstrated edge".
 ```powershell
 npm test          # engine + worker + ledger tests
 npm start         # then open http://127.0.0.1:8787
 npm run smoke     # 30-second live check against Bitget
+node server/admin.js status                 # paper portfolios, open positions, ledger check
+node server/admin.js kill-switch on all     # stop new paper setups (open positions keep their exits)
+node server/admin.js backup data/backup.db  # consistent copy + integrity check
 ```
 A sleeping or offline PC means gaps. They are recorded as gaps and never filled with invented data. Details are in
 `devdocs/deployment-runbook.md`.

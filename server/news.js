@@ -3,8 +3,9 @@
  *
  * Pipeline: SOURCE -> FETCH -> VALIDATE -> PARSE -> NORMALIZE -> DEDUPLICATE -> STORE -> INTERPRET -> API -> UI.
  *   FETCH     fixed allowlist of sources (no user URLs, so no SSRF surface); generic client name; 15 s timeout; 2 MB cap;
- *             redirects refused; conditional requests where supported; per-source back-off after failures (longer for 403/429,
- *             e.g. the SEC's "Request Rate Threshold Exceeded" page); one request at a time with spacing.
+ *             redirects refused; conditional requests where supported; per-source back-off after failures (at least 30 min after
+ *             403/429, e.g. the SEC's "Request Rate Threshold Exceeded" page), restored from the fetch log after a restart; one
+ *             request at a time with spacing. (A restart with force=true, or a manual probe, can of course still hit a source.)
  *   VALIDATE  RSS must be an <rss> document; JSON must carry the provider's success code and expected shape. Anything else
  *             (e.g. the Fed's HTML "Page not Found" served with HTTP 200) is quarantined, never parsed as news.
  *   PARSE     untrusted text: tags stripped, entities decoded, lengths capped, links must be https on THAT source's host list.
@@ -169,6 +170,10 @@ class NewsIngester {
       st.last_ok_ts = ok && ok.t !== null ? ok.t : null;
       let n = 0; for (const r of this.db.prepare("SELECT ok FROM news_fetch_log WHERE source=? ORDER BY id DESC LIMIT 10").all(s.id)) { if (r.ok) break; n++; }
       st.consecutive_failures = n;
+      if (n > 0) {                                                                // a restart must not forget that a source said no (e.g. SEC rate limit)
+        let wait = Math.min(2 * 3600000, s.pollMs * Math.pow(2, n - 1)); if (last.http_status === 403 || last.http_status === 429) wait = Math.max(wait, 30 * 60000);
+        st.backoff_until = last.ts + wait;
+      }
     }
   }
 

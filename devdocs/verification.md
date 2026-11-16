@@ -341,5 +341,25 @@ Each entry records: revision · command/procedure · when (UTC) · expected · o
   open and gap-flagged. These are the first natural forward trades and they are tainted by my restart, not by the market data.
 * Replay (`server/replay.js --verify`): 54 decisions, 36 with recorded context re-derived exactly (incl. the five OPEN_SHORT),
   0 mismatches, 0 tampered snapshots; 18 pre-context rows not verifiable. Ledger chain ok (68 entries).
-* The forward worker was left on build `c58d076` (news-v2.0, schema v7) so that it is not restarted again while positions are open.
+* The forward worker was left on build `c58d076` while positions were open, so that it was not restarted again (D-022).
+* **Update 12:48 UTC:** all five positions have since closed by stop, all losses, all flagged uncertain: ETH Risk Taker -4.94,
+  ETH Balanced -2.47, BTC Risk Taker -5.00, BTC Balanced -2.50, BTC Defensive -0.97 USDT (total -15.89; cash 990.05 / 995.03 /
+  999.03). Decisions: 63 (the 12:45 bar was 9 WAITs); ledger 83 entries, chain ok; replay 45 re-derived, 0 mismatches. With no open
+  position the forward worker was then restarted onto build `0e5ecd4` (backup first), which re-classified its news under parse
+  v2.1; `monitor.e2e.js` then ran **36/36 including the forward-only checks**.
+* Evidence re-exported read-only (`admin.js export-evidence`): 83 ledger rows, 5 positions, 10 fills.
+* **Mistake, corrected:** earlier text in this session said the live forward database was "schema v7, v8 applies on restart" and that
+  the migration was tested copy-first. After v8 was added I ran `admin.js` (backup, verify-ledger) and `replay.js` on the live
+  file; both constructed a `Store`, which migrates, so the live DB went to v8 while the old-build worker kept running (it stayed
+  healthy; v8 only adds a table). Copy-first was therefore honored for v7 but NOT for v8. The tools are now read-only and refuse a
+  database whose schema does not match the code (tests/admin.test.js).
 * Statistical weight: five positions from ONE bar on two highly correlated coins are one observation of market behaviour.
+
+## V-028 Tooling guard, restored back-off, final runs
+* `admin.js` (status, verify-ledger, export-evidence, backup) and `replay.js` open the database READ-ONLY and refuse a file whose
+  schema is behind or ahead of the code; only `kill-switch` writes and it requires a current schema. A byte-hash test shows the
+  read-only commands leave the file unchanged; a schema-v6 file is refused by every tool and stays untouched.
+* News back-off is rebuilt from `news_fetch_log` on startup (SEC 403 -> no request 11 minutes after a restart).
+* `npm test` **151/151**; pytest 22/22; `monitor.e2e.js` **36/36** (forward worker `0e5ecd4`, TEST worker, static server);
+  `status.e2e.js` 23/23 on the previous tree.
+* Not verified: Windows, Node 26, any restore drill, behaviour after hours of continuous news polling.

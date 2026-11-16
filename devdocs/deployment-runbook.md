@@ -112,6 +112,9 @@ Check **http://127.0.0.1:8787/api/runtime**: `build.revision` must be the commit
 `FORWARD`. Open the **News** tab. The first start after the update re-classifies stored news and applies schema v7 and v8; the
 paper ledger is not touched by those migrations. **Restarting the worker while paper positions are open creates a data gap that
 flags those positions as unresolved (decision D-022); update when none are open if you can.** If something looks wrong, stop the
-worker, restore the backup file over `data\worker\market.db`, and `git checkout` the previous commit.
+worker, **delete `data\worker\market.db-wal` and `data\worker\market.db-shm` if they exist** (a leftover journal can replay stale
+data onto the restored file), copy the backup over `data\worker\market.db`, and `git checkout` the previous commit. **No
+restore drill has been run yet; try it once on a copy before you need it.** The read-only commands (`status`, `verify-ledger`,
+`export-evidence`, `backup`) never migrate a database; only starting the worker does.
 Not verified by me: Windows itself, Node 26, PowerShell behaviour of these commands. The user-reported successful start is the only
 Windows evidence.

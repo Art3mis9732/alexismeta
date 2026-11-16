@@ -158,10 +158,16 @@ const DEFAULT_RETENTION_MS = {
 };
 
 class Store {
-  constructor(file, { now = Date.now, maxQueue = 50000, retentionMs = DEFAULT_RETENTION_MS } = {}) {
-    if (file !== ":memory:") fs.mkdirSync(path.dirname(file), { recursive: true });
+  /** requireCurrent: refuse (instead of migrating) a database whose schema is not exactly this code's version. Used by tools that must not alter the file. */
+  constructor(file, { now = Date.now, maxQueue = 50000, retentionMs = DEFAULT_RETENTION_MS, requireCurrent = false } = {}) {
+    if (requireCurrent && file !== ":memory:" && !fs.existsSync(file)) throw new Error("database file not found: " + file);
+    if (file !== ":memory:" && !requireCurrent) fs.mkdirSync(path.dirname(file), { recursive: true });
     this.file = file; this.now = now; this.maxQueue = maxQueue; this.retentionMs = retentionMs;
     this.db = new DatabaseSync(file);
+    if (requireCurrent) {
+      const v = this.db.prepare("PRAGMA user_version").get().user_version;
+      if (v !== MIGRATIONS.length) { this.db.close(); throw new Error(`database schema v${v} does not match this code (v${MIGRATIONS.length}); start the worker to migrate it (back it up first)`); }
+    }
     this.db.exec("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;");
     this._migrate();
     this.queue = [];

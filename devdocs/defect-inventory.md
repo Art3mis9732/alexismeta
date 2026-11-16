@@ -14,4 +14,8 @@ Classes: VERIFIED · IMPLEMENTED_UNVERIFIED · PARTIAL · BROKEN · MISSING · E
 | 8 | Fable Advisor inside the website | does not exist | unchanged: naming mismatch documented (user confirmed it is the Claude Code dev reviewer) | tab-inventory.md |
 | 9 | Node versions | tested only on 22.23.4 on Linux; user reports Node v26.13.0 / npm 12.2.2 on Windows | the user's report is not my verification; `node:sqlite` and the built-in WebSocket are the version-sensitive parts | runbook |
 | 10 | Restarting the forward worker marks open positions as gap-affected | undocumented operational hazard | demonstrated live (V-027); rule recorded: do not restart the forward worker with open positions | D-022 |
+| 12 | Fed speeches: every speech is scoped MACRO and gets "forward guidance can shift rate expectations", including AI and inequality talks; about half of the 31 "relevant" items are speeches | BROKEN (rule overreach, same class as the tokenized bug) | logged; narrow in news-rules-v1.2 (require monetary/economic-policy wording) | V-026 |
+| 13 | `admin.js`/`replay.js` migrated the live DB (schema v8) while a worker ran | BROKEN (tooling) | fixed: read-only connections + schema guard, tested | V-028 |
+| 14 | News back-off was in memory only | PARTIAL | fixed: restored from the fetch log after a restart, tested | V-028 |
+| 15 | Windows restore instructions ignored a leftover `-wal`/`-shm` file | BROKEN (docs) | fixed in the runbook; no restore drill has been run | runbook |
 | 11 | Stress detection, historical evaluation, jobs/model lab, GA/RL | MISSING | still MISSING (milestones C-stress, D–G) | requirements.md |

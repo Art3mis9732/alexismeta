@@ -11,7 +11,8 @@
  * be assumption-based research and is not implemented here. */
 const crypto = require("node:crypto");
 const path = require("node:path");
-const { Store } = require("./store");
+const { DatabaseSync } = require("node:sqlite");
+const { MIGRATIONS } = require("./store");
 const { canonical } = require("./ledger");
 const { decide, RULES } = require("./policies");
 
@@ -41,8 +42,12 @@ if (require.main === module) {
   const a = process.argv.slice(2), i = a.indexOf("--db");
   const db = i >= 0 ? path.resolve(a[i + 1]) : path.join(__dirname, "..", "data", "worker", "market.db");
   if (!a.includes("--verify")) { console.error("usage: node server/replay.js --verify [--db path]"); process.exit(1); }
-  const store = new Store(db);
-  try { const r = verifyReplay(store); console.log(JSON.stringify(r, null, 2)); process.exitCode = r.ok ? 0 : 2; } finally { store.db.close(); }
+  const conn = new DatabaseSync(db, { readOnly: true });                                        // read-only: replay never migrates or writes the database
+  try {
+    const v = conn.prepare("PRAGMA user_version").get().user_version;
+    if (v !== MIGRATIONS.length) { console.error(`database schema v${v} does not match this code (v${MIGRATIONS.length}); start the worker to migrate it (back it up first)`); process.exit(1); }
+    const r = verifyReplay({ db: conn }); console.log(JSON.stringify(r, null, 2)); process.exitCode = r.ok ? 0 : 2;
+  } finally { conn.close(); }
 }
 
 module.exports = { verifyReplay };

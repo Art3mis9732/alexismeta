@@ -134,7 +134,7 @@ function registry() {
   return ANALYSTS.map(a => ({ id: a, version: RULES[a].version, name: RULES[a].name, type: "DETERMINISTIC", purpose: "15m setup proposals for the paper engine", training: "NOT_APPLICABLE",
     instruments: "Bitget USDT-margined perpetuals: BTCUSDT, ETHUSDT, XRPUSDT", horizon: `entry valid 1 bar (15m); time exit ${RULES[a].timeExitBars} bars`,
     feature_schema: "evidence-v1", parameters: RULES[a], validation: "fixture scenarios S1-S8 pass; forward paper sample far too small", edge: "NOT_DEMONSTRATED",
-    deployment_state: "PAPER_ACTIVE", parent: "legacy v0 profile rules (docs/patterns.js), unchanged", known_weaknesses: ["no historical backtest of v1 yet", "trigger definitions come from the legacy engine, whose 180-day test showed negative expectancy after fees for the legacy profiles", "no news/event-risk input"],
+    deployment_state: "PAPER_ACTIVE", parent: "legacy v0 profile rules (docs/patterns.js), unchanged", known_weaknesses: ["no historical backtest of v1 itself yet", "ADVERSE PRIOR EVIDENCE: the legacy 180-day test of the entry rules these analysts reuse averaged about -0.3R to -0.7R per trade after fees (legacy Neutral/Careful, 15m, BTC/ETH/XRP)", "no news/event-risk input"],
     history: [{ event: "REGISTERED", at: "2026-11-16", note: "v1 created; never promoted on evidence" }] }));
 }
 

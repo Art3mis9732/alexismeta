@@ -554,7 +554,7 @@ function renderPatterns(keepRange) {
 
   const cls = { "LONG SETUP": "s-buy", "SHORT SETUP": "s-sell", "WAIT": "s-wait", "NO TRADE": "s-none" }[st.verdict] || "s-none";
   $("verdict").textContent = st.verdict; $("verdict").className = "signal " + cls; $("verdict").style.fontSize = "26px";
-  $("verdictSub").textContent = `Last closed candle ${fmtBoth(st.time + M15)} · close ${nf(st.price, d)}`;
+  $("verdictSub").textContent = `Last closed candle ${fmtBoth(st.time + TF_MS[tf])} · close ${nf(st.price, d)}`;
   $("reasons").innerHTML = st.reasons.map(r => `<li>${esc(r)}</li>`).join("");
   $("plan").innerHTML = st.trigger ? `Signal: <b>${esc(st.trigger.name)}</b>. Switch to <b>Buy / Sell</b> for the entry, stop loss and take profit.`
     : st.verdict === "WAIT" ? `Waiting for a trigger in the trend direction.` : `Nothing to continue: the 1-hour trend and VWAP don't agree.`;
@@ -597,7 +597,7 @@ function renderPatterns(keepRange) {
   const evs = res.events.filter(vis).slice(-25).reverse();
   $("events").innerHTML = `<tr><th>Time (${TZ.label})</th><th>Pattern</th><th>Says</th><th>What it means</th><th class="r">Cases</th><th class="r">Right side 4h</th><th class="r">After fees</th><th class="r">Later 30%</th><th></th></tr>` +
     evs.map(e => { const al = e.dir !== 0 && e.trend === e.dir, hh = (al && hist(s, e.code + "|T")) || hist(s, e.code);
-      return `<tr><td style="white-space:nowrap">${istT(e.t + M15)}</td><td><b>${esc(e.name)}</b>${al ? ` <span class="pill">with 1h trend</span>` : ""}</td>
+      return `<tr><td style="white-space:nowrap">${istT(e.t + TF_MS[tf])}</td><td><b>${esc(e.name)}</b>${al ? ` <span class="pill">with 1h trend</span>` : ""}</td>
         <td class="${e.dir > 0 ? "up" : e.dir < 0 ? "down" : "muted"}">${e.dir > 0 ? "up" : e.dir < 0 ? "down" : "undecided"}</td>
         <td class="sub">${esc(Patterns.MEANING[e.code])}</td>${e.dir === 0 ? `<td colspan="5" class="muted">no direction to score</td>` : histCells(hh)}</tr>`; }).join("");
 
@@ -680,7 +680,7 @@ function renderIndicators() {
   const s = sym, A = resTf(tf, s); $("iSym").textContent = s + " · " + TF_NAME[tf] + " candles";
   if (!A) return;
   const c = A.c, i = c.length - 1, ind = Patterns.indicators(c), px = c[i].c, d = dp(px), at = A.res.atr[i], vw = A.res.vwap[i];
-  $("iTime").textContent = istT(c[i].t + M15) + " " + TZ.label;
+  $("iTime").textContent = istT(c[i].t + TF_MS[tf]) + " " + TZ.label;
   const f = (x, k = 1) => x === null || x === undefined ? "—" : x.toFixed(k);
   const obv16 = ind.obv[i] - ind.obv[i - 16];
   const now = {

@@ -99,3 +99,24 @@ observed continuously for the last 60 s, so any reconnect in that minute means N
 resynchronised. Trade coverage is required only by features that use trades; v1 has none. Paper exits still mark any
 trade gap while a position is open as unevaluable. Future trade-based features (CVD, trade-size percentiles) must
 declare their own coverage window.
+
+## D-016 Data-gap accounting: keep the position, flag the path, fill only at observed prices (2026-11-16)
+See `financial-audit.md`. Options considered: (a) close at the stop price by assumption — rejected, invents a fill;
+(b) delete or void the trade — rejected, lets missing data improve results; (c) keep everything, mark the outcome
+uncertain, show both totals — chosen. Stressed alternative branches and portfolio quarantine are not built.
+
+## D-017 Environments are a property of the database, fixed at creation (2026-11-16)
+`meta.environment` = FORWARD or TEST. The worker refuses to open a database under the other environment, the fixture
+driver refuses FORWARD, and every API envelope, decision payload and UI banner carries the environment. A test fixture
+can therefore never write to, or be displayed as, the forward ledger. Recorded-market replay keeps using `data_mode`.
+
+## D-018 Browser updates = REST snapshot + server-sent events from an outbox (2026-11-16)
+Why SSE: one-way, built into browsers, automatic reconnect with `Last-Event-ID`, no dependency. Durable events are
+rows in `paper_events`, written in the same transaction as the state change, and read by cursor, so they cannot be
+dropped; valuation frames are coalesced. The client rejects duplicates and resnapshots on any gap. Polling remains as
+a fallback where `EventSource` is missing.
+
+## D-019 The browser is never a paper engine (2026-11-16)
+All P&L, valuation and account figures come from the worker. On worker loss the last values are frozen and labelled.
+The legacy manual "Start paper trade" simulator on Buy/Sell is kept for continuity but labelled as a browser-only
+sandbox outside every account total; replacing it with ledger-backed setups is listed in the tab inventory.

@@ -6,7 +6,8 @@
 | 2026-11-16 | Created personal cloud environment `alexismeta` (network allowlist: Bitget, OKX, Fed, SEC) | User (approval prompt) |
 | 2026-11-16 | Push of feature branch `claude/friendly-dirac-ouvgn4` only (no PR, merge, deploy; triggers no workflow) | User (in chat) |
 | 2026-11-16 | **Firecrawl (paid, metered) used 3 times for documentation lookups**: 2 page scrapes + 1 search on Bitget docs, **4 credits** from the user's connected Firecrawl account. Done without explicit prior authorisation; disclosed here and in the session report. Docs are now fetched with curl from allowlisted hosts only. | Not explicitly authorised |
-| – | No merge, PR, deploy, workflow run or other paid service | – |
+| 2026-11-16 (session 2) | **Nothing pushed.** Local commits `c06e255`, `028f5a3`, `7062ac1` and later are on the local branch only; approval for a push is requested in the session report | Pending |
+| – | No merge, PR, deploy, workflow run or other paid service. No Firecrawl use in session 2 | – |
 
 ## Milestones
 | Date | Milestone | State | Evidence |
@@ -19,3 +20,9 @@
 | 2026-11-16 | Candle finaliser, coverage gaps, ledger data_mode | VERIFIED | V-009, V-010 |
 | 2026-11-16 | Worker-fed page (no per-tab collector) + fallback | VERIFIED (Playwright 18/18 + fallback) | V-011 |
 | – | Phase 2 remainder: spot instruments, UI wired to worker, long-run cadence study | NOT_STARTED / B-05 | – |
+| 2026-11-16 (s2) | Stage A: prior-session reconciliation, 09:00 finding, forward records preserved, runtime identity | VERIFIED | V-019, V-021 |
+| 2026-11-16 (s2) | Stage B: financial audit; valuation-v1; paper-v2 (fills, funding, outbox, transactions, gap policy, single writer) | VERIFIED | V-020, financial-audit.md |
+| 2026-11-16 (s2) | Stage C: monitor backend + SSE + live paper monitor tab + TEST environment | VERIFIED (unit 129, e2e 28 + 23) | V-021, V-022 |
+| 2026-11-16 (s2) | Stage D (part): tab inventory, 2 timeframe-label fixes, indicator reference fixtures | PARTIAL | tab-inventory.md |
+| – | Natural forward entry/exit | PENDING (0 observed in 36 decisions) | V-023 |
+| – | Stages E–K | NOT_STARTED (see requirements T-13…T-20) | – |

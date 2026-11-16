@@ -115,3 +115,28 @@ Evidence references point to `verification.md` entries (V-xxx).
 | Guaranteed profit / perfect prediction | Calibrated, out-of-sample-evaluated forecasts with "no demonstrated edge" as a valid state |
 | Seeing institutional positions | Evidence-linked flow *hypotheses* with competing explanations (H-01) |
 | Continuous operation from a static site / sleeping laptop | Local worker with documented uptime limits; gaps recorded, not filled |
+
+## Third prompt (P3) — continuation priorities
+
+| ID | Origin | Requirement | Phase/stage | Verification | Status | Evidence |
+|---|---|---|---|---|---|---|
+| T-01 | P3§1 | Reconcile the previous report with evidence; resolve the 09:00 check | A | ledger query, replay | VERIFIED | V-019 |
+| T-02 | P3§1 | Runtime identity (build, fingerprint, instance, DB id, versions, health); tests assert the build | A | unit + e2e step 0 | VERIFIED | V-021, V-022 |
+| T-03 | P3§3 | Financial audit of the paper engine | B | audit doc + tests | VERIFIED (defects fixed; missing scope listed) | financial-audit.md, V-020 |
+| T-04 | P3§3 | Data-gap accounting never erases or improves results | B | gap-policy test | VERIFIED; stressed branches / quarantine MISSING | V-020, D-016 |
+| T-05 | P3§4 | Exact P&L conventions with hand fixtures | B | 12 fixtures | VERIFIED for linear USDT perps | V-020 |
+| T-06 | P3§5 | Backend-owned position views, coherent APIs, envelopes | C | monitor tests | VERIFIED; "research jobs/experiments" API returns an honest empty state | V-021 |
+| T-07 | P3§5 | Transactional state + outbox; unique keys; one writer | C | engine tests | VERIFIED | V-020 |
+| T-08 | P3§5 | Streaming with snapshot, cursor, dedupe, gap detection, resume, bounded queues | C | SSE test + e2e | VERIFIED on loopback; latency 56–84 ms | V-021, V-022 |
+| T-09 | P3§6 | Live paper monitor tab (positions, detail, activity, accounts, history) | C | e2e 28 checks | VERIFIED; history filters by regime/date/version MISSING | V-022 |
+| T-10 | P3§7 | Fail safely on worker/browser disconnect | C | e2e step 3 | VERIFIED | V-022 |
+| T-11 | P3§8 | Two evidence tracks; no manufactured success | C | TEST env separation; forward ledger | VERIFIED separation; natural entry/exit PENDING (elapsed time) | V-022, V-023 |
+| T-12 | P3§9 | Tab inventory; patterns/indicators audit; visual checks | D | inventory + fixtures | PARTIAL: inventory done, 2 label bugs fixed, 6 indicator references added; per-detector confirmation times, contrast tooling, screen reader NOT done | tab-inventory.md |
+| T-13 | P3§10 | News & market events expansion | E | – | NOT_STARTED beyond the existing Fed/SEC slice | V-014 |
+| T-14 | P3§11 | Historical evaluation with an availability matrix | F | – | NOT_STARTED | – |
+| T-15 | P3§12 | Intelligence & Model Lab | G | registry test | PARTIAL: registry (DETERMINISTIC / NOT_APPLICABLE / NOT_DEMONSTRATED) and "training backend unavailable"; no job system | V-021 |
+| T-16 | P3§13 | Research registry and experiment pipeline | G | – | NOT_STARTED | – |
+| T-17 | P3§14 | Controlled competition / promotion | I | – | NOT_STARTED | – |
+| T-18 | P3§15 | System status view from runtime observations | C/J | e2e chips | PARTIAL: status chips + `/api/runtime` + `/api/health`; storage/WAL, pending forecast evaluations, backtest summaries not shown | V-022 |
+| T-19 | P3§16 | Reliability/security additions | J | tests | PARTIAL: cross-origin refusal, restart with open positions, duplicate fills/funding, stale valuation, unsupported multipliers VERIFIED; DB-corruption drill, backup-restore drill, clock-drift alert, Windows NOT done | V-020..022 |
+| T-20 | P3§17 | Deployment diagnosis + options, no deploy | K | git evidence | VERIFIED diagnosis; release candidate NOT prepared | deployment-runbook.md |

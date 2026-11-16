@@ -1,26 +1,33 @@
 # Resume here
 
-**Branch:** `claude/friendly-dirac-ouvgn4`. Pushing this branch only is approved (no PR, no merge, no deploy).
-**State:** see `progress.md` (milestones) and `verification.md` (V-001…). Latest: worker + ledger + risk gate + evidence +
-3 v1 policies + paper engine + replay verify + official news + timezone selector. `npm test` 98/98; Playwright 23/23.
+**Branch:** `claude/friendly-dirac-ouvgn4`. Remote is at `bb5ff34`; **later commits are local only** until the user
+approves a push (third prompt: the earlier push approval is not blanket). No PR, merge or deploy.
+**State:** stages A–C of the third prompt verified; D partial. `npm test` 129/129; `tests_e2e/monitor.e2e.js` 28/28;
+`tests_e2e/status.e2e.js` 23/23; pytest 22/22. Evidence V-019…V-023; audit in `financial-audit.md`; tabs in
+`tab-inventory.md`.
 
-## Next exact steps (in order)
-1. Capture the live 08:45/09:00 bar-close decisions from the long-running worker (port 8790, scratchpad `long.db`):
-   nine decisions per bar, one evidence hash per coin, `verify-ledger` ok, `replay --verify` ok, recomputed
-   `candles.rows_hash` equals the stored one.
-2. Historical replay of the v1 policies over stored/REST history (assumption-based research: label it so),
-   chronological splits, costs, baselines (cash, buy-and-hold, trend). Forward and backtest results kept separate.
-3. Phase 7 forecasts: ledgered baselines (random walk, rolling distribution, momentum) with horizon resolution and a
-   calibration gate. No probability shown until the gate passes.
-4. Phase 3 remainder: accessibility pass (keyboard, contrast audit); spot instruments (distinct class; never mixed with perps).
-5. Known limits to address: non-atomic open/close writes; `COUNT(*)` per health poll and one-shot prune will slow down
-   at millions of rows (see the runbook projection); event-risk restrictions; maintenance tiers > 1.
+## Where things are
+* Monitor: http://127.0.0.1:8787/ → first tab "Paper monitor" (worker must be running: `npm start`).
+* Forward ledger: `data/worker/market.db` (git-ignored; 36 decisions, 0 positions at 11:00 UTC). Export of the first 18
+  rows: `devdocs/evidence/forward-ledger-2026-11-16.json`. In this cloud container the database is lost when the
+  container is reclaimed: export again before ending a session.
+* TEST environment: `node server/main.js --port 8791 --env test --fixture` (database `data/worker/test-fixture.db`).
 
-## Running processes (cloud container only)
-* Long-run worker on port 8790 (scratchpad `long.db`). Stop with `pkill -INT -f "main[.]js --port 8790"`.
-* Static server on 8788. Stop with `pkill -f "http[.]server 8788"`.
+## Next exact steps
+1. Natural forward track: keep the forward worker running; when the first entry/exit appears, record it (V-0xx) and
+   check the monitor shows it. Do not loosen any gate.
+2. Stage D remainder: per-detector detection/confirmation times; ledger setup markers on the chart; replace the legacy
+   manual sandbox with ledger-backed setups; history filters (analyst/version/asset/date); contrast + screen-reader pass.
+3. Stage F before any model work: feature availability matrix; candle-only research baseline clearly separate from v1;
+   costs; baselines. The legacy 180-day test of the reused entry rules is NEGATIVE after fees: start from that.
+4. Stage E: news filters and more official sources (ECB, exchange status), still context only.
+5. Stage G/H: real job runner (bounded, cancellable) before any "training" UI; baselines + calibration gate.
+6. Reliability: backup-restore drill, DB-corruption drill on a copy, Windows start, auth before any hosted API.
+
+## Running processes (cloud container)
+* Forward worker 8787; TEST worker 8791; static server 8788. Stop: `pkill -INT -f "main[.]js"`; `pkill -f "http[.]server 8788"`.
 
 ## Environment notes
-* Cloud container: Node needs `NODE_USE_ENV_PROXY=1` for outbound HTTPS/WSS; Playwright needs `NODE_PATH=$(npm root -g)`.
-* Tested runtime: Node 22.23.4 (`engines` >= 22.23). Windows startup not executed (B-03).
-* Do not use Firecrawl or other metered services without asking; fetch docs with curl from allowlisted hosts.
+* Cloud container: `NODE_USE_ENV_PROXY=1` for outbound HTTPS/WSS; Playwright needs `NODE_PATH=$(npm root -g)`.
+* Check `/api/runtime` fingerprint against the working tree before trusting a running worker.
+* No Firecrawl or other metered service without explicit approval. Tested runtime: Node 22.23.4 on Linux only.

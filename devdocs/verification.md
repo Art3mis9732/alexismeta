@@ -221,3 +221,71 @@ Each entry records: revision · command/procedure · when (UTC) · expected · o
   0 tampered snapshots, but all 18 rows are `unverifiable_no_context` because this worker build predates context
   logging (08:43). Builds from `bffede2` on record context, and replay re-derives them exactly (fixture-verified).
 * Still not exercised live: a fill, an exit, an outcome.
+
+# Session 2 (third prompt) — 2026-11-16 10:37–11:20 UTC
+
+## V-019 Prior-session reconciliation
+* Git: HEAD `bb5ff34` = remote feature branch; reported `70ed8f1` is an ancestor (two docs commits after it); `main`
+  untouched at `8de2e2a`; tree clean. **No worker was running** (the report's 8787/8790 workers had been stopped).
+* Tests at `bb5ff34`: `npm test` 98/98; pytest 22/22.
+* **09:00 UTC bar (2026-11-16, 14:30 IST): 9 ORIGINAL forward decisions exist**: BTCUSDT/ETHUSDT/XRPUSDT perps ×
+  risk_taker-v1/balanced-v1/defensive-v1, ids `decision:<version>:bitget:perp:<SYM>:1794819600000`, written
+  09:00:07.746–.799 UTC by build `86cd48b6c2f2`, `data_mode=LIVE`, all `WAIT / NO_TRIGGER`. Not replay, not missed.
+  The 08:45 bar's 9 are `NO_TRADE / COVERAGE_GAP`. The Monitor from the earlier session did complete (V-018), but this
+  finding rests on the persisted ledger, not on that report.
+* Ledger chain ok (18 rows). Replay: 0 mismatches, 0 tampered; 18 "unverifiable" because that build did not record the
+  decision context. Under the only context consistent with the data (no position ever existed) **18/18 re-derive
+  exactly**. Labelled as inferred context.
+* The forward database lived in a temporary folder. It was copied (`VACUUM INTO`, integrity ok) to
+  `data/worker/market.db` and the ledger rows, snapshots, worker events and gaps were exported to
+  `devdocs/evidence/forward-ledger-2026-11-16.json`.
+
+## V-020 Accounting (valuation-v1, paper-v2)
+* `tests_js/accounting.test.js` 12 hand-calculated fixtures: long/short ±10; close-now +9.80 gross / +8.7902 after a
+  hypothetical 0.1% fee; lifecycle 7.7902 (7.2902 / 8.0902 with ∓ funding); two-level depth walk 100,974; partial
+  liquidity 60% → no estimate; partial exit 5 + 17.5804 − 3.0 − 1.005 = 18.5754 and the same number after actually
+  closing; multi-fill average 100,300; multiplier 0.001; inverse/USDC contracts rejected; invalid prices → null;
+  duplicate fills ignored; funding signs; stale mark vs stale book; labelled percentages; account reconciliation.
+* Engine tests added: cash moves when fees/funding occur and equals the facts; `reconcile()` detects a corrupted
+  balance; funding/fills cannot post twice across a restart; gap policy (position stays open, flagged, fills only at the
+  observed price, counted as uncertain, loss stays in the account); single writer; isolated portfolios with shared
+  in-analyst risk. This found a real defect: `openRisk` double-counted entry slippage.
+
+## V-021 Monitor backend, stream, runtime identity
+* `tests_js/monitor.test.js` 7 tests: positions trace to ledger + fills; `U_mark = q·(mark − entry)`; depth-walked
+  close-now; accounts independent ("3 independent paper portfolios of 1000 USDT each (total starting capital 3000
+  USDT)"), reconcile, uncertain exposure; stale quotes → STALE, never silently fresh; predicate diagnostics; detail
+  with a gap-marked chart; SSE (hello, 9 durable events with `prev` links, resume via `Last-Event-ID` with no replay,
+  exact missed events after a partial cursor, `resnapshot` for a foreign cursor, 400 for a bad one; reading never
+  creates trades); runtime fingerprint = working tree, no paths leak, cross-origin 403; TEST databases cannot be opened
+  as FORWARD; `--fixture` refused outside `--env test`.
+* Stale-worker guard exercised for real: after editing the page, both running workers reported fingerprint
+  `95a3c16b…` against a working tree of `47749e65…`; they were restarted before any browser check.
+* Measured latency (loopback, TEST worker, 27 durable events): worker `recorded_ts` → stream frame **56 / 68 / 84 ms**
+  (min / median / max). Valuation frames: 1 per second; observed frame age at read 0.6–1.0 s.
+
+## V-022 Live paper monitor in the browser — `tests_e2e/monitor.e2e.js` 28/28 (Chromium, 1440 px and 390 px)
+* Step 0 asserts the served build fingerprint for both workers. TEST worker (own temp database, `--env test --fixture`):
+  8 synthetic-trigger positions opened through the unchanged risk gate; monitor is the first view; PAPER label + TEST
+  banner; 5 status chips with text states; displayed unrealised / close-now figures equal the backend's values; no
+  exchange socket from the tab; three accounts never summed; detail via keyboard; activity filter; registry.
+* Refresh: same account, no new trade, 27 events / 27 unique. Worker stopped: chips DISCONNECTED / FROZEN with the last
+  timestamp, header "WORKER DISCONNECTED … not live" (never "● LIVE"), account figures unchanged for 4 s while the
+  browser's fallback price feed ran. Worker restarted: page resnapshots ("worker recovered", new instance id), all 8
+  positions accounted for (open or closed), same database id, accounts reconcile, no duplicated fill.
+* Forward worker: exactly the ledger's positions (0), no TEST banner, predicate diagnostics, coin/timezone switch,
+  keyboard navigation across all four views. Phone width: no horizontal page scroll. Static page: monitor says it needs
+  the worker and shows nothing simulated.
+* Lifecycle seen live in the TEST environment only: of 8 synthetic positions, 6 closed on real trades within minutes
+  (stops/targets), 2 survived a worker restart. **This is engineering verification, not forward evidence.**
+* `tests_e2e/status.e2e.js` 23/23 (regression). `npm test` 129/129 (incl. 6 closed-form indicator references).
+
+## V-023 Natural forward track
+* Forward ledger after restart on the preserved database: bars 10:45 and 11:00 UTC, 9 decisions each, all
+  `WAIT / NO_TRIGGER`; 36 decisions in total; chain ok; **0 natural entries, 0 exits**.
+* Why no entry: on every bar the blocking predicate was "accepted trigger on this bar"; data, book, coverage and
+  trend/VWAP predicates were met. Warm-up satisfied (999 final 15m bars ≥ 300). Scheduler: decisions 5.8–7.8 s after
+  the bar close. No rule is impossible (fixture scenarios open positions).
+* Expectation from the legacy 180-day history of the same entry rule (legacy Neutral = Balanced v1's entry): 28–33
+  entries per week per coin, so a natural Balanced entry is likely within hours of continuous running. The same history
+  shows that rule **lost money after fees (−0.47R to −0.71R per trade)**.

@@ -37,7 +37,9 @@ Needs Node.js 22.23 or later (the tested version) and **no** npm packages. While
   runs an independent risk gate, and **paper**-trades approved setups in separate 1,000 USDT virtual portfolios;
 * records every decision, risk check, fill and outcome in an append-only, hash-chained ledger;
 * lists official Federal Reserve and SEC press releases as context (not a trading signal);
-* serves this site at http://127.0.0.1:8787 with prices taken from the worker (one exchange connection per PC).
+* serves this site at http://127.0.0.1:8787 with prices taken from the worker (one exchange connection per PC);
+* shows a live **Paper monitor** tab (the first tab): accounts, open positions with mark-based and close-now figures,
+  position detail, activity timeline and "why no trade" diagnostics, all computed by the worker and streamed to the page.
 
 It contains **no order-placement code**. Paper results so far are far too few to show any edge: the site says
 "No demonstrated edge".

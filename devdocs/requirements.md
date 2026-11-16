@@ -73,15 +73,15 @@ Evidence references point to `verification.md` entries (V-xxx).
 
 | ID | Origin | Requirement | Existing | Feas. | Phase | Verification | Status |
 |---|---|---|---|---|---|---|---|
-| S-01 | P1§9 | Three policies on one versioned evidence snapshot, explicit rule specs | 3 profiles, not shared snapshot | A | 5 | disagreement scenarios | NOT_STARTED |
-| S-02 | P1§9 | Separate virtual portfolios, 1,000 USDT each, identical windows | journal $5/trade | A | 5 | tests | NOT_STARTED |
-| S-03 | P1§10 | Economic intents OPEN/REDUCE/CLOSE/WAIT/NO_TRADE; no exit w/o position | BUY/SELL only | A | 8 | tests | NOT_STARTED |
-| S-04 | P1§10 | Setup/order/position state machines, transitions w/ reason codes, no duplicate triggers, versioned supersession | none | A | 8 | tests | NOT_STARTED |
-| R-01 | P1§11 | Independent risk engine: per-trade, open risk, exposure, correlation, daily loss, drawdown, leverage ≤2×, liquidity, staleness, kill switch, persisted state | lab sizing only | A | 5→8 | tests | NOT_STARTED |
-| R-02 | P1§11 | NO_TRADE when min size breaches budget | lab has min-size | A | 8 | test | NOT_STARTED |
+| S-01 | P1§9 | Three policies on one versioned evidence snapshot, explicit rule specs | 3 profiles, not shared snapshot | A | 5 | disagreement scenarios | VERIFIED (fixtures): evidence-v1 + risk_taker/balanced/defensive-v1; pre-registered S1–S7 pass (V-012). Live forward decisions: pending elapsed time |
+| S-02 | P1§9 | Separate virtual portfolios, 1,000 USDT each, identical windows | journal $5/trade | A | 5 | tests | IMPLEMENTED (forward paper, persisted; V-012). Historical replay over identical windows: NOT_STARTED |
+| S-03 | P1§10 | Economic intents OPEN/REDUCE/CLOSE/WAIT/NO_TRADE; no exit w/o position | BUY/SELL only | A | 8 | tests | PARTIAL: OPEN_LONG/OPEN_SHORT/WAIT/NO_TRADE with reason codes; exits are engine-managed (stop/target/time), REDUCE not implemented; no exit intent without a position (tested) |
+| S-04 | P1§10 | Setup/order/position state machines, transitions w/ reason codes, no duplicate triggers, versioned supersession | none | A | 8 | tests | PARTIAL: decision → RISK_APPROVED/REJECTED → POSITION_OPENED → POSITION_CLOSED → outcome as ledger rows; duplicate trigger prevented (tested). Paper orders are immediate market fills (no separate order book/partial fills); setup supersession not yet modelled |
+| R-01 | P1§11 | Independent risk engine: per-trade, open risk, exposure, correlation, daily loss, drawdown, leverage ≤2×, liquidity, staleness, kill switch, persisted state | lab sizing only | A | 5→8 | tests | VERIFIED (fixtures, V-012); event-risk restrictions NOT implemented (no news source yet); maintenance-tier ladder beyond tier 1 not modelled |
+| R-02 | P1§11 | NO_TRADE when min size breaches budget | lab has min-size | A | 8 | test | VERIFIED (S8; 864 cross-language sizing cases) |
 | L-01 | P1§13 | Append-only prediction/decision ledger (DB triggers + hash chain), backups | none (journal rewritten) | A | 2 | tamper tests | VERIFIED for storage rules (V-007); nothing writes forecasts to it yet; off-machine head anchoring pending |
 | B-01 | P1§14 | Event-driven replay reusing live code; purged chronological splits; locked test | lab has dev/holdout for 4H | A | 2→9 | determinism tests | NOT_STARTED |
-| B-02 | P1§14 | Execution sim: spread, fees, slippage, latency, funding at settlement, ambiguous bars conservative | lab partial | A | 9 | tests | PARTIAL (lab) |
+| B-02 | P1§14 | Execution sim: spread, fees, slippage, latency, funding at settlement, ambiguous bars conservative | lab partial | A | 9 | tests | PARTIAL: forward paper uses ask/bid + 2 bps, taker fees, funding at settlement, trade-tape ordering (no candle ambiguity), gap → unevaluable (V-012). Latency, partial fills, order rejection beyond min-size: not modelled |
 | B-03 | P1§14 | Metrics incl. block bootstrap, baselines, "no demonstrated edge" status | lab partial | A | 9 | tests | PARTIAL (lab) |
 
 ## Forecasts, news, UI, adaptation, security (P1§12, 15–18)
@@ -95,7 +95,7 @@ Evidence references point to `verification.md` entries (V-xxx).
 | N-01 | P1§15 | Official news sources w/ publication/discovery/revision, dedupe, untrusted handling | none | A (Fed/SEC hosts allowed) | 6 | tests | NOT_STARTED |
 | N-02 | P1§15 | Optional LLM: disabled by default, schema-validated, no authority | none | B | 6 | – | DEFERRED |
 | U-01 | P1§16 | Instrument selector, venue/class labels, feed age, mode labels | partial | A | 3 | Playwright | PARTIAL: feed age + honest mode + worker feed states verified (V-008); spot selector pending |
-| U-02 | P1§16 | Analyst cards w/ NO_TRADE reasons, hypotheses, news, portfolio/risk | partial | A | 3/5 | Playwright | NOT_STARTED |
+| U-02 | P1§16 | Analyst cards w/ NO_TRADE reasons, hypotheses, news, portfolio/risk | partial | A | 3/5 | Playwright | PARTIAL: v1 analysts card (decision, reason code, setup, paper portfolio, no-edge status) VERIFIED in worker mode (V-013); hypotheses/news NOT_STARTED |
 | U-03 | P1§16 | Verification workspace (forecast vs outcome, backtest vs forward separate) | partial (journal card) | A | 9 | Playwright | NOT_STARTED |
 | U-04 | P1§16 | Multiple tabs must not create duplicate upstream collectors | each tab opens own WS | A | 3 | worker serves tabs | VERIFIED in worker mode: tabs poll /api and open 0 Bitget sockets (V-011). On GitHub Pages (no worker) each tab still streams for itself; nothing is persisted |
 | U-05 | P1§16 | Accessible contrast, keyboard nav, text labels with colors | partial | A | 3 | audit | NOT_STARTED |
@@ -106,7 +106,7 @@ Evidence references point to `verification.md` entries (V-xxx).
 | Y-03 | P1§18 | Local API: bind 127.0.0.1, input validation, request limits | none | A | 2 | tests | VERIFIED (V-004) |
 | Y-04 | P1§18 | Backups/restore, heartbeat/readiness, disk monitoring | none | A | 2/11 | tests | PARTIAL (backup+integrity verified; restore drill, scheduled backups pending) |
 | Z-01 | P1§20 | Phase 9 end-to-end flow | none | A | 11 | e2e test | NOT_STARTED |
-| Z-02 | P1§22 | Report whether an edge is demonstrated | lab criteria exist | A | 9 | – | NOT_STARTED (no edge demonstrated) |
+| Z-02 | P1§22 | Report whether an edge is demonstrated | lab criteria exist | A | 9 | – | IMPLEMENTED: every portfolio reports NO_DEMONSTRATED_EDGE; no edge has been demonstrated |
 
 ## Not reliably achievable (D) — replaced with testable alternatives
 

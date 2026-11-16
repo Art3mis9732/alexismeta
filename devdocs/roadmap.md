@@ -30,11 +30,11 @@ the canonical events, so live and replay share the same code path.
 | 2 Market data | Bitget BTCUSDT perp end to end, then ETH/XRP, then spot | Real observation → SQLite → API → UI with correct identity and timestamps; fixture tests for duplicate, out-of-order, reconnect, restart, stale and seq-gap pass; live smoke recorded separately | **VERIFIED for the 3 perps** (V-004..006, V-009..011); spot NOT_STARTED; long-run cadence study pending (B-05) |
 | 2b Ledger | Append-only decisions before any forecast | UPDATE/DELETE on original rows rejected by the DB; hash chain verifies; outcomes appended separately | **VERIFIED** (V-007); head anchoring pending |
 | 3 UI | Honest status strip, TZ selector, fix A-01/A-02 | Values match backend; simulated/stale can't show LIVE; existing workflows still pass (Playwright) | **PARTIAL**: A-01/A-02 fixed, worker strip + worker-fed prices/candles + fallback VERIFIED (V-008, V-011); TZ selector and accessibility pass pending |
-| 4 Features/hypotheses | Specified, tested features; flow hypotheses | Reference fixtures match; causality tests; missing → UNKNOWN | NOT_STARTED |
-| 5 Analysts | 3 versioned policies on one evidence snapshot; paper portfolios; minimal replay | Crafted disagreement scenarios; no double-fill; shared limits | NOT_STARTED |
+| 4 Features/hypotheses | Specified, tested features; flow hypotheses | Reference fixtures match; causality tests; missing → UNKNOWN | **PARTIAL**: evidence-v1 features (spec in `server/evidence.js`), look-ahead mutation-tested; flow hypotheses NOT_STARTED |
+| 5 Analysts | 3 versioned policies on one evidence snapshot; paper portfolios; minimal replay | Crafted disagreement scenarios; no double-fill; shared limits | **PARTIAL**: policies + forward paper portfolios VERIFIED on fixtures (V-012); replay harness NOT_STARTED |
 | 6 News/secondary | Fed/SEC feeds, OKX context | Provenance and times visible; revisions don't leak; graceful degrade | NOT_STARTED |
 | 7 Forecasts | Baselines, ledgered forecasts, calibration gate | Correct-horizon resolution; no uncalibrated % shown | NOT_STARTED |
-| 8 Signals/risk | Full lifecycle, risk engine, kill switch | Rejections consistent; restart-safe; no live execution | NOT_STARTED |
+| 8 Signals/risk | Full lifecycle, risk engine, kill switch | Rejections consistent; restart-safe; no live execution | **PARTIAL**: risk gate, kill switch, restart-safe state VERIFIED (V-012); REDUCE intents, setup supersession, alerts pending |
 | 9 Backtest/forward | Walk-forward, costs, conservative fills | Reproducible; negative results visible; forward ≠ backtest | NOT_STARTED |
 | 10 Adaptation | Drift, challengers, rollback | No promotion without declared evidence | NOT_STARTED |
 | 11 Reliability | E2E, faults, backups, measured resources | Critical flows pass; recovery consistent | NOT_STARTED |

@@ -73,3 +73,20 @@ and return UNKNOWN on incomplete windows. A silent trade channel while ticker an
 ## D-011 Ledger rows carry a hashed `data_mode` (LIVE | REPLAY) (2026-11-16)
 Added in schema v3 before any ledger row existed outside tests, so no hashes had to be migrated. Replay runs may use
 the same DB, but their entries can never verify as LIVE.
+
+## D-012 Analyst v1 policies wrap the legacy engine's triggers; legacy profiles stay untouched (2026-11-16)
+Balanced v1 = the legacy Neutral entry rule; Defensive v1 = legacy Careful plus spread/depth limits; Risk Taker v1 =
+broader triggers plus one explicit flat-trend reclaim rule. All three read one evidence-v1 snapshot at a 15m close
+(not the legacy 5m range scalp, which stays as legacy v0). Reason: one shared, hashed input makes the analysts
+comparable, and reusing the measured engine keeps the history-tested trigger definitions. Rules are tabulated in
+`server/policies.js`; changing any number means a new version id.
+
+## D-013 Paper exits use the trade tape, not candles (2026-11-16)
+The worker persists every public trade, so stop/target ordering is decided by the actual sequence of trades. There is
+no "both touched in one candle" ambiguity in forward paper trading. Historical replay without a trade tape will need the
+conservative stop-first rule, labelled as such. Stops fill at the worse of the stop and the crossing trade; targets fill
+as taker at the target minus slippage. A recorded trade-feed gap makes the outcome unevaluable.
+
+## D-014 Paper risk defaults = master prompt §11 engineering defaults; exchange leverage setting 2x (2026-11-16)
+Not personalised advice and not shown to be optimal. The legacy browser profiles still show 50x/10x/3x on $5 for
+continuity; the v1 analysts never exceed 2x notional/equity.

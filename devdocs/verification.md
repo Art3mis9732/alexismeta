@@ -134,3 +134,29 @@ Each entry records: revision · command/procedure · when (UTC) · expected · o
 * Missing funding now shows "unknown" instead of "NaN%".
 * Limits: the page polls every 2 s, so worker-mode display latency is up to about 2 s plus render time. Multiple tabs
   each poll the local API, which is cheap and never reaches the exchange.
+
+## V-012 Risk gate, evidence, policies, paper engine (fixtures) — 2026-11-16 ~08:25 UTC
+* `npm test`: **86 pass, 0 fail**.
+* Sizing: the JS port matches `bgbot/sizing.py` on **864** generated cases (508 sized; 356 rejected across open-risk limit,
+  minimum size, minimum notional and liquidation distance), never exceeding the per-trade budget or the 2x cap.
+* Risk gate: identical mandatory data checks for all analysts; daily loss and drawdown include unrealised P&L; kill
+  switch; correlated bucket (open risk and notional across BTC/ETH/XRP); one position per coin; S8 minimum-size NO_TRADE.
+* Evidence: deterministic hash; gaps, non-final bars, a missing last bar, short history, a post-decision ticker or book
+  are all listed as missing; depth from the full book; **a forming bar after the decision close does not change the
+  snapshot** (mutation-tested: including that bar makes the test fail).
+* Policies: pre-registered S1–S7 produce exactly the expected Risk Taker / Balanced / Defensive outcomes; no exit
+  intent without a position; cooldown; contradicting evidence recorded; no probability is emitted (`score: null`).
+* Engine: S3 → 3 decisions → 3 approvals → 3 fills at ask × (1 + 2 bps); ledger kinds in order; trade-tape exits
+  (1.5R targets hit, 2R not, then stop); stop gapped through fills at the worse trade price; a coverage gap makes the
+  outcome unevaluable and excluded from stats; funding charged at settlement at the last observed rate; time exit at
+  the bid; a retried bar close does not trigger twice; kill switch and daily-loss state persist across a restart; the
+  kill switch keeps managing open positions; `tick()` never decides on bars that closed before start.
+* Two test-data bugs were found and fixed while writing these tests (not engine bugs): `String(1e18 + n)` made every
+  synthetic trade id equal, so they were correctly deduplicated; Risk Taker's 4 h time exit coincided with the
+  funding test's settlement. One engine flaw was fixed: a retried bar close now checks the ledger before deciding,
+  instead of failing on a content mismatch.
+
+## V-013 Analysts card (Playwright) — 2026-11-16 ~08:31 UTC
+* `tests_e2e/status.e2e.js` against the long-running worker (port 8790) and the static server: **20/20 pass**. In
+  worker mode the card shows all three v1 analysts with "No demonstrated edge" and no probability; on the static page
+  it is hidden.

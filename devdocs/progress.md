@@ -15,4 +15,6 @@
 | 2026-11-16 | Phase 2 slice: Bitget BTC/ETH/XRP perps → SQLite → local API (worker) | VERIFIED (fixtures + live smoke + live restart) | V-004, V-005, V-006 |
 | 2026-11-16 | Phase 2b append-only ledger | VERIFIED | V-007 |
 | 2026-11-16 | Phase 3 part 1: honest LIVE/STALE labels, worker status strip, model relabel, snapshot-404 crash fix | VERIFIED (Playwright 15/15) | V-008 |
+| 2026-11-16 | Candle finaliser, coverage gaps, ledger data_mode | VERIFIED | V-009, V-010 |
+| 2026-11-16 | Worker-fed page (no per-tab collector) + fallback | VERIFIED (Playwright 18/18 + fallback) | V-011 |
 | – | Phase 2 remainder: spot instruments, UI wired to worker, long-run cadence study | NOT_STARTED / B-05 | – |

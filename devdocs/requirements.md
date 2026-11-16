@@ -97,7 +97,7 @@ Evidence references point to `verification.md` entries (V-xxx).
 | U-01 | P1§16 | Instrument selector, venue/class labels, feed age, mode labels | partial | A | 3 | Playwright | PARTIAL: feed age + honest mode + worker feed states verified (V-008); spot selector pending |
 | U-02 | P1§16 | Analyst cards w/ NO_TRADE reasons, hypotheses, news, portfolio/risk | partial | A | 3/5 | Playwright | NOT_STARTED |
 | U-03 | P1§16 | Verification workspace (forecast vs outcome, backtest vs forward separate) | partial (journal card) | A | 9 | Playwright | NOT_STARTED |
-| U-04 | P1§16 | Multiple tabs must not create duplicate upstream collectors | each tab opens own WS | A | 3 | worker serves tabs | PARTIAL: worker is the single collector and tabs only poll /api; the page still opens its own browser stream for charts (not a collector; nothing persisted) |
+| U-04 | P1§16 | Multiple tabs must not create duplicate upstream collectors | each tab opens own WS | A | 3 | worker serves tabs | VERIFIED in worker mode: tabs poll /api and open 0 Bitget sockets (V-011). On GitHub Pages (no worker) each tab still streams for itself; nothing is persisted |
 | U-05 | P1§16 | Accessible contrast, keyboard nav, text labels with colors | partial | A | 3 | audit | NOT_STARTED |
 | U-06 | P1§16 | In-app alerts w/ dedupe/cooldown | none | A | 8 | tests | NOT_STARTED |
 | X-01 | P1§17 | Drift/calibration monitoring, champion/challenger, predeclared promotion, rollback | lab dev/lock/holdout | A/C | 10 | tests | NOT_STARTED |

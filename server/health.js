@@ -9,7 +9,7 @@
  * Thresholds are per feed and reflect expected cadence. Initial values are engineering defaults to be checked
  * against measured gaps (see /api/health `max_gap_ms`). */
 
-const DEFAULT_STALE_MS = { ticker: 10000, trade: 60000, candle1m: 20000, candle15m: 20000, books: 10000 };
+const DEFAULT_STALE_MS = { ticker: 10000, trade: 60000, candle1m: 20000, candle5m: 20000, candle15m: 20000, candle4H: 20000, books: 10000 };
 const STATES = { HEALTHY: "HEALTHY", STALE: "STALE", DISCONNECTED: "DISCONNECTED", RECOVERING: "RECOVERING" };
 
 class Health {

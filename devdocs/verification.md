@@ -121,3 +121,16 @@ Each entry records: revision · command/procedure · when (UTC) · expected · o
   container was refused by the session's permission classifier, so the stated minimum (`engines`, CI pin, README) is
   the documented `node:sqlite` unflagging version, **not a tested one**. CI (`tests.yml`, pinned to 22.13) will test it
   on the first PR or main push.
+
+## V-011 Worker-fed page: exchange → SQLite → API → UI with no per-tab collector (Phase 2/3 gate)
+* The worker now also collects `candle5m` and `candle4H` (the page uses 5m, 15m and 4h). When the page is served by the
+  worker, it takes tickers and candles from `/api/*` (2 s poll) and does **not** open a Bitget socket.
+* `tests_e2e/status.e2e.js`: **18/18 pass** (2026-11-16 ~08:19 UTC, Chromium). New checks: label says "via local
+  worker"; **0 Bitget WebSockets opened by the tab over 6 s**; displayed BTC price (64567.6) equals one of the last
+  `/api/ticker` values the page received (64577.7, 64566.2, 64570.3, 64567.6).
+* `tests_e2e/fallback.e2e.js`: with a worker-fed page open, the worker was stopped (SIGINT). The strip changed to
+  "Local worker stopped responding — switched to this browser's own Bitget stream", the label went back to
+  `● LIVE · Bitget public data`, and the tab opened its own socket. **PASS.**
+* Missing funding now shows "unknown" instead of "NaN%".
+* Limits: the page polls every 2 s, so worker-mode display latency is up to about 2 s plus render time. Multiple tabs
+  each poll the local API, which is cheap and never reaches the exchange.

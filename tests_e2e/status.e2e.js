@@ -23,8 +23,10 @@ async function main() {
   async function open(url, { silentWs = false, cutAfterMs = null } = {}) {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await ctx.newPage();
-    const errors = [];
+    const errors = [], sockets = [], tickerBodies = [];
     page.on("pageerror", e => errors.push(e.message));
+    page.on("websocket", ws => sockets.push(ws.url()));
+    page.on("response", async r => { if (/api\/ticker\?instrument=bitget:perp:BTCUSDT/.test(r.url())) { try { tickerBodies.push((await r.json()).ticker); } catch (e) { /* ignore */ } } });
     if (silentWs) {
       await page.routeWebSocket(/ws\.bitget\.com/, ws => { ws.onMessage(m => { if (m === "ping") ws.send("pong"); }); });
     } else if (cutAfterMs !== null) {          // real data first, then the feed goes quiet but pongs keep coming
@@ -35,19 +37,25 @@ async function main() {
       });
     }
     await page.goto(url, { waitUntil: "domcontentloaded" });
-    return { ctx, page, errors };
+    return { ctx, page, errors, sockets, tickerBodies };
   }
   const text = (page, sel) => page.locator(sel).innerText();
 
   // 1. worker-served
   if (workerUrl) {
-    const { ctx, page, errors } = await open(workerUrl);
+    const { ctx, page, errors, sockets, tickerBodies } = await open(workerUrl);
     await page.waitForFunction(() => /LIVE/.test(document.getElementById("mode").innerText), null, { timeout: 30000 }).catch(() => {});
     const mode = await text(page, "#mode");
     check("worker page: LIVE from real data", /● LIVE/.test(mode) && /s ago/.test(mode), mode);
     await page.waitForFunction(() => /Local worker/.test(document.getElementById("worker").innerText), null, { timeout: 15000 }).catch(() => {});
     const w = await text(page, "#worker");
     check("worker page: worker strip shows feeds + ANALYSIS ONLY", /Local worker/.test(w) && /ANALYSIS ONLY/.test(w) && /ticker HEALTHY/.test(w), w);
+    check("worker page: label says data comes via the local worker", /via local worker/.test(mode), mode);
+    await page.waitForTimeout(6000);
+    check("worker page: this tab opened NO connection to Bitget (one collector per machine)", sockets.filter(u => /bitget/.test(u)).length === 0, JSON.stringify(sockets));
+    const shown = Number((await text(page, "#tPrice")).replace(/,/g, ""));
+    const recent = tickerBodies.slice(-4).map(t => t && Number(t.last));
+    check("worker page: displayed price equals a /api/ticker value the page just received", recent.includes(shown), `shown ${shown}, last API values ${recent.join(", ")}`);
     await page.locator('#coins span[data-sym="ETHUSDT"]').click();
     await page.waitForFunction(() => /ETH perp/.test(document.getElementById("worker").innerText), null, { timeout: 10000 }).catch(() => {});
     check("worker page: coin switch updates the worker strip", /ETH perp/.test(await text(page, "#worker")), "");

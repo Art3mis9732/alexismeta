@@ -203,6 +203,7 @@ const istT = ms => new Date(ms + IST_MS).toISOString().slice(5, 16).replace("T",
 const istHMS = ms => new Date(ms + IST_MS).toISOString().slice(11, 19);
 const fmtBoth = ms => new Date(ms).toISOString().slice(0, 16).replace("T", " ") + " UTC / " + new Date(ms + IST_MS).toISOString().slice(11, 16) + " IST";
 const esc = s => String(s).replace(/[&<>]/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[m]));
+const fundTxt = x => Number.isFinite(x) ? (x * 100).toFixed(4) + "%" : "unknown";   // missing funding is unknown, never 0
 const rr = x => (x === null || x === undefined) ? "—" : (x > 0 ? "+" : "") + x.toFixed(2) + "R";
 const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
                 set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
@@ -371,7 +372,7 @@ function renderTrade() {
   const { mmr, taker } = contractOf(s);
   const margin = Math.max(1, +$("tMargin").value || 5), lev = +$("tLev").value || PR.lev, notional = margin * lev;
   $("tPrice").textContent = nf(px, d);
-  $("tTick").textContent = tick[s] ? `mark ${nf(tick[s].mark, d)} · funding ${(tick[s].funding * 100).toFixed(4)}% / 8h` : "";
+  $("tTick").textContent = tick[s] ? `mark ${nf(tick[s].mark, d)} · funding ${fundTxt(tick[s].funding)} / 8h` : "";
   $("tSignal").textContent = signalWord(P); $("tSignal").className = "signal " + signalCls(P);
   $("tWhy").textContent = P.why || "";
   let lines = (P.extraLines || []).concat(P.lines || []), levels = P.levels || "", money = "", warn = "";
@@ -671,7 +672,7 @@ function lightUpdate() {                      // every tick: no re-analysis, jus
   if (view === "trade") {
     const px = livePrice(sym);
     $("tPrice").textContent = nf(px, dp(px));
-    if (tick[sym]) $("tTick").textContent = `mark ${nf(tick[sym].mark, dp(px))} · funding ${(tick[sym].funding * 100).toFixed(4)}% / 8h`;
+    if (tick[sym]) $("tTick").textContent = `mark ${nf(tick[sym].mark, dp(px))} · funding ${fundTxt(tick[sym].funding)} / 8h`;
     renderPos();
   }
   setMode();
@@ -680,6 +681,7 @@ function lightUpdate() {                      // every tick: no re-analysis, jus
 /* ================= data: REST history + live WebSocket ================= */
 async function fetchRest(s, gran) {
   gran = gran || "15m"; const step = TF_MS[gran];
+  if (WMODE) return fetchWorker(s, gran);
   try {
     const r = await fetch(`https://api.bitget.com/api/v2/mix/market/candles?symbol=${s}&productType=USDT-FUTURES&granularity=${gran}&limit=1000`);
     const j = await r.json();
@@ -758,6 +760,13 @@ function connectStream() {
 }
 function scheduleRetry() { clearTimeout(retryT); retryT = setTimeout(connectStream, Math.min(30000, 2000 * Math.pow(2, retries++))); }
 function setMode() {
+  if (WMODE) {                                // all market data comes from the local worker; this tab has no Bitget socket
+    const t = lastData[sym], age = t ? Date.now() - t : null, c = sym.replace("USDT", "");
+    if (age !== null && age < DATA_STALE_MS) $("mode").innerHTML = `<span class="up">● LIVE</span> · via local worker · last ${c} update received ${istHMS(t)} IST (${(age / 1000).toFixed(1)} s ago)`;
+    else if (t) $("mode").innerHTML = `<span class="warn">◐ STALE</span> · the local worker has no new ${c} data for ${Math.round(age / 1000)} s · prices below may be old`;
+    else $("mode").innerHTML = `<span class="warn">◐ RECOVERING</span> · waiting for the local worker's first ${c} data`;
+    return;
+  }
   const open = ws && ws.readyState === 1, t = lastData[sym], age = t ? Date.now() - t : null;
   if (open && age !== null && age < DATA_STALE_MS) $("mode").innerHTML = `<span class="up">● LIVE</span> · Bitget public data · last ${sym.replace("USDT", "")} update ${istHMS(t)} IST (${(age / 1000).toFixed(1)} s ago)`;
   else if (open && t) $("mode").innerHTML = `<span class="warn">◐ STALE</span> · connected, but no ${sym.replace("USDT", "")} market data for ${Math.round(age / 1000)} s · prices below may be old`;
@@ -767,7 +776,7 @@ function setMode() {
 }
 setInterval(() => {
   setMode();
-  if (ws && ws.readyState === 1 && ((lastFrame && Date.now() - lastFrame > 40000) || (lastData[sym] && Date.now() - lastData[sym] > 60000))) connectStream();
+  if (!WMODE && ws && ws.readyState === 1 && ((lastFrame && Date.now() - lastFrame > 40000) || (lastData[sym] && Date.now() - lastData[sym] > 60000))) connectStream();
   const f = forming[sym];                     // a candle closed but the stream missed it: fetch it
   if (f && f.t + M15 + 8000 < Date.now()) { delete forming[sym]; fetchRest(sym).then(() => renderAll(true)); }
   const f5 = forming5[sym];
@@ -777,9 +786,66 @@ document.addEventListener("visibilitychange", async () => {
   if (document.visibilityState !== "visible") return;
   await Promise.all([fetchRest(sym), fetchRest(sym, "5m"), sym !== "BTCUSDT" ? fetchRest("BTCUSDT") : null]);
   renderAll(true);
-  if (!ws || ws.readyState !== 1 || !lastData[sym] || Date.now() - lastData[sym] > 30000) connectStream();
+  if (!WMODE && (!ws || ws.readyState !== 1 || !lastData[sym] || Date.now() - lastData[sym] > 30000)) connectStream();
   pollWorker();
 });
+
+/* ===== Market data via the local worker (worker mode) =====
+ * When this page is served by server/main.js, it reads tickers and candles from the worker's API and opens NO
+ * connection to Bitget itself: one collector per machine, however many tabs are open. Candles marked final=1 by the
+ * worker are the closed bars; the newest final=0 bar is the forming one. */
+let WMODE = false, workerLoop = null;
+const wid = s => "bitget:perp:" + s;
+async function apiJson(p) { const r = await fetch(p, { cache: "no-store" }); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }
+async function workerCandles(s, gran, limit) {
+  const j = await apiJson(`api/candles?instrument=${wid(s)}&interval=${gran}&limit=${limit}`), step = TF_MS[gran];
+  const rows = j.candles.filter(c => c.final === 1).map(c => [c.open_ts, +c.o, +c.h, +c.l, +c.c, +c.base_vol]);
+  const f = j.candles.filter(c => c.final === 0 && c.open_ts + step > Date.now()).pop();
+  return { rows, forming: f ? { t: f.open_ts, o: +f.o, h: +f.h, l: +f.l, c: +f.c } : null };
+}
+const storeOf = g => g === "5m" ? live5 : g === "4H" ? live4 : live, formingOf = g => g === "5m" ? forming5 : g === "4H" ? forming4 : forming;
+async function fetchWorker(s, gran) {
+  try {
+    const { rows, forming: f } = await workerCandles(s, gran, 1000);
+    if (rows.length < 200) return false;
+    storeOf(gran)[s] = { rows };
+    if (f) formingOf(gran)[s] = f;
+    return true;
+  } catch (e) { return false; }
+}
+let workerBusy = false;
+async function workerTick() {
+  if (!WMODE || workerBusy) return;
+  workerBusy = true;
+  try {
+    await Promise.all(SYMS.map(async s => {
+      try {
+        const t = (await apiJson(`api/ticker?instrument=${wid(s)}`)).ticker;
+        if (!t || (tick[s] && tick[s].at === t.recv_ts)) return;
+        tick[s] = { last: +t.last, mark: t.mark === null ? NaN : +t.mark, funding: t.funding_rate === null ? NaN : +t.funding_rate, at: t.recv_ts };
+        lastData[s] = t.recv_ts;
+        checkPos(s, tick[s].last);
+      } catch (e) { /* the status strip reports worker problems */ }
+    }));
+    let changed = false;
+    await Promise.all(SYMS.flatMap(s => ["15m", "5m", "4H"].map(async g => {
+      try {
+        const { rows, forming: f } = await workerCandles(s, g, 3), st = storeOf(g);
+        if (!st[s]) return;
+        let nw = false; rows.forEach(r => { nw = upsert5(s, r, st) || nw; });
+        if (f) formingOf(g)[s] = f;
+        if (nw && (s === sym || s === "BTCUSDT")) changed = true;
+      } catch (e) { /* idem */ }
+    })));
+    if (changed) renderAll(true);
+    lastLight = 0; lightUpdate();
+  } finally { workerBusy = false; }
+}
+function startWorkerMode() { WMODE = true; if (!workerLoop) workerLoop = setInterval(workerTick, 2000); workerTick(); }
+function leaveWorkerMode() {
+  WMODE = false; clearInterval(workerLoop); workerLoop = null;
+  connectStream(); setMode();
+}
 
 /* Local worker (server/main.js) status. On GitHub Pages there is no /api, the probe fails once and the page
  * says so; nothing else changes. When the worker serves this page, its per-feed health is shown here. */
@@ -789,18 +855,19 @@ async function pollWorker() {
   try { const r = await fetch("api/health", { cache: "no-store" }); if (r.ok) { h = await r.json(); if (!h || !h.data_mode) h = null; } } catch (e) { h = null; }
   const first = WORKER === undefined; WORKER = h;
   const el = $("worker");
+  if (!h && WMODE) { leaveWorkerMode(); el.innerHTML = `<span class="down">Local worker stopped responding</span> — switched to this browser's own Bitget stream.`; return; }
   if (!h) {
     el.innerHTML = first || !workerT ? `Execution: <b>analysis only</b> — no orders are ever sent to Bitget (paper trades below are simulated in this browser). No local worker on this page.`
                                      : `<span class="down">Local worker not responding</span> — the page falls back to this browser's own stream.`;
     return;
   }
-  const id = "bitget:perp:" + sym, short = { ticker: "ticker", trade: "trades", books: "order book", candle1m: "1m candles", candle15m: "15m candles" };
+  const id = "bitget:perp:" + sym, short = { ticker: "ticker", trade: "trades", books: "order book", candle1m: "1m candles", candle5m: "5m candles", candle15m: "15m candles", candle4H: "4h candles" };
   const cls = st => st === "HEALTHY" ? "up" : st === "STALE" || st === "RECOVERING" ? "warn" : "down";
   const feeds = h.feeds.filter(f => f.feed.startsWith(id + "|")).map(f => `${short[f.kind] || esc(f.kind)} <span class="${cls(f.state)}">${esc(f.state)}</span>`).join(" · ");
   const bk = (h.books || []).find(b => b.instrument_id === id);
   const off = h.clock && h.clock.offset_ms !== null ? `${h.clock.offset_ms > 0 ? "+" : ""}${h.clock.offset_ms} ms` : "unknown";
   el.innerHTML = `Local worker · data <b>${esc(h.data_mode)}</b> · execution <b>${esc(h.execution_mode.replace("_", " "))}</b> (no order code exists) · ${sym.replace("USDT", "")} perp: ${feeds}` +
-    (bk ? ` · book check <span class="${bk.state === "VALID" ? "up" : "down"}">${esc(bk.state)}</span>` : "") + ` · exchange clock offset ${esc(off)} · reconnects ${Number(h.socket.reconnects) || 0}`;
+    (WMODE ? ` · this tab gets all prices from the worker (no own connection to Bitget)` : "") + (bk ? ` · book check <span class="${bk.state === "VALID" ? "up" : "down"}">${esc(bk.state)}</span>` : "") + ` · exchange clock offset ${esc(off)} · reconnects ${Number(h.socket.reconnects) || 0}`;
   if (!workerT) workerT = setInterval(pollWorker, 5000);
 }
 
@@ -839,14 +906,15 @@ $("tMargin").oninput = $("tLev").onchange = () => renderTrade();
 (async () => {
   CH.t = makeChart($("tChart")); CH.p = makeChart($("chart"));
   guide(); renderLog();
-  pollWorker();
+  await pollWorker();
+  if (WORKER) WMODE = true;                   // decide the data path before any market data is loaded
   await loadSnapshot();
   renderAll(false);
   $("tLev").value = String(Patterns.PROFILES[profile].lev);
   tf = Patterns.PROFILES[profile].tf; document.querySelectorAll("#tfs span").forEach(x => x.classList.toggle("on", x.dataset.tf === tf));
   await Promise.all(SYMS.flatMap(x => [fetchRest(x), fetchRest(x, "5m"), fetchRest(x, "4H")]));
   renderAll(false);
-  connectStream();
+  if (WMODE) startWorkerMode(); else connectStream();
   setInterval(async () => { await loadSnapshot(); if (view === "trade") { renderModel(); renderJournal(); } }, 300000);
   setInterval(async () => { await Promise.all([fetchRest(sym), fetchRest(sym, "5m"), fetchRest(sym, "4H")]); renderAll(true); }, 300000);
 })();

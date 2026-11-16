@@ -9,7 +9,7 @@ const { OrderBook, STATES: BOOK } = require("./book");
 const { WsSupervisor } = require("./adapters/bitget");
 
 const PRODUCT = "USDT-FUTURES";
-const CANDLE_CHANNELS = { candle1m: "1m", candle15m: "15m" };
+const CANDLE_CHANNELS = { candle1m: "1m", candle5m: "5m", candle15m: "15m", candle4H: "4H" };
 
 class BitgetCollector {
   constructor({ rest, store, health, symbols, now = Date.now, WebSocketImpl, wsUrl, log = () => {},

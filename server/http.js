@@ -10,7 +10,7 @@ const path = require("node:path");
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".json": "application/json; charset=utf-8",
   ".md": "text/markdown; charset=utf-8", ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon" };
 const ID_RE = /^[a-z]+:[a-z_]+:[A-Z0-9]{2,20}$/;
-const INTERVALS = new Set(["1m", "15m"]);
+const INTERVALS = new Set(["1m", "5m", "15m", "4H"]);
 
 function intParam(v, def, min, max) {
   if (v === null || v === undefined || v === "") return def;

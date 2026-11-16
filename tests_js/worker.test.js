@@ -296,7 +296,7 @@ test("collector: real messages flow to storage; replayed trades after reconnect 
   const ck = makeClock(of("trade", "snapshot")[0].ts), store = new Store(":memory:", { now: ck.now });
   const rest = fakeRest();
   const { col, health } = await startCollector(store, rest, ck);
-  assert.deepEqual(rest.calls, ["1m", "15m"], "startup backfill");
+  assert.deepEqual(rest.calls, ["1m", "5m", "15m", "4H"], "startup backfill");
   const w = FakeWS.instances[0]; w.open();
   for (const m of CAP) w.msg(m);
   store.flush();

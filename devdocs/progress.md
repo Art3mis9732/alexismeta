@@ -12,4 +12,5 @@
 |---|---|---|---|
 | 2026-11-16 | Phase 0 audit + baseline | VERIFIED | V-001, V-002, V-003 |
 | 2026-11-16 | Phase 1 matrix + architecture | VERIFIED (this revision) | requirements.md, decisions.md |
-| 2026-11-16 | Phase 2 slice: Bitget BTCUSDT perp → SQLite → API | IN_PROGRESS | – |
+| 2026-11-16 | Phase 2 slice: Bitget BTC/ETH/XRP perps → SQLite → local API (worker) | VERIFIED (fixtures + live smoke + live restart) | V-004, V-005, V-006 |
+| – | Phase 2 remainder: spot instruments, UI wired to worker, long-run cadence study | NOT_STARTED / B-05 | – |

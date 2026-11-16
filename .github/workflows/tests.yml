@@ -13,4 +13,7 @@ jobs:
           python-version: "3.11"
       - run: pip install -q -r requirements.txt
       - run: python -m pytest -q
-      - run: node --test tests_js/patterns.test.js
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.13"
+      - run: node --disable-warning=ExperimentalWarning --test "tests_js/*.test.js"

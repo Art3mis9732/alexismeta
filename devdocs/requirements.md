@@ -23,27 +23,27 @@ Evidence references point to `verification.md` entries (V-xxx).
 
 | ID | Origin | Requirement | Existing | Feas. | Phase | Verification | Status | Evidence |
 |---|---|---|---|---|---|---|---|---|
-| D-01 | P1§3 | Persistent background worker, explicit module boundaries | none | A | 2 | worker tests + live smoke | IN_PROGRESS | – |
-| D-02 | P1§3 | Canonical event/feature schema shared by live/replay/backtest | none | A | 2 | schema tests | IN_PROGRESS | – |
+| D-01 | P1§3 | Persistent background worker, explicit module boundaries | none | A | 2 | worker tests + live smoke | VERIFIED (local run; uptime depends on host, B-05) | V-004, V-005 |
+| D-02 | P1§3 | Canonical event/feature schema shared by live/replay/backtest | none | A | 2 | schema tests | PARTIAL (market events done; replay/features pending) | V-004 |
 | D-03 | P1§4 | Capability registry with live probe results, access dates | partial (SOURCES.md for rules only) | A | 2 | `data-sources.md` | IN_PROGRESS | – |
-| D-04 | P1§5 | Observation fields: venue, native id, base/quote/settle, class, linear/inverse, multiplier, exch ts, recv ts, persist ts, seq/trade id, source, schema ver, quality flags | none | A | 2 | schema + tests | IN_PROGRESS | – |
+| D-04 | P1§5 | Observation fields: venue, native id, base/quote/settle, class, linear/inverse, multiplier, exch ts, recv ts, persist ts, seq/trade id, source, schema ver, quality flags | none | A | 2 | schema + tests | VERIFIED (raw-record reference = quarantine copy only for rejected msgs) | V-004, V-005 |
 | D-05 | P1§5 | UTC internal; selectable display TZ default Asia/Kolkata | IST hard-coded | A | 3 | UI test | NOT_STARTED | – |
-| D-06 | P1§5 | last/bid/ask/mark/index kept distinct | partly (ticker) | A | 2 | schema | IN_PROGRESS | – |
-| D-07 | P1§5 | REST snapshots + paginated backfill | partial (python) | A | 2 | tests + smoke | IN_PROGRESS | – |
-| D-08 | P1§5 | WS heartbeat, supervision, backoff+jitter | partial (browser, no jitter) | A | 2 | fault tests | IN_PROGRESS | – |
-| D-09 | P1§5 | Endpoint rate limits, bounded queues, backpressure | partial (python min interval) | A | 2 | tests | IN_PROGRESS | – |
-| D-10 | P1§5 | Idempotent writes, dedupe, out-of-order handling | none | A | 2 | dup/out-of-order tests | IN_PROGRESS | – |
-| D-11 | P1§5 | Clock-offset monitoring | none | A | 2 | test + /api/health | IN_PROGRESS | – |
-| D-12 | P1§5 | Gap detection & recovery (REST refill) | gap report only | A | 2 | gap test | IN_PROGRESS | – |
-| D-13 | P1§5 | Schema validation & quarantine | none | A | 2 | malformed-msg test | IN_PROGRESS | – |
-| D-14 | P1§5 | Graceful shutdown, restart recovery | none | A | 2 | restart test | IN_PROGRESS | – |
-| D-15 | P1§5 | Order book snapshot/delta, seq checks, crossed/negative detection, invalidate→resync | none | A | 2 | seq-gap fixtures | IN_PROGRESS | – |
+| D-06 | P1§5 | last/bid/ask/mark/index kept distinct | partly (ticker) | A | 2 | schema | VERIFIED | V-004, V-005 |
+| D-07 | P1§5 | REST snapshots + paginated backfill | partial (python) | A | 2 | tests + smoke | PARTIAL (≤1000-candle window backfill; deeper pagination stays in python scripts; unrecoverable gaps logged) | V-004 |
+| D-08 | P1§5 | WS heartbeat, supervision, backoff+jitter | partial (browser, no jitter) | A | 2 | fault tests | VERIFIED (worker; browser stream unchanged) | V-004 |
+| D-09 | P1§5 | Endpoint rate limits, bounded queues, backpressure | partial (python min interval) | A | 2 | tests | PARTIAL (global REST spacing, not per-endpoint; bounded queue verified) | V-004 |
+| D-10 | P1§5 | Idempotent writes, dedupe, out-of-order handling | none | A | 2 | dup/out-of-order tests | VERIFIED | V-004, V-006 |
+| D-11 | P1§5 | Clock-offset monitoring | none | A | 2 | test + /api/health | IMPLEMENTED_UNVERIFIED (live value observed; no alert threshold yet) | V-005 |
+| D-12 | P1§5 | Gap detection & recovery (REST refill) | gap report only | A | 2 | gap test | PARTIAL (candles refilled; trade gaps flagged, not refilled) | V-004 |
+| D-13 | P1§5 | Schema validation & quarantine | none | A | 2 | malformed-msg test | VERIFIED | V-004 |
+| D-14 | P1§5 | Graceful shutdown, restart recovery | none | A | 2 | restart test | VERIFIED (SIGINT path exercised by --smoke exit; kill -9 recovery relies on SQLite WAL, not tested) | V-004, V-006 |
+| D-15 | P1§5 | Order book snapshot/delta, seq checks, crossed/negative detection, invalidate→resync | none | A | 2 | seq-gap fixtures | VERIFIED (continuity rule observed, not documented: D-007) | V-004, V-005 |
 | D-16 | P1§5 | Missing ≠ zero, unknown ≠ neutral; gap flags propagate | violated (A-03) | A | 2,4 | tests | IN_PROGRESS | – |
-| D-17 | P1§5 | Data mode LIVE/DELAYED/REPLAY/SIMULATED; health HEALTHY/STALE/DISCONNECTED/RECOVERING; exec ANALYSIS_ONLY/PAPER | none | A | 2,3 | health tests + UI | IN_PROGRESS | – |
-| D-18 | P1§5 | Feed-specific stale thresholds, tested | none | A | 2 | stale tests | IN_PROGRESS | – |
+| D-17 | P1§5 | Data mode LIVE/DELAYED/REPLAY/SIMULATED; health HEALTHY/STALE/DISCONNECTED/RECOVERING; exec ANALYSIS_ONLY/PAPER | none | A | 2,3 | health tests + UI | PARTIAL (worker API verified; UI not yet) | V-004 |
+| D-18 | P1§5 | Feed-specific stale thresholds, tested | none | A | 2 | stale tests | PARTIAL (tested logic; values need long-run cadence data, B-05) | V-004, V-005 |
 | D-19 | P1§5 | Alternate venue never silently replaces Bitget quote | n/a | A | 6 | test | NOT_STARTED | – |
-| D-20 | P1§3 | Bounded retention, disk budget, compaction | none | A | 2 | retention test | IN_PROGRESS | – |
-| D-21 | P1§4 | BTC, ETH, XRP perps + spot as distinct instrument class | perps only | A | 2 | instrument tests | IN_PROGRESS (perps); spot NOT_STARTED | – |
+| D-20 | P1§3 | Bounded retention, disk budget, compaction | none | A | 2 | retention test | PARTIAL (retention verified; disk budget not measured over a day) | V-004 |
+| D-21 | P1§4 | BTC, ETH, XRP perps + spot as distinct instrument class | perps only | A | 2 | instrument tests | PARTIAL (3 perps VERIFIED live; spot NOT_STARTED) | V-005 |
 | D-22 | P1§4 | One secondary venue (labelled context) | none | A (OKX reachable? untested) | 6 | probe | NOT_STARTED | – |
 | D-23 | P1§4 | CCXT evaluation | none | A | 6 | – | DEFERRED (direct API sufficient for one venue; D-002) | – |
 
@@ -103,8 +103,8 @@ Evidence references point to `verification.md` entries (V-xxx).
 | X-01 | P1§17 | Drift/calibration monitoring, champion/challenger, predeclared promotion, rollback | lab dev/lock/holdout | A/C | 10 | tests | NOT_STARTED |
 | Y-01 | P1§18 | No secrets in bundles/logs; placeholders only; sanitized errors | OK today (no secrets) | A | all | secret-scan test | IN_PROGRESS |
 | Y-02 | P1§18 | Live order placement absent/hard-disabled | lab `live_allowed=False` | A | all | test | VERIFIED (lab) / worker: no order code |
-| Y-03 | P1§18 | Local API: bind 127.0.0.1, input validation, request limits | none | A | 2 | tests | IN_PROGRESS |
-| Y-04 | P1§18 | Backups/restore, heartbeat/readiness, disk monitoring | none | A | 2/11 | tests | IN_PROGRESS |
+| Y-03 | P1§18 | Local API: bind 127.0.0.1, input validation, request limits | none | A | 2 | tests | VERIFIED (V-004) |
+| Y-04 | P1§18 | Backups/restore, heartbeat/readiness, disk monitoring | none | A | 2/11 | tests | PARTIAL (backup+integrity verified; restore drill, scheduled backups pending) |
 | Z-01 | P1§20 | Phase 9 end-to-end flow | none | A | 11 | e2e test | NOT_STARTED |
 | Z-02 | P1§22 | Report whether an edge is demonstrated | lab criteria exist | A | 9 | – | NOT_STARTED (no edge demonstrated) |
 

@@ -10,8 +10,9 @@ Requirements: Node.js 22.13 or later (LTS 22 or 24) from nodejs.org; Git. No npm
 ```powershell
 cd $HOME\path\to\alexismeta
 node --version                      # must be v22.13.0 or later
-node --test tests_js                # all JS tests (engine + worker)
-node server\main.js                 # starts the collector + http://127.0.0.1:8787
+npm test                            # all JS tests (engine + worker); npm ships with Node, nothing is installed
+npm start                           # collector + http://127.0.0.1:8787   (or: node server\main.js)
+npm run smoke                       # 30 s live check against Bitget, prints a pass/fail report
 ```
 Then open http://127.0.0.1:8787 in a browser. Stop with Ctrl+C (graceful shutdown flushes and closes the DB).
 Data is stored in `data\worker\market.db` (do not commit it).

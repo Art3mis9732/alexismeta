@@ -1,0 +1,12 @@
+{
+  "name": "alexismeta",
+  "private": true,
+  "description": "Bitget BTC/ETH/XRP market intelligence: static site + local analysis worker (no API keys, no order placement)",
+  "license": "UNLICENSED",
+  "engines": { "node": ">=22.13.0" },
+  "scripts": {
+    "test": "node --disable-warning=ExperimentalWarning --test \"tests_js/*.test.js\"",
+    "start": "node --disable-warning=ExperimentalWarning server/main.js",
+    "smoke": "node --disable-warning=ExperimentalWarning server/main.js --smoke 30 --port 8799 --db data/worker/smoke.db"
+  }
+}

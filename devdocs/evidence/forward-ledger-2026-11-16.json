@@ -1,6 +1,11 @@
 {
- "exported_at_utc": "2026-11-16T10:39:15.536Z",
- "note": "Original LIVE forward decisions recorded by the worker on 2026-11-16 (cloud container run). Exported verbatim from ledger_entries and evidence_snapshots; hashes are the ledger chain values.",
+ "exported_at_utc": "2026-11-16T11:06:25.878Z",
+ "note": "Original LIVE forward decisions recorded by the worker on 2026-11-16 (cloud container). Exported verbatim; hashes are the ledger chain values. Supersedes the 18-row export made earlier the same day.",
+ "database": {
+  "created_ts": "1794826216934",
+  "db_id": "de91cb1f-26ff-4381-a5e7-9eb7165d85b6",
+  "environment": "FORWARD"
+ },
  "ledger_entries": [
   {
    "seq": 1,
@@ -270,6 +275,276 @@
    "payload": "{\"analyst\":\"defensive\",\"bar_close_ts\":1794819600000,\"code\":\"NO_TRIGGER\",\"evidence_hash\":\"2fd84918e216bf59e7fcb21420e3a1635019906bcf489fa1e2d22ae36188844d\",\"execution_mode\":\"PAPER\",\"instrument_id\":\"bitget:perp:XRPUSDT\",\"intent\":\"WAIT\",\"probability\":null,\"setup\":null,\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\"}",
    "prev_hash": "2a376bb2067d8549a0debfe7d5cc69c55db0a57e8dc9de437964517fc33f4782",
    "hash": "0b9faea9f621049a4bc2ff07c393a83f11b6749cfec44c4fd3156ff97fb1c611",
+   "data_mode": "LIVE"
+  },
+  {
+   "seq": 19,
+   "entry_id": "decision:risk_taker-v1:bitget:perp:BTCUSDT:1794825900000",
+   "kind": "decision",
+   "ref_id": null,
+   "created_ts": 1794825905829,
+   "data_cutoff_ts": 1794825905800,
+   "eval_due_ts": null,
+   "code_rev": "bb5ff3429e8f",
+   "versions": "{\"engine\":\"paper-v1\",\"evidence\":\"evidence-v1\",\"policy\":\"risk_taker-v1\",\"risk\":\"risk-v1\"}",
+   "payload": "{\"analyst\":\"risk_taker\",\"bar_close_ts\":1794825900000,\"code\":\"NO_TRIGGER\",\"context\":{\"cooldown_until\":null,\"position_open\":false},\"evidence_hash\":\"474a8797b04294563286706868abc3232e40e28592e7fb05462d905df3c6b6ef\",\"execution_mode\":\"PAPER\",\"instrument_id\":\"bitget:perp:BTCUSDT\",\"intent\":\"WAIT\",\"probability\":null,\"setup\":null,\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\"}",
+   "prev_hash": "0b9faea9f621049a4bc2ff07c393a83f11b6749cfec44c4fd3156ff97fb1c611",
+   "hash": "3450492aba0c3dbe3c48dc1bca4b57b154ad3615183569ce0fff07498a4d96f6",
+   "data_mode": "LIVE"
+  },
+  {
+   "seq": 20,
+   "entry_id": "decision:balanced-v1:bitget:perp:BTCUSDT:1794825900000",
+   "kind": "decision",
+   "ref_id": null,
+   "created_ts": 1794825905830,
+   "data_cutoff_ts": 1794825905800,
+   "eval_due_ts": null,
+   "code_rev": "bb5ff3429e8f",
+   "versions": "{\"engine\":\"paper-v1\",\"evidence\":\"evidence-v1\",\"policy\":\"balanced-v1\",\"risk\":\"risk-v1\"}",
+   "payload": "{\"analyst\":\"balanced\",\"bar_close_ts\":1794825900000,\"code\":\"NO_TRIGGER\",\"context\":{\"cooldown_until\":null,\"position_open\":false},\"evidence_hash\":\"474a8797b04294563286706868abc3232e40e28592e7fb05462d905df3c6b6ef\",\"execution_mode\":\"PAPER\",\"instrument_id\":\"bitget:perp:BTCUSDT\",\"intent\":\"WAIT\",\"probability\":null,\"setup\":null,\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\"}",
+   "prev_hash": "3450492aba0c3dbe3c48dc1bca4b57b154ad3615183569ce0fff07498a4d96f6",
+   "hash": "acdcc43131d66773c2f0838fc00d081b645ae174245e48bbcc80dc672eb51dc5",
+   "data_mode": "LIVE"
+  },
+  {
+   "seq": 21,
+   "entry_id": "decision:defensive-v1:bitget:perp:BTCUSDT:1794825900000",
+   "kind": "decision",
+   "ref_id": null,
+   "created_ts": 1794825905830,
+   "data_cutoff_ts": 1794825905800,
+   "eval_due_ts": null,
+   "code_rev": "bb5ff3429e8f",
+   "versions": "{\"engine\":\"paper-v1\",\"evidence\":\"evidence-v1\",\"policy\":\"defensive-v1\",\"risk\":\"risk-v1\"}",
+   "payload": "{\"analyst\":\"defensive\",\"bar_close_ts\":1794825900000,\"code\":\"NO_TRIGGER\",\"context\":{\"cooldown_until\":null,\"position_open\":false},\"evidence_hash\":\"474a8797b04294563286706868abc3232e40e28592e7fb05462d905df3c6b6ef\",\"execution_mode\":\"PAPER\",\"instrument_id\":\"bitget:perp:BTCUSDT\",\"intent\":\"WAIT\",\"probability\":null,\"setup\":null,\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\"}",
+   "prev_hash": "acdcc43131d66773c2f0838fc00d081b645ae174245e48bbcc80dc672eb51dc5",
+   "hash": "048eae12eaa0f3760be17d8263096742ada3d81e16fdfc35f1ffa425f343f4cd",
+   "data_mode": "LIVE"
+  },
+  {
+   "seq": 22,
+   "entry_id": "decision:risk_taker-v1:bitget:perp:ETHUSDT:1794825900000",
+   "kind": "decision",
+   "ref_id": null,
+   "created_ts": 1794825905845,
+   "data_cutoff_ts": 1794825905800,
+   "eval_due_ts": null,
+   "code_rev": "bb5ff3429e8f",
+   "versions": "{\"engine\":\"paper-v1\",\"evidence\":\"evidence-v1\",\"policy\":\"risk_taker-v1\",\"risk\":\"risk-v1\"}",
+   "payload": "{\"analyst\":\"risk_taker\",\"bar_close_ts\":1794825900000,\"code\":\"NO_TRIGGER\",\"context\":{\"cooldown_until\":null,\"position_open\":false},\"evidence_hash\":\"75765ec3a042258a39fcf103f9aef028e837b705ac67a3447a38cca78e65ad4f\",\"execution_mode\":\"PAPER\",\"instrument_id\":\"bitget:perp:ETHUSDT\",\"intent\":\"WAIT\",\"probability\":null,\"setup\":null,\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\"}",
+   "prev_hash": "048eae12eaa0f3760be17d8263096742ada3d81e16fdfc35f1ffa425f343f4cd",
+   "hash": "c3dbfbb7e77cb08d583cbb903769638f92a8faac9d4c88696116c68e9c6aaf8a",
+   "data_mode": "LIVE"
+  },
+  {
+   "seq": 23,
+   "entry_id": "decision:balanced-v1:bitget:perp:ETHUSDT:1794825900000",
+   "kind": "decision",
+   "ref_id": null,
+   "created_ts": 1794825905845,
+   "data_cutoff_ts": 1794825905800,
+   "eval_due_ts": null,
+   "code_rev": "bb5ff3429e8f",
+   "versions": "{\"engine\":\"paper-v1\",\"evidence\":\"evidence-v1\",\"policy\":\"balanced-v1\",\"risk\":\"risk-v1\"}",
+   "payload": "{\"analyst\":\"balanced\",\"bar_close_ts\":1794825900000,\"code\":\"NO_TRIGGER\",\"context\":{\"cooldown_until\":null,\"position_open\":false},\"evidence_hash\":\"75765ec3a042258a39fcf103f9aef028e837b705ac67a3447a38cca78e65ad4f\",\"execution_mode\":\"PAPER\",\"instrument_id\":\"bitget:perp:ETHUSDT\",\"intent\":\"WAIT\",\"probability\":null,\"setup\":null,\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\"}",
+   "prev_hash": "c3dbfbb7e77cb08d583cbb903769638f92a8faac9d4c88696116c68e9c6aaf8a",
+   "hash": "399b539ce6d38500783bd7d385f5edf7743bd9491457b240127057372c942349",
+   "data_mode": "LIVE"
+  },
+  {
+   "seq": 24,
+   "entry_id": "decision:defensive-v1:bitget:perp:ETHUSDT:1794825900000",
+   "kind": "decision",
+   "ref_id": null,
+   "created_ts": 1794825905846,
+   "data_cutoff_ts": 1794825905800,
+   "eval_due_ts": null,
+   "code_rev": "bb5ff3429e8f",
+   "versions": "{\"engine\":\"paper-v1\",\"evidence\":\"evidence-v1\",\"policy\":\"defensive-v1\",\"risk\":\"risk-v1\"}",
+   "payload": "{\"analyst\":\"defensive\",\"bar_close_ts\":1794825900000,\"code\":\"NO_TRIGGER\",\"context\":{\"cooldown_until\":null,\"position_open\":false},\"evidence_hash\":\"75765ec3a042258a39fcf103f9aef028e837b705ac67a3447a38cca78e65ad4f\",\"execution_mode\":\"PAPER\",\"instrument_id\":\"bitget:perp:ETHUSDT\",\"intent\":\"WAIT\",\"probability\":null,\"setup\":null,\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\"}",
+   "prev_hash": "399b539ce6d38500783bd7d385f5edf7743bd9491457b240127057372c942349",
+   "hash": "66f49e522986f8909abc61a20e2426b63eeb885c2863d8d7e41f948234df0efb",
+   "data_mode": "LIVE"
+  },
+  {
+   "seq": 25,
+   "entry_id": "decision:risk_taker-v1:bitget:perp:XRPUSDT:1794825900000",
+   "kind": "decision",
+   "ref_id": null,
+   "created_ts": 1794825905861,
+   "data_cutoff_ts": 1794825905800,
+   "eval_due_ts": null,
+   "code_rev": "bb5ff3429e8f",
+   "versions": "{\"engine\":\"paper-v1\",\"evidence\":\"evidence-v1\",\"policy\":\"risk_taker-v1\",\"risk\":\"risk-v1\"}",
+   "payload": "{\"analyst\":\"risk_taker\",\"bar_close_ts\":1794825900000,\"code\":\"NO_TRIGGER\",\"context\":{\"cooldown_until\":null,\"position_open\":false},\"evidence_hash\":\"9133fbcf1a12ecfa800ceaa33c5474b215b5dfacdc5d211b3eb37568f46ee374\",\"execution_mode\":\"PAPER\",\"instrument_id\":\"bitget:perp:XRPUSDT\",\"intent\":\"WAIT\",\"probability\":null,\"setup\":null,\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\"}",
+   "prev_hash": "66f49e522986f8909abc61a20e2426b63eeb885c2863d8d7e41f948234df0efb",
+   "hash": "c1a5c4f056e6d5ddda2a5600af6a2ca799ce48cda67bcfb8f525a6aa016852b0",
+   "data_mode": "LIVE"
+  },
+  {
+   "seq": 26,
+   "entry_id": "decision:balanced-v1:bitget:perp:XRPUSDT:1794825900000",
+   "kind": "decision",
+   "ref_id": null,
+   "created_ts": 1794825905862,
+   "data_cutoff_ts": 1794825905800,
+   "eval_due_ts": null,
+   "code_rev": "bb5ff3429e8f",
+   "versions": "{\"engine\":\"paper-v1\",\"evidence\":\"evidence-v1\",\"policy\":\"balanced-v1\",\"risk\":\"risk-v1\"}",
+   "payload": "{\"analyst\":\"balanced\",\"bar_close_ts\":1794825900000,\"code\":\"NO_TRIGGER\",\"context\":{\"cooldown_until\":null,\"position_open\":false},\"evidence_hash\":\"9133fbcf1a12ecfa800ceaa33c5474b215b5dfacdc5d211b3eb37568f46ee374\",\"execution_mode\":\"PAPER\",\"instrument_id\":\"bitget:perp:XRPUSDT\",\"intent\":\"WAIT\",\"probability\":null,\"setup\":null,\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\"}",
+   "prev_hash": "c1a5c4f056e6d5ddda2a5600af6a2ca799ce48cda67bcfb8f525a6aa016852b0",
+   "hash": "d20b374fe2c9dc6dd7110386cd38a896f1e63626e7f270474b32352be0eef721",
+   "data_mode": "LIVE"
+  },
+  {
+   "seq": 27,
+   "entry_id": "decision:defensive-v1:bitget:perp:XRPUSDT:1794825900000",
+   "kind": "decision",
+   "ref_id": null,
+   "created_ts": 1794825905862,
+   "data_cutoff_ts": 1794825905800,
+   "eval_due_ts": null,
+   "code_rev": "bb5ff3429e8f",
+   "versions": "{\"engine\":\"paper-v1\",\"evidence\":\"evidence-v1\",\"policy\":\"defensive-v1\",\"risk\":\"risk-v1\"}",
+   "payload": "{\"analyst\":\"defensive\",\"bar_close_ts\":1794825900000,\"code\":\"NO_TRIGGER\",\"context\":{\"cooldown_until\":null,\"position_open\":false},\"evidence_hash\":\"9133fbcf1a12ecfa800ceaa33c5474b215b5dfacdc5d211b3eb37568f46ee374\",\"execution_mode\":\"PAPER\",\"instrument_id\":\"bitget:perp:XRPUSDT\",\"intent\":\"WAIT\",\"probability\":null,\"setup\":null,\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\"}",
+   "prev_hash": "d20b374fe2c9dc6dd7110386cd38a896f1e63626e7f270474b32352be0eef721",
+   "hash": "2b1a7a5a0c55beb4bfa455f6ccba47facc5b87d37b414e61fc123e7c728372ac",
+   "data_mode": "LIVE"
+  },
+  {
+   "seq": 28,
+   "entry_id": "decision:risk_taker-v1:bitget:perp:BTCUSDT:1794826800000",
+   "kind": "decision",
+   "ref_id": null,
+   "created_ts": 1794826804183,
+   "data_cutoff_ts": 1794826804149,
+   "eval_due_ts": null,
+   "code_rev": "028f5a3c5e86",
+   "versions": "{\"engine\":\"paper-v2\",\"evidence\":\"evidence-v1\",\"policy\":\"risk_taker-v1\",\"risk\":\"risk-v1\",\"valuation\":\"valuation-v1\"}",
+   "payload": "{\"analyst\":\"risk_taker\",\"bar_close_ts\":1794826800000,\"code\":\"NO_TRIGGER\",\"context\":{\"cooldown_until\":null,\"position_open\":false},\"environment\":\"FORWARD\",\"evidence_hash\":\"78502cb7029ac7a89dec1eb49a36aa701d13466c2b276370a1fd481c4238b10d\",\"execution_mode\":\"PAPER\",\"instrument_id\":\"bitget:perp:BTCUSDT\",\"intent\":\"WAIT\",\"probability\":null,\"setup\":null,\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\"}",
+   "prev_hash": "2b1a7a5a0c55beb4bfa455f6ccba47facc5b87d37b414e61fc123e7c728372ac",
+   "hash": "bd242df50ce5c8f7ae7ad2146ef5a72a78bd12f9a0394182c5e987a0c6ea8538",
+   "data_mode": "LIVE"
+  },
+  {
+   "seq": 29,
+   "entry_id": "decision:balanced-v1:bitget:perp:BTCUSDT:1794826800000",
+   "kind": "decision",
+   "ref_id": null,
+   "created_ts": 1794826804184,
+   "data_cutoff_ts": 1794826804149,
+   "eval_due_ts": null,
+   "code_rev": "028f5a3c5e86",
+   "versions": "{\"engine\":\"paper-v2\",\"evidence\":\"evidence-v1\",\"policy\":\"balanced-v1\",\"risk\":\"risk-v1\",\"valuation\":\"valuation-v1\"}",
+   "payload": "{\"analyst\":\"balanced\",\"bar_close_ts\":1794826800000,\"code\":\"NO_TRIGGER\",\"context\":{\"cooldown_until\":null,\"position_open\":false},\"environment\":\"FORWARD\",\"evidence_hash\":\"78502cb7029ac7a89dec1eb49a36aa701d13466c2b276370a1fd481c4238b10d\",\"execution_mode\":\"PAPER\",\"instrument_id\":\"bitget:perp:BTCUSDT\",\"intent\":\"WAIT\",\"probability\":null,\"setup\":null,\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\"}",
+   "prev_hash": "bd242df50ce5c8f7ae7ad2146ef5a72a78bd12f9a0394182c5e987a0c6ea8538",
+   "hash": "0994bd677e265d8286d320e3496d580eea7387928b869eb007211bb136e2874d",
+   "data_mode": "LIVE"
+  },
+  {
+   "seq": 30,
+   "entry_id": "decision:defensive-v1:bitget:perp:BTCUSDT:1794826800000",
+   "kind": "decision",
+   "ref_id": null,
+   "created_ts": 1794826804184,
+   "data_cutoff_ts": 1794826804149,
+   "eval_due_ts": null,
+   "code_rev": "028f5a3c5e86",
+   "versions": "{\"engine\":\"paper-v2\",\"evidence\":\"evidence-v1\",\"policy\":\"defensive-v1\",\"risk\":\"risk-v1\",\"valuation\":\"valuation-v1\"}",
+   "payload": "{\"analyst\":\"defensive\",\"bar_close_ts\":1794826800000,\"code\":\"NO_TRIGGER\",\"context\":{\"cooldown_until\":null,\"position_open\":false},\"environment\":\"FORWARD\",\"evidence_hash\":\"78502cb7029ac7a89dec1eb49a36aa701d13466c2b276370a1fd481c4238b10d\",\"execution_mode\":\"PAPER\",\"instrument_id\":\"bitget:perp:BTCUSDT\",\"intent\":\"WAIT\",\"probability\":null,\"setup\":null,\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\"}",
+   "prev_hash": "0994bd677e265d8286d320e3496d580eea7387928b869eb007211bb136e2874d",
+   "hash": "cb2db6be02482dda85e6e741a3950209f2bf13356dd2804d1444318541e78729",
+   "data_mode": "LIVE"
+  },
+  {
+   "seq": 31,
+   "entry_id": "decision:risk_taker-v1:bitget:perp:ETHUSDT:1794826800000",
+   "kind": "decision",
+   "ref_id": null,
+   "created_ts": 1794826804200,
+   "data_cutoff_ts": 1794826804149,
+   "eval_due_ts": null,
+   "code_rev": "028f5a3c5e86",
+   "versions": "{\"engine\":\"paper-v2\",\"evidence\":\"evidence-v1\",\"policy\":\"risk_taker-v1\",\"risk\":\"risk-v1\",\"valuation\":\"valuation-v1\"}",
+   "payload": "{\"analyst\":\"risk_taker\",\"bar_close_ts\":1794826800000,\"code\":\"NO_TRIGGER\",\"context\":{\"cooldown_until\":null,\"position_open\":false},\"environment\":\"FORWARD\",\"evidence_hash\":\"8ba7d2c3cab1afbc39768e3eee442a0e807c79ef013136c612b4dba9e8903c8d\",\"execution_mode\":\"PAPER\",\"instrument_id\":\"bitget:perp:ETHUSDT\",\"intent\":\"WAIT\",\"probability\":null,\"setup\":null,\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\"}",
+   "prev_hash": "cb2db6be02482dda85e6e741a3950209f2bf13356dd2804d1444318541e78729",
+   "hash": "b42496da2f78f5758dce5a4037cef2696c7eedb13aea03da6c28ab866dd4f34b",
+   "data_mode": "LIVE"
+  },
+  {
+   "seq": 32,
+   "entry_id": "decision:balanced-v1:bitget:perp:ETHUSDT:1794826800000",
+   "kind": "decision",
+   "ref_id": null,
+   "created_ts": 1794826804200,
+   "data_cutoff_ts": 1794826804149,
+   "eval_due_ts": null,
+   "code_rev": "028f5a3c5e86",
+   "versions": "{\"engine\":\"paper-v2\",\"evidence\":\"evidence-v1\",\"policy\":\"balanced-v1\",\"risk\":\"risk-v1\",\"valuation\":\"valuation-v1\"}",
+   "payload": "{\"analyst\":\"balanced\",\"bar_close_ts\":1794826800000,\"code\":\"NO_TRIGGER\",\"context\":{\"cooldown_until\":null,\"position_open\":false},\"environment\":\"FORWARD\",\"evidence_hash\":\"8ba7d2c3cab1afbc39768e3eee442a0e807c79ef013136c612b4dba9e8903c8d\",\"execution_mode\":\"PAPER\",\"instrument_id\":\"bitget:perp:ETHUSDT\",\"intent\":\"WAIT\",\"probability\":null,\"setup\":null,\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\"}",
+   "prev_hash": "b42496da2f78f5758dce5a4037cef2696c7eedb13aea03da6c28ab866dd4f34b",
+   "hash": "a74b8dd81e1eac5187fa9a1cf4d08f08ff8ca8993f4837cc947d6a15dca79d34",
+   "data_mode": "LIVE"
+  },
+  {
+   "seq": 33,
+   "entry_id": "decision:defensive-v1:bitget:perp:ETHUSDT:1794826800000",
+   "kind": "decision",
+   "ref_id": null,
+   "created_ts": 1794826804200,
+   "data_cutoff_ts": 1794826804149,
+   "eval_due_ts": null,
+   "code_rev": "028f5a3c5e86",
+   "versions": "{\"engine\":\"paper-v2\",\"evidence\":\"evidence-v1\",\"policy\":\"defensive-v1\",\"risk\":\"risk-v1\",\"valuation\":\"valuation-v1\"}",
+   "payload": "{\"analyst\":\"defensive\",\"bar_close_ts\":1794826800000,\"code\":\"NO_TRIGGER\",\"context\":{\"cooldown_until\":null,\"position_open\":false},\"environment\":\"FORWARD\",\"evidence_hash\":\"8ba7d2c3cab1afbc39768e3eee442a0e807c79ef013136c612b4dba9e8903c8d\",\"execution_mode\":\"PAPER\",\"instrument_id\":\"bitget:perp:ETHUSDT\",\"intent\":\"WAIT\",\"probability\":null,\"setup\":null,\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\"}",
+   "prev_hash": "a74b8dd81e1eac5187fa9a1cf4d08f08ff8ca8993f4837cc947d6a15dca79d34",
+   "hash": "472982c8768f266969bba022261dc09227b3c44c208b110032fd00eaa95fa651",
+   "data_mode": "LIVE"
+  },
+  {
+   "seq": 34,
+   "entry_id": "decision:risk_taker-v1:bitget:perp:XRPUSDT:1794826800000",
+   "kind": "decision",
+   "ref_id": null,
+   "created_ts": 1794826809177,
+   "data_cutoff_ts": 1794826809139,
+   "eval_due_ts": null,
+   "code_rev": "028f5a3c5e86",
+   "versions": "{\"engine\":\"paper-v2\",\"evidence\":\"evidence-v1\",\"policy\":\"risk_taker-v1\",\"risk\":\"risk-v1\",\"valuation\":\"valuation-v1\"}",
+   "payload": "{\"analyst\":\"risk_taker\",\"bar_close_ts\":1794826800000,\"code\":\"NO_TRIGGER\",\"context\":{\"cooldown_until\":null,\"position_open\":false},\"environment\":\"FORWARD\",\"evidence_hash\":\"24a3657be853c03ed2f1f499500ffae07e492689ff1a9a5530049838db9378ba\",\"execution_mode\":\"PAPER\",\"instrument_id\":\"bitget:perp:XRPUSDT\",\"intent\":\"WAIT\",\"probability\":null,\"setup\":null,\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\"}",
+   "prev_hash": "472982c8768f266969bba022261dc09227b3c44c208b110032fd00eaa95fa651",
+   "hash": "7d223d0e829fc7d6ffb83c3e96f56dd88dca3ee0a54def1dbdbc636996b8d98f",
+   "data_mode": "LIVE"
+  },
+  {
+   "seq": 35,
+   "entry_id": "decision:balanced-v1:bitget:perp:XRPUSDT:1794826800000",
+   "kind": "decision",
+   "ref_id": null,
+   "created_ts": 1794826809188,
+   "data_cutoff_ts": 1794826809139,
+   "eval_due_ts": null,
+   "code_rev": "028f5a3c5e86",
+   "versions": "{\"engine\":\"paper-v2\",\"evidence\":\"evidence-v1\",\"policy\":\"balanced-v1\",\"risk\":\"risk-v1\",\"valuation\":\"valuation-v1\"}",
+   "payload": "{\"analyst\":\"balanced\",\"bar_close_ts\":1794826800000,\"code\":\"NO_TRIGGER\",\"context\":{\"cooldown_until\":null,\"position_open\":false},\"environment\":\"FORWARD\",\"evidence_hash\":\"24a3657be853c03ed2f1f499500ffae07e492689ff1a9a5530049838db9378ba\",\"execution_mode\":\"PAPER\",\"instrument_id\":\"bitget:perp:XRPUSDT\",\"intent\":\"WAIT\",\"probability\":null,\"setup\":null,\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\"}",
+   "prev_hash": "7d223d0e829fc7d6ffb83c3e96f56dd88dca3ee0a54def1dbdbc636996b8d98f",
+   "hash": "3c852f0977469158105fb9d23a3a6523b3db1cfe4142754ba8982a0a4beaa60b",
+   "data_mode": "LIVE"
+  },
+  {
+   "seq": 36,
+   "entry_id": "decision:defensive-v1:bitget:perp:XRPUSDT:1794826800000",
+   "kind": "decision",
+   "ref_id": null,
+   "created_ts": 1794826809189,
+   "data_cutoff_ts": 1794826809139,
+   "eval_due_ts": null,
+   "code_rev": "028f5a3c5e86",
+   "versions": "{\"engine\":\"paper-v2\",\"evidence\":\"evidence-v1\",\"policy\":\"defensive-v1\",\"risk\":\"risk-v1\",\"valuation\":\"valuation-v1\"}",
+   "payload": "{\"analyst\":\"defensive\",\"bar_close_ts\":1794826800000,\"code\":\"NO_TRIGGER\",\"context\":{\"cooldown_until\":null,\"position_open\":false},\"environment\":\"FORWARD\",\"evidence_hash\":\"24a3657be853c03ed2f1f499500ffae07e492689ff1a9a5530049838db9378ba\",\"execution_mode\":\"PAPER\",\"instrument_id\":\"bitget:perp:XRPUSDT\",\"intent\":\"WAIT\",\"probability\":null,\"setup\":null,\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\"}",
+   "prev_hash": "3c852f0977469158105fb9d23a3a6523b3db1cfe4142754ba8982a0a4beaa60b",
+   "hash": "200012a7550ba24be7e570d28fce6f7dd227acdf2a6c143de122323afcbf65b7",
    "data_mode": "LIVE"
   }
  ],
@@ -623,6 +898,516 @@
     "data_cutoff_ts": 1794819607638,
     "hash": "2fd84918e216bf59e7fcb21420e3a1635019906bcf489fa1e2d22ae36188844d"
    }
+  },
+  {
+   "hash": "474a8797b04294563286706868abc3232e40e28592e7fb05462d905df3c6b6ef",
+   "instrument_id": "bitget:perp:BTCUSDT",
+   "bar_close_ts": 1794825900000,
+   "created_ts": 1794825905828,
+   "json": {
+    "schema": "evidence-v1",
+    "instrument_id": "bitget:perp:BTCUSDT",
+    "bar_close_ts": 1794825900000,
+    "decision_ts": 1794825905809,
+    "candles": {
+     "interval": "15m",
+     "count": 1000,
+     "first_open": 1793925900000,
+     "last_open": 1794825000000,
+     "rows_hash": "d000ac09e006c16083566ff5e23056f3a454a5f8619cb2cc472c6d8dcad7ed53"
+    },
+    "close": 64522.6,
+    "trend_1h": -1,
+    "vwap": 64700.027292046536,
+    "above_vwap": false,
+    "atr": 253.2279573878807,
+    "atr_pct": 0.3924639698150427,
+    "atr_pctile": 0.6010416666666667,
+    "change_24h": -0.015529352887684422,
+    "rv_24h": 0.022585124566988694,
+    "triggers": [],
+    "bid": 64530.1,
+    "ask": 64530.2,
+    "last": 64530.2,
+    "mark": 64530.2,
+    "index": 64554.66217391304,
+    "funding_rate": 0.000005,
+    "spread_bps": 0.015496632194182847,
+    "ticker_recv_ts": 1794825905725,
+    "book_state": "VALID",
+    "depth_10bps": {
+     "bid": 29065246.696400024,
+     "ask": 26972059.589780003
+    },
+    "health": {
+     "ticker": "HEALTHY",
+     "trade": "HEALTHY",
+     "books": "HEALTHY",
+     "candle1m": "HEALTHY",
+     "candle5m": "HEALTHY",
+     "candle15m": "HEALTHY",
+     "candle4H": "HEALTHY"
+    },
+    "coverage_complete": true,
+    "coverage_reasons": [],
+    "missing": [],
+    "data_cutoff_ts": 1794825905800,
+    "hash": "474a8797b04294563286706868abc3232e40e28592e7fb05462d905df3c6b6ef"
+   }
+  },
+  {
+   "hash": "75765ec3a042258a39fcf103f9aef028e837b705ac67a3447a38cca78e65ad4f",
+   "instrument_id": "bitget:perp:ETHUSDT",
+   "bar_close_ts": 1794825900000,
+   "created_ts": 1794825905845,
+   "json": {
+    "schema": "evidence-v1",
+    "instrument_id": "bitget:perp:ETHUSDT",
+    "bar_close_ts": 1794825900000,
+    "decision_ts": 1794825905809,
+    "candles": {
+     "interval": "15m",
+     "count": 1000,
+     "first_open": 1793925900000,
+     "last_open": 1794825000000,
+     "rows_hash": "c1ea4b9c7a3191cd62a9a7747e39312f9667a9dc71f0e53097d10e2b9b00226f"
+    },
+    "close": 1805.35,
+    "trend_1h": -1,
+    "vwap": 1813.3206294273666,
+    "above_vwap": false,
+    "atr": 8.836549657353999,
+    "atr_pct": 0.4894646277649209,
+    "atr_pctile": 0.5635416666666667,
+    "change_24h": -0.012849604942996917,
+    "rv_24h": 0.02934506398262145,
+    "triggers": [],
+    "bid": 1805.69,
+    "ask": 1805.7,
+    "last": 1805.7,
+    "mark": 1805.7,
+    "index": 1806.5893478260869,
+    "funding_rate": -0.000047,
+    "spread_bps": 0.05538033831843641,
+    "ticker_recv_ts": 1794825905725,
+    "book_state": "VALID",
+    "depth_10bps": {
+     "bid": 15630012.5825,
+     "ask": 22413995.50850001
+    },
+    "health": {
+     "ticker": "HEALTHY",
+     "trade": "HEALTHY",
+     "books": "HEALTHY",
+     "candle1m": "HEALTHY",
+     "candle5m": "HEALTHY",
+     "candle15m": "HEALTHY",
+     "candle4H": "HEALTHY"
+    },
+    "coverage_complete": true,
+    "coverage_reasons": [],
+    "missing": [],
+    "data_cutoff_ts": 1794825905800,
+    "hash": "75765ec3a042258a39fcf103f9aef028e837b705ac67a3447a38cca78e65ad4f"
+   }
+  },
+  {
+   "hash": "9133fbcf1a12ecfa800ceaa33c5474b215b5dfacdc5d211b3eb37568f46ee374",
+   "instrument_id": "bitget:perp:XRPUSDT",
+   "bar_close_ts": 1794825900000,
+   "created_ts": 1794825905861,
+   "json": {
+    "schema": "evidence-v1",
+    "instrument_id": "bitget:perp:XRPUSDT",
+    "bar_close_ts": 1794825900000,
+    "decision_ts": 1794825905809,
+    "candles": {
+     "interval": "15m",
+     "count": 1000,
+     "first_open": 1793925900000,
+     "last_open": 1794825000000,
+     "rows_hash": "7bdaf827f67ef483b9abcd928313d58ea1d6a59e36387495485142ecb7e3b89a"
+    },
+    "close": 0.9505,
+    "trend_1h": -1,
+    "vwap": 0.9558633219707734,
+    "above_vwap": false,
+    "atr": 0.005222016548959485,
+    "atr_pct": 0.5493967963134649,
+    "atr_pctile": 0.5083333333333333,
+    "change_24h": -0.013390076811293339,
+    "rv_24h": 0.033134904999551615,
+    "triggers": [],
+    "bid": 0.951,
+    "ask": 0.9511,
+    "last": 0.9507,
+    "mark": 0.951,
+    "index": 0.9515436956521739,
+    "funding_rate": -0.000072,
+    "spread_bps": 1.0514694285262498,
+    "ticker_recv_ts": 1794825905725,
+    "book_state": "VALID",
+    "depth_10bps": {
+     "bid": 278690.7538,
+     "ask": 539611.845
+    },
+    "health": {
+     "ticker": "HEALTHY",
+     "trade": "HEALTHY",
+     "books": "HEALTHY",
+     "candle1m": "HEALTHY",
+     "candle5m": "HEALTHY",
+     "candle15m": "HEALTHY",
+     "candle4H": "HEALTHY"
+    },
+    "coverage_complete": true,
+    "coverage_reasons": [],
+    "missing": [],
+    "data_cutoff_ts": 1794825905800,
+    "hash": "9133fbcf1a12ecfa800ceaa33c5474b215b5dfacdc5d211b3eb37568f46ee374"
+   }
+  },
+  {
+   "hash": "78502cb7029ac7a89dec1eb49a36aa701d13466c2b276370a1fd481c4238b10d",
+   "instrument_id": "bitget:perp:BTCUSDT",
+   "bar_close_ts": 1794826800000,
+   "created_ts": 1794826804182,
+   "json": {
+    "schema": "evidence-v1",
+    "instrument_id": "bitget:perp:BTCUSDT",
+    "bar_close_ts": 1794826800000,
+    "decision_ts": 1794826804163,
+    "candles": {
+     "interval": "15m",
+     "count": 1000,
+     "first_open": 1793926800000,
+     "last_open": 1794825900000,
+     "rows_hash": "2e14ad6f8bb8d0fccac7cea9e02de9793a143968ed7fbc8583115a521b2e4343"
+    },
+    "close": 64542.5,
+    "trend_1h": -1,
+    "vwap": 64698.307654488075,
+    "above_vwap": false,
+    "atr": 246.08310328874668,
+    "atr_pct": 0.3812729647732063,
+    "atr_pctile": 0.5666666666666667,
+    "change_24h": -0.015517130924743605,
+    "rv_24h": 0.022585382932847387,
+    "triggers": [],
+    "bid": 64555,
+    "ask": 64555.1,
+    "last": 64556.1,
+    "mark": 64556.1,
+    "index": 64587.495,
+    "funding_rate": 0.000007,
+    "spread_bps": 0.015490654874954757,
+    "ticker_recv_ts": 1794826804149,
+    "book_state": "VALID",
+    "depth_10bps": {
+     "bid": 20453231.424029995,
+     "ask": 25164300.673760008
+    },
+    "health": {
+     "ticker": "HEALTHY",
+     "trade": "HEALTHY",
+     "books": "HEALTHY",
+     "candle1m": "HEALTHY",
+     "candle5m": "HEALTHY",
+     "candle15m": "HEALTHY",
+     "candle4H": "HEALTHY"
+    },
+    "coverage_complete": true,
+    "coverage_reasons": [],
+    "missing": [],
+    "data_cutoff_ts": 1794826804149,
+    "hash": "78502cb7029ac7a89dec1eb49a36aa701d13466c2b276370a1fd481c4238b10d"
+   }
+  },
+  {
+   "hash": "8ba7d2c3cab1afbc39768e3eee442a0e807c79ef013136c612b4dba9e8903c8d",
+   "instrument_id": "bitget:perp:ETHUSDT",
+   "bar_close_ts": 1794826800000,
+   "created_ts": 1794826804199,
+   "json": {
+    "schema": "evidence-v1",
+    "instrument_id": "bitget:perp:ETHUSDT",
+    "bar_close_ts": 1794826800000,
+    "decision_ts": 1794826804163,
+    "candles": {
+     "interval": "15m",
+     "count": 1000,
+     "first_open": 1793926800000,
+     "last_open": 1794825900000,
+     "rows_hash": "23413e78db54c1b8b8bc957e87fa501737e589e4376606bca0765215d186fdf8"
+    },
+    "close": 1807.77,
+    "trend_1h": -1,
+    "vwap": 1813.2634273965887,
+    "above_vwap": false,
+    "atr": 8.653224681828712,
+    "atr_pct": 0.4786684523932089,
+    "atr_pctile": 0.5354166666666667,
+    "change_24h": -0.012277078415945497,
+    "rv_24h": 0.029368641869111832,
+    "triggers": [
+     {
+      "code": "FAIL_DN",
+      "name": "Failed breakdown (bear trap)",
+      "dir": 1,
+      "stop": 1802.54,
+      "level": 1802.54
+     }
+    ],
+    "bid": 1808.59,
+    "ask": 1808.6,
+    "last": 1808.46,
+    "mark": 1808.55,
+    "index": 1809.6091304347826,
+    "funding_rate": -0.000048,
+    "spread_bps": 0.055291538459361585,
+    "ticker_recv_ts": 1794826804149,
+    "book_state": "VALID",
+    "depth_10bps": {
+     "bid": 5288461.338800002,
+     "ask": 19832577.255999994
+    },
+    "health": {
+     "ticker": "HEALTHY",
+     "trade": "HEALTHY",
+     "books": "HEALTHY",
+     "candle1m": "HEALTHY",
+     "candle5m": "HEALTHY",
+     "candle15m": "HEALTHY",
+     "candle4H": "HEALTHY"
+    },
+    "coverage_complete": true,
+    "coverage_reasons": [],
+    "missing": [],
+    "data_cutoff_ts": 1794826804149,
+    "hash": "8ba7d2c3cab1afbc39768e3eee442a0e807c79ef013136c612b4dba9e8903c8d"
+   }
+  },
+  {
+   "hash": "24a3657be853c03ed2f1f499500ffae07e492689ff1a9a5530049838db9378ba",
+   "instrument_id": "bitget:perp:XRPUSDT",
+   "bar_close_ts": 1794826800000,
+   "created_ts": 1794826809177,
+   "json": {
+    "schema": "evidence-v1",
+    "instrument_id": "bitget:perp:XRPUSDT",
+    "bar_close_ts": 1794826800000,
+    "decision_ts": 1794826809162,
+    "candles": {
+     "interval": "15m",
+     "count": 1000,
+     "first_open": 1793926800000,
+     "last_open": 1794825900000,
+     "rows_hash": "80bdecbfa1503068e504abbe968e88da997f2dd333cff0ca2bc6635e65f356d5"
+    },
+    "close": 0.9537,
+    "trend_1h": -1,
+    "vwap": 0.955815047560385,
+    "above_vwap": false,
+    "atr": 0.005177586795462382,
+    "atr_pct": 0.5428947043580143,
+    "atr_pctile": 0.49270833333333336,
+    "change_24h": -0.011607420458078499,
+    "rv_24h": 0.03327715775639107,
+    "triggers": [
+     {
+      "code": "FAIL_DN",
+      "name": "Failed breakdown (bear trap)",
+      "dir": 1,
+      "stop": 0.9488,
+      "level": 0.9488
+     }
+    ],
+    "bid": 0.9535,
+    "ask": 0.9536,
+    "last": 0.9536,
+    "mark": 0.9538,
+    "index": 0.9544084782608696,
+    "funding_rate": -0.000073,
+    "spread_bps": 1.0487127051543075,
+    "ticker_recv_ts": 1794826809139,
+    "book_state": "VALID",
+    "depth_10bps": {
+     "bid": 574247.3886,
+     "ask": 285466.70569999993
+    },
+    "health": {
+     "ticker": "HEALTHY",
+     "trade": "HEALTHY",
+     "books": "HEALTHY",
+     "candle1m": "HEALTHY",
+     "candle5m": "HEALTHY",
+     "candle15m": "HEALTHY",
+     "candle4H": "HEALTHY"
+    },
+    "coverage_complete": true,
+    "coverage_reasons": [],
+    "missing": [],
+    "data_cutoff_ts": 1794826809139,
+    "hash": "24a3657be853c03ed2f1f499500ffae07e492689ff1a9a5530049838db9378ba"
+   }
+  }
+ ],
+ "paper_events": [
+  {
+   "seq": 1,
+   "event_key": "engine_start:f3fc8e4e-7a26-451d-960f-fad177a61482",
+   "ts": 1794826220746,
+   "recorded_ts": 1794826220746,
+   "type": "ENGINE_START",
+   "analyst": null,
+   "instrument_id": null,
+   "position_id": null,
+   "decision_id": null,
+   "payload": "{\"engine\":\"paper-v2\",\"environment\":\"FORWARD\"}"
+  },
+  {
+   "seq": 2,
+   "event_key": "engine_start:d517ce3a-a5a7-4ac7-9319-fa2c93293e99",
+   "ts": 1794826509879,
+   "recorded_ts": 1794826509879,
+   "type": "ENGINE_START",
+   "analyst": null,
+   "instrument_id": null,
+   "position_id": null,
+   "decision_id": null,
+   "payload": "{\"engine\":\"paper-v2\",\"environment\":\"FORWARD\"}"
+  },
+  {
+   "seq": 3,
+   "event_key": "engine_start:2c633130-f20c-413d-a715-08c6827d9661",
+   "ts": 1794826694159,
+   "recorded_ts": 1794826694159,
+   "type": "ENGINE_START",
+   "analyst": null,
+   "instrument_id": null,
+   "position_id": null,
+   "decision_id": null,
+   "payload": "{\"engine\":\"paper-v2\",\"environment\":\"FORWARD\"}"
+  },
+  {
+   "seq": 4,
+   "event_key": "decision:decision:risk_taker-v1:bitget:perp:BTCUSDT:1794826800000",
+   "ts": 1794826800000,
+   "recorded_ts": 1794826804184,
+   "type": "DECISION_ABSTAIN",
+   "analyst": "risk_taker",
+   "instrument_id": "bitget:perp:BTCUSDT",
+   "position_id": null,
+   "decision_id": "decision:risk_taker-v1:bitget:perp:BTCUSDT:1794826800000",
+   "payload": "{\"intent\":\"WAIT\",\"code\":\"NO_TRIGGER\",\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\",\"setup\":null,\"bar_close_ts\":1794826800000,\"evidence_hash\":\"78502cb7029ac7a89dec1eb49a36aa701d13466c2b276370a1fd481c4238b10d\",\"policy\":\"risk_taker-v1\"}"
+  },
+  {
+   "seq": 5,
+   "event_key": "decision:decision:balanced-v1:bitget:perp:BTCUSDT:1794826800000",
+   "ts": 1794826800000,
+   "recorded_ts": 1794826804184,
+   "type": "DECISION_ABSTAIN",
+   "analyst": "balanced",
+   "instrument_id": "bitget:perp:BTCUSDT",
+   "position_id": null,
+   "decision_id": "decision:balanced-v1:bitget:perp:BTCUSDT:1794826800000",
+   "payload": "{\"intent\":\"WAIT\",\"code\":\"NO_TRIGGER\",\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\",\"setup\":null,\"bar_close_ts\":1794826800000,\"evidence_hash\":\"78502cb7029ac7a89dec1eb49a36aa701d13466c2b276370a1fd481c4238b10d\",\"policy\":\"balanced-v1\"}"
+  },
+  {
+   "seq": 6,
+   "event_key": "decision:decision:defensive-v1:bitget:perp:BTCUSDT:1794826800000",
+   "ts": 1794826800000,
+   "recorded_ts": 1794826804184,
+   "type": "DECISION_ABSTAIN",
+   "analyst": "defensive",
+   "instrument_id": "bitget:perp:BTCUSDT",
+   "position_id": null,
+   "decision_id": "decision:defensive-v1:bitget:perp:BTCUSDT:1794826800000",
+   "payload": "{\"intent\":\"WAIT\",\"code\":\"NO_TRIGGER\",\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\",\"setup\":null,\"bar_close_ts\":1794826800000,\"evidence_hash\":\"78502cb7029ac7a89dec1eb49a36aa701d13466c2b276370a1fd481c4238b10d\",\"policy\":\"defensive-v1\"}"
+  },
+  {
+   "seq": 7,
+   "event_key": "decision:decision:risk_taker-v1:bitget:perp:ETHUSDT:1794826800000",
+   "ts": 1794826800000,
+   "recorded_ts": 1794826804200,
+   "type": "DECISION_ABSTAIN",
+   "analyst": "risk_taker",
+   "instrument_id": "bitget:perp:ETHUSDT",
+   "position_id": null,
+   "decision_id": "decision:risk_taker-v1:bitget:perp:ETHUSDT:1794826800000",
+   "payload": "{\"intent\":\"WAIT\",\"code\":\"NO_TRIGGER\",\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\",\"setup\":null,\"bar_close_ts\":1794826800000,\"evidence_hash\":\"8ba7d2c3cab1afbc39768e3eee442a0e807c79ef013136c612b4dba9e8903c8d\",\"policy\":\"risk_taker-v1\"}"
+  },
+  {
+   "seq": 8,
+   "event_key": "decision:decision:balanced-v1:bitget:perp:ETHUSDT:1794826800000",
+   "ts": 1794826800000,
+   "recorded_ts": 1794826804200,
+   "type": "DECISION_ABSTAIN",
+   "analyst": "balanced",
+   "instrument_id": "bitget:perp:ETHUSDT",
+   "position_id": null,
+   "decision_id": "decision:balanced-v1:bitget:perp:ETHUSDT:1794826800000",
+   "payload": "{\"intent\":\"WAIT\",\"code\":\"NO_TRIGGER\",\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\",\"setup\":null,\"bar_close_ts\":1794826800000,\"evidence_hash\":\"8ba7d2c3cab1afbc39768e3eee442a0e807c79ef013136c612b4dba9e8903c8d\",\"policy\":\"balanced-v1\"}"
+  },
+  {
+   "seq": 9,
+   "event_key": "decision:decision:defensive-v1:bitget:perp:ETHUSDT:1794826800000",
+   "ts": 1794826800000,
+   "recorded_ts": 1794826804200,
+   "type": "DECISION_ABSTAIN",
+   "analyst": "defensive",
+   "instrument_id": "bitget:perp:ETHUSDT",
+   "position_id": null,
+   "decision_id": "decision:defensive-v1:bitget:perp:ETHUSDT:1794826800000",
+   "payload": "{\"intent\":\"WAIT\",\"code\":\"NO_TRIGGER\",\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\",\"setup\":null,\"bar_close_ts\":1794826800000,\"evidence_hash\":\"8ba7d2c3cab1afbc39768e3eee442a0e807c79ef013136c612b4dba9e8903c8d\",\"policy\":\"defensive-v1\"}"
+  },
+  {
+   "seq": 10,
+   "event_key": "decision:decision:risk_taker-v1:bitget:perp:XRPUSDT:1794826800000",
+   "ts": 1794826800000,
+   "recorded_ts": 1794826809177,
+   "type": "DECISION_ABSTAIN",
+   "analyst": "risk_taker",
+   "instrument_id": "bitget:perp:XRPUSDT",
+   "position_id": null,
+   "decision_id": "decision:risk_taker-v1:bitget:perp:XRPUSDT:1794826800000",
+   "payload": "{\"intent\":\"WAIT\",\"code\":\"NO_TRIGGER\",\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\",\"setup\":null,\"bar_close_ts\":1794826800000,\"evidence_hash\":\"24a3657be853c03ed2f1f499500ffae07e492689ff1a9a5530049838db9378ba\",\"policy\":\"risk_taker-v1\"}"
+  },
+  {
+   "seq": 11,
+   "event_key": "decision:decision:balanced-v1:bitget:perp:XRPUSDT:1794826800000",
+   "ts": 1794826800000,
+   "recorded_ts": 1794826809188,
+   "type": "DECISION_ABSTAIN",
+   "analyst": "balanced",
+   "instrument_id": "bitget:perp:XRPUSDT",
+   "position_id": null,
+   "decision_id": "decision:balanced-v1:bitget:perp:XRPUSDT:1794826800000",
+   "payload": "{\"intent\":\"WAIT\",\"code\":\"NO_TRIGGER\",\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\",\"setup\":null,\"bar_close_ts\":1794826800000,\"evidence_hash\":\"24a3657be853c03ed2f1f499500ffae07e492689ff1a9a5530049838db9378ba\",\"policy\":\"balanced-v1\"}"
+  },
+  {
+   "seq": 12,
+   "event_key": "decision:decision:defensive-v1:bitget:perp:XRPUSDT:1794826800000",
+   "ts": 1794826800000,
+   "recorded_ts": 1794826809189,
+   "type": "DECISION_ABSTAIN",
+   "analyst": "defensive",
+   "instrument_id": "bitget:perp:XRPUSDT",
+   "position_id": null,
+   "decision_id": "decision:defensive-v1:bitget:perp:XRPUSDT:1794826800000",
+   "payload": "{\"intent\":\"WAIT\",\"code\":\"NO_TRIGGER\",\"why\":\"trend and VWAP agree, but no accepted trigger on this bar\",\"setup\":null,\"bar_close_ts\":1794826800000,\"evidence_hash\":\"24a3657be853c03ed2f1f499500ffae07e492689ff1a9a5530049838db9378ba\",\"policy\":\"defensive-v1\"}"
+  },
+  {
+   "seq": 13,
+   "event_key": "engine_start:f07ab8ec-4fcb-4128-beb1-150b3dff7354",
+   "ts": 1794827085026,
+   "recorded_ts": 1794827085026,
+   "type": "ENGINE_START",
+   "analyst": null,
+   "instrument_id": null,
+   "position_id": null,
+   "decision_id": null,
+   "payload": "{\"engine\":\"paper-v2\",\"environment\":\"FORWARD\"}"
   }
  ],
  "worker_events": [
@@ -732,6 +1517,144 @@
    "ts": 1794819628379,
    "feed": "worker",
    "event": "shutdown",
+   "detail": "null"
+  },
+  {
+   "ts": 1794825572193,
+   "feed": "worker",
+   "event": "start",
+   "detail": "worker-0.1.0"
+  },
+  {
+   "ts": 1794825575798,
+   "feed": "bitget:ws",
+   "event": "connecting",
+   "detail": "null"
+  },
+  {
+   "ts": 1794825576803,
+   "feed": "bitget:ws",
+   "event": "open",
+   "detail": "null"
+  },
+  {
+   "ts": 1794826214876,
+   "feed": "bitget:ws",
+   "event": "closed",
+   "detail": "null"
+  },
+  {
+   "ts": 1794826214876,
+   "feed": "worker",
+   "event": "shutdown",
+   "detail": "null"
+  },
+  {
+   "ts": 1794826216961,
+   "feed": "worker",
+   "event": "start",
+   "detail": "worker-0.2.0"
+  },
+  {
+   "ts": 1794826220744,
+   "feed": "bitget:ws",
+   "event": "connecting",
+   "detail": "null"
+  },
+  {
+   "ts": 1794826221777,
+   "feed": "bitget:ws",
+   "event": "open",
+   "detail": "null"
+  },
+  {
+   "ts": 1794826503039,
+   "feed": "bitget:ws",
+   "event": "closed",
+   "detail": "null"
+  },
+  {
+   "ts": 1794826503040,
+   "feed": "worker",
+   "event": "shutdown",
+   "detail": "null"
+  },
+  {
+   "ts": 1794826506135,
+   "feed": "worker",
+   "event": "start",
+   "detail": "worker-0.2.0"
+  },
+  {
+   "ts": 1794826509876,
+   "feed": "bitget:ws",
+   "event": "connecting",
+   "detail": "null"
+  },
+  {
+   "ts": 1794826510874,
+   "feed": "bitget:ws",
+   "event": "open",
+   "detail": "null"
+  },
+  {
+   "ts": 1794826687395,
+   "feed": "bitget:ws",
+   "event": "closed",
+   "detail": "null"
+  },
+  {
+   "ts": 1794826687395,
+   "feed": "worker",
+   "event": "shutdown",
+   "detail": "null"
+  },
+  {
+   "ts": 1794826690492,
+   "feed": "worker",
+   "event": "start",
+   "detail": "worker-0.2.0"
+  },
+  {
+   "ts": 1794826694157,
+   "feed": "bitget:ws",
+   "event": "connecting",
+   "detail": "null"
+  },
+  {
+   "ts": 1794826695065,
+   "feed": "bitget:ws",
+   "event": "open",
+   "detail": "null"
+  },
+  {
+   "ts": 1794827078054,
+   "feed": "bitget:ws",
+   "event": "closed",
+   "detail": "null"
+  },
+  {
+   "ts": 1794827078055,
+   "feed": "worker",
+   "event": "shutdown",
+   "detail": "null"
+  },
+  {
+   "ts": 1794827081175,
+   "feed": "worker",
+   "event": "start",
+   "detail": "worker-0.2.0"
+  },
+  {
+   "ts": 1794827085023,
+   "feed": "bitget:ws",
+   "event": "connecting",
+   "detail": "null"
+  },
+  {
+   "ts": 1794827086061,
+   "feed": "bitget:ws",
+   "event": "open",
    "detail": "null"
   }
  ],
@@ -951,6 +1874,366 @@
    "from_ts": 1794818207689,
    "to_ts": 1794818208766,
    "reason": "ws_disconnect"
+  },
+  {
+   "id": 28,
+   "instrument_id": "bitget:perp:BTCUSDT",
+   "kind": "trade",
+   "from_ts": 1794819628379,
+   "to_ts": 1794825572823,
+   "reason": "downtime"
+  },
+  {
+   "id": 29,
+   "instrument_id": "bitget:perp:BTCUSDT",
+   "kind": "ticker",
+   "from_ts": 1794819628379,
+   "to_ts": 1794825572823,
+   "reason": "downtime"
+  },
+  {
+   "id": 30,
+   "instrument_id": "bitget:perp:BTCUSDT",
+   "kind": "book",
+   "from_ts": 1794819628379,
+   "to_ts": 1794825572823,
+   "reason": "downtime"
+  },
+  {
+   "id": 31,
+   "instrument_id": "bitget:perp:ETHUSDT",
+   "kind": "trade",
+   "from_ts": 1794819628379,
+   "to_ts": 1794825572823,
+   "reason": "downtime"
+  },
+  {
+   "id": 32,
+   "instrument_id": "bitget:perp:ETHUSDT",
+   "kind": "ticker",
+   "from_ts": 1794819628379,
+   "to_ts": 1794825572823,
+   "reason": "downtime"
+  },
+  {
+   "id": 33,
+   "instrument_id": "bitget:perp:ETHUSDT",
+   "kind": "book",
+   "from_ts": 1794819628379,
+   "to_ts": 1794825572823,
+   "reason": "downtime"
+  },
+  {
+   "id": 34,
+   "instrument_id": "bitget:perp:XRPUSDT",
+   "kind": "trade",
+   "from_ts": 1794819628379,
+   "to_ts": 1794825572823,
+   "reason": "downtime"
+  },
+  {
+   "id": 35,
+   "instrument_id": "bitget:perp:XRPUSDT",
+   "kind": "ticker",
+   "from_ts": 1794819628379,
+   "to_ts": 1794825572823,
+   "reason": "downtime"
+  },
+  {
+   "id": 36,
+   "instrument_id": "bitget:perp:XRPUSDT",
+   "kind": "book",
+   "from_ts": 1794819628379,
+   "to_ts": 1794825572823,
+   "reason": "downtime"
+  },
+  {
+   "id": 37,
+   "instrument_id": "bitget:perp:BTCUSDT",
+   "kind": "trade",
+   "from_ts": 1794826214876,
+   "to_ts": 1794826217523,
+   "reason": "downtime"
+  },
+  {
+   "id": 38,
+   "instrument_id": "bitget:perp:BTCUSDT",
+   "kind": "ticker",
+   "from_ts": 1794826214876,
+   "to_ts": 1794826217523,
+   "reason": "downtime"
+  },
+  {
+   "id": 39,
+   "instrument_id": "bitget:perp:BTCUSDT",
+   "kind": "book",
+   "from_ts": 1794826214876,
+   "to_ts": 1794826217523,
+   "reason": "downtime"
+  },
+  {
+   "id": 40,
+   "instrument_id": "bitget:perp:ETHUSDT",
+   "kind": "trade",
+   "from_ts": 1794826214876,
+   "to_ts": 1794826217523,
+   "reason": "downtime"
+  },
+  {
+   "id": 41,
+   "instrument_id": "bitget:perp:ETHUSDT",
+   "kind": "ticker",
+   "from_ts": 1794826214876,
+   "to_ts": 1794826217523,
+   "reason": "downtime"
+  },
+  {
+   "id": 42,
+   "instrument_id": "bitget:perp:ETHUSDT",
+   "kind": "book",
+   "from_ts": 1794826214876,
+   "to_ts": 1794826217523,
+   "reason": "downtime"
+  },
+  {
+   "id": 43,
+   "instrument_id": "bitget:perp:XRPUSDT",
+   "kind": "trade",
+   "from_ts": 1794826214876,
+   "to_ts": 1794826217523,
+   "reason": "downtime"
+  },
+  {
+   "id": 44,
+   "instrument_id": "bitget:perp:XRPUSDT",
+   "kind": "ticker",
+   "from_ts": 1794826214876,
+   "to_ts": 1794826217523,
+   "reason": "downtime"
+  },
+  {
+   "id": 45,
+   "instrument_id": "bitget:perp:XRPUSDT",
+   "kind": "book",
+   "from_ts": 1794826214876,
+   "to_ts": 1794826217523,
+   "reason": "downtime"
+  },
+  {
+   "id": 46,
+   "instrument_id": "bitget:perp:BTCUSDT",
+   "kind": "trade",
+   "from_ts": 1794826503040,
+   "to_ts": 1794826506590,
+   "reason": "downtime"
+  },
+  {
+   "id": 47,
+   "instrument_id": "bitget:perp:BTCUSDT",
+   "kind": "ticker",
+   "from_ts": 1794826503040,
+   "to_ts": 1794826506590,
+   "reason": "downtime"
+  },
+  {
+   "id": 48,
+   "instrument_id": "bitget:perp:BTCUSDT",
+   "kind": "book",
+   "from_ts": 1794826503040,
+   "to_ts": 1794826506590,
+   "reason": "downtime"
+  },
+  {
+   "id": 49,
+   "instrument_id": "bitget:perp:ETHUSDT",
+   "kind": "trade",
+   "from_ts": 1794826503040,
+   "to_ts": 1794826506590,
+   "reason": "downtime"
+  },
+  {
+   "id": 50,
+   "instrument_id": "bitget:perp:ETHUSDT",
+   "kind": "ticker",
+   "from_ts": 1794826503040,
+   "to_ts": 1794826506590,
+   "reason": "downtime"
+  },
+  {
+   "id": 51,
+   "instrument_id": "bitget:perp:ETHUSDT",
+   "kind": "book",
+   "from_ts": 1794826503040,
+   "to_ts": 1794826506590,
+   "reason": "downtime"
+  },
+  {
+   "id": 52,
+   "instrument_id": "bitget:perp:XRPUSDT",
+   "kind": "trade",
+   "from_ts": 1794826503040,
+   "to_ts": 1794826506590,
+   "reason": "downtime"
+  },
+  {
+   "id": 53,
+   "instrument_id": "bitget:perp:XRPUSDT",
+   "kind": "ticker",
+   "from_ts": 1794826503040,
+   "to_ts": 1794826506590,
+   "reason": "downtime"
+  },
+  {
+   "id": 54,
+   "instrument_id": "bitget:perp:XRPUSDT",
+   "kind": "book",
+   "from_ts": 1794826503040,
+   "to_ts": 1794826506590,
+   "reason": "downtime"
+  },
+  {
+   "id": 55,
+   "instrument_id": "bitget:perp:BTCUSDT",
+   "kind": "trade",
+   "from_ts": 1794826687395,
+   "to_ts": 1794826691016,
+   "reason": "downtime"
+  },
+  {
+   "id": 56,
+   "instrument_id": "bitget:perp:BTCUSDT",
+   "kind": "ticker",
+   "from_ts": 1794826687395,
+   "to_ts": 1794826691016,
+   "reason": "downtime"
+  },
+  {
+   "id": 57,
+   "instrument_id": "bitget:perp:BTCUSDT",
+   "kind": "book",
+   "from_ts": 1794826687395,
+   "to_ts": 1794826691016,
+   "reason": "downtime"
+  },
+  {
+   "id": 58,
+   "instrument_id": "bitget:perp:ETHUSDT",
+   "kind": "trade",
+   "from_ts": 1794826687395,
+   "to_ts": 1794826691016,
+   "reason": "downtime"
+  },
+  {
+   "id": 59,
+   "instrument_id": "bitget:perp:ETHUSDT",
+   "kind": "ticker",
+   "from_ts": 1794826687395,
+   "to_ts": 1794826691016,
+   "reason": "downtime"
+  },
+  {
+   "id": 60,
+   "instrument_id": "bitget:perp:ETHUSDT",
+   "kind": "book",
+   "from_ts": 1794826687395,
+   "to_ts": 1794826691016,
+   "reason": "downtime"
+  },
+  {
+   "id": 61,
+   "instrument_id": "bitget:perp:XRPUSDT",
+   "kind": "trade",
+   "from_ts": 1794826687395,
+   "to_ts": 1794826691016,
+   "reason": "downtime"
+  },
+  {
+   "id": 62,
+   "instrument_id": "bitget:perp:XRPUSDT",
+   "kind": "ticker",
+   "from_ts": 1794826687395,
+   "to_ts": 1794826691016,
+   "reason": "downtime"
+  },
+  {
+   "id": 63,
+   "instrument_id": "bitget:perp:XRPUSDT",
+   "kind": "book",
+   "from_ts": 1794826687395,
+   "to_ts": 1794826691016,
+   "reason": "downtime"
+  },
+  {
+   "id": 64,
+   "instrument_id": "bitget:perp:BTCUSDT",
+   "kind": "trade",
+   "from_ts": 1794827078055,
+   "to_ts": 1794827081653,
+   "reason": "downtime"
+  },
+  {
+   "id": 65,
+   "instrument_id": "bitget:perp:BTCUSDT",
+   "kind": "ticker",
+   "from_ts": 1794827078055,
+   "to_ts": 1794827081653,
+   "reason": "downtime"
+  },
+  {
+   "id": 66,
+   "instrument_id": "bitget:perp:BTCUSDT",
+   "kind": "book",
+   "from_ts": 1794827078055,
+   "to_ts": 1794827081653,
+   "reason": "downtime"
+  },
+  {
+   "id": 67,
+   "instrument_id": "bitget:perp:ETHUSDT",
+   "kind": "trade",
+   "from_ts": 1794827078055,
+   "to_ts": 1794827081653,
+   "reason": "downtime"
+  },
+  {
+   "id": 68,
+   "instrument_id": "bitget:perp:ETHUSDT",
+   "kind": "ticker",
+   "from_ts": 1794827078055,
+   "to_ts": 1794827081653,
+   "reason": "downtime"
+  },
+  {
+   "id": 69,
+   "instrument_id": "bitget:perp:ETHUSDT",
+   "kind": "book",
+   "from_ts": 1794827078055,
+   "to_ts": 1794827081653,
+   "reason": "downtime"
+  },
+  {
+   "id": 70,
+   "instrument_id": "bitget:perp:XRPUSDT",
+   "kind": "trade",
+   "from_ts": 1794827078055,
+   "to_ts": 1794827081653,
+   "reason": "downtime"
+  },
+  {
+   "id": 71,
+   "instrument_id": "bitget:perp:XRPUSDT",
+   "kind": "ticker",
+   "from_ts": 1794827078055,
+   "to_ts": 1794827081653,
+   "reason": "downtime"
+  },
+  {
+   "id": 72,
+   "instrument_id": "bitget:perp:XRPUSDT",
+   "kind": "book",
+   "from_ts": 1794827078055,
+   "to_ts": 1794827081653,
+   "reason": "downtime"
   }
  ]
 }

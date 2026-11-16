@@ -62,6 +62,9 @@ async function main() {
     const an = await text(page, "#analystsCard");
     check("worker page: v1 analysts card shows all three with an explicit 'No demonstrated edge' status and no probability",
       (an.match(/No demonstrated edge/g) || []).length === 3 && /Risk Taker/.test(an) && /Balanced Trader/.test(an) && /Defensive Trader/.test(an) && !/\d+(\.\d+)?\s*%\s*(chance|probability)/i.test(an), an.slice(0, 200).replace(/\n/g, " "));
+    await page.waitForFunction(() => document.querySelectorAll("#newsBody a").length > 0, null, { timeout: 15000 }).catch(() => {});
+    const links = await page.locator("#newsBody a").evaluateAll(as => as.map(a => [a.href, a.rel]));
+    check("worker page: official news listed with https .gov links opened safely (noopener)", links.length > 0 && links.every(([h, r]) => /^https:\/\/www\.(sec|federalreserve)\.gov\//.test(h) && /noopener/.test(r)), `${links.length} links`);
     check("worker page: coin switch updates the worker strip", /ETH perp/.test(await text(page, "#worker")), "");
     await page.waitForFunction(() => /LIVE · .*last ETH update/.test(document.getElementById("mode").innerText), null, { timeout: 15000 }).catch(() => {});
     check("worker page: after the switch the label reports ETH data (RECOVERING until the first ETH message is honest)", /LIVE · .*last ETH update/.test(await text(page, "#mode")), await text(page, "#mode"));

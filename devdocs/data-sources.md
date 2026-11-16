@@ -32,8 +32,8 @@ check Bitget's terms before any commercial or redistribution use.
 | Provider | Host allowed in the environment | Probe | Status |
 |---|---|---|---|
 | OKX v5 public | www.okx.com, ws.okx.com | not yet | Phase 6 |
-| Federal Reserve RSS | www.federalreserve.gov | not yet | Phase 6 |
-| SEC RSS | www.sec.gov (requires a declared User-Agent with contact; **will use a generic client name or ask the user**) | not yet | Phase 6 |
+| Federal Reserve RSS `feeds/press_all.xml` | www.federalreserve.gov | 2026-11-16: 200 RSS, 20 items; **intermittently an HTML soft-404 with HTTP 200** (rejected) | IMPLEMENTED (10-min poll, ETag) |
+| SEC RSS `news/pressreleases.rss` | www.sec.gov. SEC fair-access guidance asks for a declared User-Agent; a generic client name was used and accepted (200). If the SEC starts refusing it, the user decides whether to supply a contact | 2026-11-16: 200 RSS, 25 items | IMPLEMENTED (10-min poll) |
 | Binance, Bybit, Coinbase, CoinGecko, DefiLlama, CFTC, FRED | not allowed in the environment | – | DEFERRED until one venue path is verified |
 
 ## Retention plan (worker, initial values; to be measured)

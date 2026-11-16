@@ -92,7 +92,7 @@ Evidence references point to `verification.md` entries (V-xxx).
 | P-02 | P1§12 | No probability shown until calibration gate passes | violated | A | 3 (relabel), 7 | UI test | PARTIAL: model card relabelled as uncalibrated score (V-008); calibration gate = Phase 7 |
 | P-03 | P1§12 | Baselines: random walk, rolling dist., momentum | none | A | 7 | – | NOT_STARTED |
 | P-04 | P1§12 | Unevaluable outcomes marked, not counted | none | A | 7 | test | NOT_STARTED |
-| N-01 | P1§15 | Official news sources w/ publication/discovery/revision, dedupe, untrusted handling | none | A (Fed/SEC hosts allowed) | 6 | tests | NOT_STARTED |
+| N-01 | P1§15 | Official news sources w/ publication/discovery/revision, dedupe, untrusted handling | none | A (Fed/SEC hosts allowed) | 6 | tests | PARTIAL: Fed + SEC press RSS VERIFIED live and in fixtures (V-014); other official sources (CFTC, FRED vintages, exchange status, issuers) NOT_STARTED |
 | N-02 | P1§15 | Optional LLM: disabled by default, schema-validated, no authority | none | B | 6 | – | DEFERRED |
 | U-01 | P1§16 | Instrument selector, venue/class labels, feed age, mode labels | partial | A | 3 | Playwright | PARTIAL: feed age + honest mode + worker feed states verified (V-008); spot selector pending |
 | U-02 | P1§16 | Analyst cards w/ NO_TRADE reasons, hypotheses, news, portfolio/risk | partial | A | 3/5 | Playwright | PARTIAL: v1 analysts card (decision, reason code, setup, paper portfolio, no-edge status) VERIFIED in worker mode (V-013); hypotheses/news NOT_STARTED |

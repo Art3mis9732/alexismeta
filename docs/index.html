@@ -79,6 +79,10 @@
     <h2>Analysts v1 — decided by the local worker at each 15-minute close · paper only · identical evidence for all three</h2>
     <div id="analystsBody" class="sub">Loading…</div>
   </div>
+  <div class="card hidden" id="newsCard">
+    <h2>Official announcements — Federal Reserve and SEC only · context, not a trading signal</h2>
+    <div id="newsBody" class="sub">Loading…</div>
+  </div>
   <div class="sub" id="legacyNote" style="margin-top:10px">Legacy v0 profiles (rules unchanged, shown for continuity; computed in this browser):</div>
   <div class="profiles" id="profiles"></div>
   <div class="card" id="modelCard"><h2>Model scores (uncalibrated, not probabilities) — does the model lean up or down 16 candles ahead, on 5m, 15m and 4h</h2><div id="modelBody" class="sub">Loading…</div></div>
@@ -849,7 +853,22 @@ async function workerTick() {
 /* v1 analysts from the worker's paper engine. Everything shown comes from /api/paper (ledger-backed). */
 const AN = { risk_taker: "Risk Taker", balanced: "Balanced Trader", defensive: "Defensive Trader" };
 const INTENT_TXT = { OPEN_LONG: ["OPEN LONG", "s-buy"], OPEN_SHORT: ["OPEN SHORT", "s-sell"], WAIT: ["WAIT", "s-wait"], NO_TRADE: ["NO TRADE", "s-none"] };
-let PAPER = null;
+let PAPER = null, NEWS = null;
+const attr = s => String(s).replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
+async function loadNews() { try { NEWS = await apiJson("api/news?limit=8"); } catch (e) { NEWS = null; } renderNews(); }
+function renderNews() {
+  $("newsCard").classList.toggle("hidden", !WMODE);
+  if (!WMODE) return;
+  if (!NEWS || !NEWS.items) { $("newsBody").textContent = "News is not available from the worker."; return; }
+  if (!NEWS.items.length) { $("newsBody").textContent = "No items fetched yet (sources are polled every 10 minutes)."; return; }
+  const coin = sym.replace("USDT", "");
+  $("newsBody").innerHTML = `<table><tr><th>Published (IST)</th><th>Seen here</th><th>Publisher</th><th>Headline</th><th>Type</th><th>Tags</th></tr>` +
+    NEWS.items.map(n => `<tr><td style="white-space:nowrap">${n.published_ts ? istT(n.published_ts) : "unknown"}</td><td style="white-space:nowrap">${istT(n.discovered_ts)}</td>
+      <td>${esc(n.source === "sec_press" ? "SEC" : n.source === "fed_press_all" ? "Federal Reserve" : n.publisher)}</td>
+      <td><a href="${attr(n.url)}" target="_blank" rel="noopener noreferrer">${esc(n.title)}</a>${n.revisions_known ? ` <span class="pill">revised</span>` : ""}</td>
+      <td class="sub">${esc(n.event_type.replace(/_/g, " "))}</td><td>${n.assets.map(a => `<span class="pill${a === coin ? " good" : ""}">${esc(a)}</span>`).join(" ")}</td></tr>`).join("") +
+    `</table><div class="sub" style="margin-top:6px">${esc(NEWS.coverage)} Items are shown as published, with no interpretation. Whether something is "priced in" is not assessed.</div>`;
+}
 async function loadPaper() { try { PAPER = await apiJson("api/paper"); } catch (e) { PAPER = null; } renderAnalysts(); }
 function renderAnalysts() {
   const card = $("analystsCard"); card.classList.toggle("hidden", !WMODE);
@@ -874,9 +893,10 @@ function renderAnalysts() {
 function startWorkerMode() {
   WMODE = true; if (!workerLoop) workerLoop = setInterval(workerTick, 2000); workerTick();
   loadPaper(); setInterval(() => { if (WMODE) loadPaper(); }, 10000);
+  loadNews(); setInterval(() => { if (WMODE) loadNews(); }, 60000);
 }
 function leaveWorkerMode() {
-  WMODE = false; clearInterval(workerLoop); workerLoop = null; renderAnalysts();
+  WMODE = false; clearInterval(workerLoop); workerLoop = null; renderAnalysts(); renderNews();
   connectStream(); setMode();
 }
 

@@ -160,3 +160,18 @@ Each entry records: revision · command/procedure · when (UTC) · expected · o
 * `tests_e2e/status.e2e.js` against the long-running worker (port 8790) and the static server: **20/20 pass**. In
   worker mode the card shows all three v1 analysts with "No demonstrated edge" and no probability; on the static page
   it is hidden.
+
+## V-014 Official news ingestion (Phase 6, first slice) — 2026-11-16 ~08:36 UTC
+* Sources probed from the cloud container: Fed `press_all.xml` and SEC `pressreleases.rss` → HTTP 200 RSS
+  (20 and 25 items). A generic client name was used (no personal contact details).
+* **Adversarial finding:** the Fed intermittently served its HTML "Page not Found" page **with HTTP 200** at the feed
+  URL; the immediate retry returned RSS. The ingester rejects non-RSS documents (`fed_soft404.html` fixture → quarantined).
+* `tests_js/news.test.js` **7/7**: real fixtures parse (https official links, publication times); re-polling adds
+  nothing; a publisher revision is kept and **a point-in-time view before it shows the original wording**; nothing is
+  visible before its discovery time; embedded instructions and markup are inert text (and policies/risk do not import
+  news); non-https/foreign links dropped; deterministic tags; syndicated titles share a cluster id; redirects refused
+  (incl. to 169.254.169.254); bodies over 2 MB rejected; 304 handled; ETag stored.
+* Live worker (port 8787, separate DB): both sources `ok`; `/api/news` serves items with publisher, URL, published and
+  discovered times. Playwright **21/21** including "official news listed with https .gov links opened safely (noopener)".
+* Limits: two official sources only. No CFTC/COT, FRED, ETF issuer data or exchange announcements yet. No
+  interpretation; news does not feed any policy (any future use must be evaluated by ablation, per the prompt).

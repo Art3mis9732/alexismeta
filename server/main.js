@@ -15,6 +15,7 @@ const { BitgetCollector } = require("./collector");
 const { createServer } = require("./http");
 const { Ledger } = require("./ledger");
 const { PaperEngine } = require("./engine");
+const { NewsIngester } = require("./news");
 
 const ROOT = path.resolve(__dirname, "..");
 const VERSION = "worker-0.1.0";
@@ -33,7 +34,7 @@ function args(argv) {
   return a;
 }
 
-function buildApi({ store, health, collector, startedAt, ledger, getEngine = () => null }) {
+function buildApi({ store, health, collector, startedAt, ledger, getEngine = () => null, news = null }) {
   const num = v => v === null || v === undefined ? null : Number(v);
   return {
     hasInstrument: id => !!store.instrument(id),
@@ -43,6 +44,7 @@ function buildApi({ store, health, collector, startedAt, ledger, getEngine = () 
       daily_accounting_boundary: "UTC 00:00",
       ...health.snapshot(),
       books: collector.bookSummaries(),
+      news_sources: news ? news.status() : [],
       store: { db_bytes: store.sizeBytes(), queue: store.queue.length, ...store.stats,
         rows: { trades: store.count("trades"), candles: store.count("candles"), tickers: store.count("tickers"), book_tops: store.count("book_tops"), quarantine: store.count("quarantine") } },
       upstream: { ws: collector.sup.stats, rest: collector.rest.stats }
@@ -63,6 +65,8 @@ function buildApi({ store, health, collector, startedAt, ledger, getEngine = () 
     book: (id, n) => collector.bookTop(id, n),
     ledgerRecent: n => ledger ? { note: "append-only; originals are never modified, outcomes are separate rows", entries: ledger.recent(n) } : { entries: [] },
     ledgerVerify: () => ledger ? ledger.verify() : { ok: false, reason: "ledger not configured" },
+    news: (n, asset) => news ? { coverage: "Federal Reserve + SEC press releases only (official primary sources). Not comprehensive news coverage.",
+      note: "context only; no interpretation; nothing here triggers a trade", as_of: Date.now(), items: news.itemsAsOf(Date.now(), { limit: n, asset }) } : { items: [] },
     paper: () => getEngine() ? { execution_mode: "PAPER (simulated; no orders are sent anywhere)", accounting_day: "UTC",
       portfolios: getEngine().summary(), open_positions: store.db.prepare("SELECT * FROM paper_positions WHERE state='OPEN' ORDER BY opened_ts").all(),
       recent_closed: store.db.prepare("SELECT * FROM paper_positions WHERE state='CLOSED' ORDER BY exit_ts DESC LIMIT 20").all(),
@@ -81,7 +85,8 @@ async function main() {
   const collector = new BitgetCollector({ rest, store, health, symbols: a.symbols, log });
   const ledger = new Ledger(store, { codeRev: gitRev() });
   const engineRef = { current: null };    // the paper engine starts once instruments are loaded
-  const api = buildApi({ store, health, collector, startedAt, ledger, getEngine: () => engineRef.current });
+  const news = new NewsIngester({ store, log });
+  const api = buildApi({ store, health, collector, startedAt, ledger, getEngine: () => engineRef.current, news });
   const server = createServer({ api, staticDir: path.join(ROOT, "docs"), port: a.port });
 
   const timers = [
@@ -113,6 +118,8 @@ async function main() {
   engineRef.current = new PaperEngine({ store, ledger, collector, health, log });
   timers.push(setInterval(() => { try { engineRef.current.tick(); } catch (e) { log("engine: " + e.message); } }, 5000));
   log("paper engine running: decisions at each 15m bar close; execution mode PAPER");
+  news.poll().catch(e => log("news: " + e.message));
+  timers.push(setInterval(() => { news.poll().catch(e => log("news: " + e.message)); }, 60000));   // each source polls every 10 min
 
   if (a.smoke) {
     await new Promise(r => setTimeout(r, a.smoke * 1000));

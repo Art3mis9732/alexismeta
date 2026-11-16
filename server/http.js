@@ -42,6 +42,11 @@ function createServer({ api, staticDir, port }) {
         if (p === "/api/ledger") { const n = intParam(q("limit"), 50, 1, 500); return Number.isNaN(n) ? err(res, 400, "bad limit") : send(res, 200, api.ledgerRecent(n)); }
         if (p === "/api/ledger/verify") return send(res, 200, api.ledgerVerify());
         if (p === "/api/paper") return send(res, 200, api.paper ? api.paper() : { portfolios: [] });
+        if (p === "/api/news") {
+          const n = intParam(q("limit"), 30, 1, 200), asset = q("asset");
+          if (Number.isNaN(n) || (asset !== null && !/^(BTC|ETH|XRP)$/.test(asset))) return err(res, 400, "bad limit/asset");
+          return send(res, 200, api.news ? api.news(n, asset) : { items: [] });
+        }
         const id = q("instrument");
         if (p === "/api/feed-events") { const n = intParam(q("limit"), 50, 1, 500); return Number.isNaN(n) ? err(res, 400, "bad limit") : send(res, 200, api.feedEvents(n)); }
         if (!id || !ID_RE.test(id)) return err(res, 400, "bad or missing instrument");

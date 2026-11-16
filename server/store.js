@@ -73,7 +73,16 @@ const MIGRATIONS = [
      entry_fee REAL NOT NULL, funding REAL NOT NULL DEFAULT 0, last_trade_ts INTEGER NOT NULL, last_trade_id TEXT, next_funding_ts INTEGER,
      state TEXT NOT NULL CHECK (state IN ('OPEN','CLOSED')), exit_price REAL, exit_ts INTEGER, exit_reason TEXT, exit_fee REAL, pnl REAL,
      evaluable INTEGER, note TEXT);
-   CREATE INDEX IF NOT EXISTS paper_positions_open ON paper_positions (state, analyst);`
+   CREATE INDEX IF NOT EXISTS paper_positions_open ON paper_positions (state, analyst);`,
+  // v5: official news. news_items holds the latest version; news_revisions keeps every earlier version with the time
+  //     it was replaced, so a historical decision can be shown only what was known at its time.
+  `CREATE TABLE IF NOT EXISTS news_items (
+     item_id TEXT PRIMARY KEY, source TEXT NOT NULL, publisher TEXT NOT NULL, url TEXT NOT NULL, title TEXT NOT NULL, summary TEXT,
+     published_ts INTEGER, discovered_ts INTEGER NOT NULL, updated_ts INTEGER NOT NULL, event_type TEXT NOT NULL, assets TEXT NOT NULL,
+     credibility TEXT NOT NULL, cluster_id TEXT NOT NULL, content_hash TEXT NOT NULL);
+   CREATE INDEX IF NOT EXISTS news_by_discovery ON news_items (discovered_ts);
+   CREATE TABLE IF NOT EXISTS news_revisions (
+     id INTEGER PRIMARY KEY, item_id TEXT NOT NULL, replaced_ts INTEGER NOT NULL, title TEXT NOT NULL, summary TEXT, content_hash TEXT NOT NULL);`
 ];
 
 const DEFAULT_RETENTION_MS = {

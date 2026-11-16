@@ -41,7 +41,7 @@ function rowHash(prevHash, r) {
 
 class Ledger {
   constructor(store, { now = Date.now, codeRev = "unknown" } = {}) {
-    this.db = store.db; this.now = now; this.codeRev = codeRev;
+    this.db = store.db; this.store = store; this.now = now; this.codeRev = codeRev;
     this.st = {
       head: this.db.prepare("SELECT hash FROM ledger_entries ORDER BY seq DESC LIMIT 1"),
       byId: this.db.prepare("SELECT * FROM ledger_entries WHERE entry_id = ?"),
@@ -83,14 +83,12 @@ class Ledger {
       if (row.kind === "outcome" && orig.eval_due_ts !== null && created < orig.eval_due_ts) throw new Error("ledger: outcome before the evaluation due time");
     }
 
-    this.db.exec("BEGIN IMMEDIATE");
-    try {
+    this.store.tx(() => {                              // joins the caller's transaction when there is one
       const h = this.st.head.get();
       row.prev_hash = h ? h.hash : GENESIS;
       row.hash = rowHash(row.prev_hash, row);
       this.st.insert.run(row);
-      this.db.exec("COMMIT");
-    } catch (err) { this.db.exec("ROLLBACK"); throw err; }
+    });
     return { ...this.st.byId.get(row.entry_id), duplicate: false };
   }
 

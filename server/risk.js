@@ -50,8 +50,10 @@ function sizePosition(p) {
 
 /* ---------- portfolio-level state needed by the gate ---------- */
 /** portfolio = { analyst, equity (realised), peak_equity, day: {start_ts, start_equity, realised}, positions: [{instrument_id, side, qty, entry, stop, mark}] , kill_switch } */
+/** Modelled loss if every open stop fills at its price: distance from the FILL price to the stop, plus both taker fees
+ *  and the EXIT slippage. Entry slippage is already inside the fill price, so it is not added again. */
 function openRisk(portfolio) {
-  return portfolio.positions.reduce((a, p) => a + Math.max(0, p.side * (p.entry - p.stop)) * p.qty + p.entry * p.qty * 2 * (RISK_DEFAULTS.taker + RISK_DEFAULTS.slipFrac), 0);
+  return portfolio.positions.reduce((a, p) => a + Math.max(0, p.side * (p.entry - p.stop)) * p.qty + p.entry * p.qty * (2 * RISK_DEFAULTS.taker + RISK_DEFAULTS.slipFrac), 0);
 }
 function openNotional(portfolio) { return portfolio.positions.reduce((a, p) => a + Math.abs(p.qty * (p.mark || p.entry)), 0); }
 function unrealised(portfolio) { return portfolio.positions.reduce((a, p) => a + p.side * ((p.mark || p.entry) - p.entry) * p.qty, 0); }

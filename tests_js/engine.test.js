@@ -96,7 +96,7 @@ test("engine: time exit at the bid; funding charged at settlement while open", (
   r.engine.onBarClose(ID, CLOSE, CLOSE + 3000);
   r.at(CLOSE + 4 * 3600000 + 1000); r.collector.latestTicker[ID] = { last: "64950", bid: "64899.9", ask: "64950", recv_ts: r.now() - 500 }; r.engine.manage();
   const f = pos(r.store, "balanced").funding;
-  assert.ok(f < 0, "a long pays positive funding"); assert.ok(Math.abs(f + 0.0005 * Number(pos(r.store, "balanced").qty) * 64950) < 1e-9);
+  assert.ok(f < 0, "a long pays positive funding"); assert.ok(Math.abs(f + 0.0005 * Number(pos(r.store, "balanced").qty) * 64951) < 1e-9, "funding uses the MARK price at settlement (64951), not the last trade");
   assert.equal(pos(r.store, "risk_taker").exit_reason, "time_exit", "Risk Taker's 4h time exit falls at the same moment");
   r.at(CLOSE + 32 * BAR + 1); r.collector.latestTicker[ID] = { last: "64950", bid: "64940", ask: "64950", recv_ts: r.now() };
   r.engine.manage();
@@ -108,7 +108,7 @@ test("engine: kill switch rejects new setups but keeps managing open positions; 
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alexismeta-eng-")), file = path.join(dir, "m.db");
   let r = rig({ file }); r.engine.onBarClose(ID, CLOSE, CLOSE + 3000);
   r.engine.setKillSwitch("all", true);
-  r.store.close();
+  r.engine.releaseLock(); r.store.close();
   r = rig({ file, t0: CLOSE + BAR + 3000, snap: snapOf({ instrument_id: ID, bar_close_ts: CLOSE + BAR }) });   // restart
   assert.equal(r.store.db.prepare("SELECT COUNT(*) n FROM paper_positions WHERE state='OPEN'").get().n, 3, "open positions survive the restart");
   assert.ok(r.engine.portfolio("balanced").kill_switch, "kill switch persisted");
@@ -125,7 +125,7 @@ test("engine: daily loss persists across a restart and suspends new setups until
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alexismeta-day-")), file = path.join(dir, "m.db");
   let r = rig({ file });
   r.store.db.prepare("UPDATE paper_portfolios SET equity=975 WHERE analyst='balanced'").run();  // -2.5% realised today
-  r.store.close();
+  r.engine.releaseLock(); r.store.close();
   r = rig({ file, t0: CLOSE + 3000 });
   assert.ok(r.engine.onBarClose(ID, CLOSE, CLOSE + 3000).results.find(x => x.analyst === "balanced").reasons.includes("DAILY_LOSS_SUSPENDED"));
   r.at(Date.UTC(2026, 10, 17, 0, 0, 5)); r.engine.rollDay();
@@ -175,4 +175,89 @@ test("replay: every recorded decision is re-derived exactly from its stored snap
   r.store.db.prepare("UPDATE evidence_snapshots SET json=?").run(JSON.stringify(j));
   v = verifyReplay(r.store);
   assert.equal(v.ok, false); assert.equal(v.snapshot_tampered.length, 3, "an edited snapshot no longer matches the hash in the ledger");
+});
+
+// ---------------------------------------------------------------- paper-v2 accounting guarantees
+const A = require("../server/accounting");
+const INS = () => fromBitgetContract(CONTRACTS.data.find(c => c.symbol === "BTCUSDT"), "USDT-FUTURES", 0);
+
+test("accounting: every position traces to fills; cash is booked when fees/funding occur and always equals the facts", () => {
+  const r = rig(); r.engine.onBarClose(ID, CLOSE, CLOSE + 3000);
+  const p = pos(r.store, "balanced"), fee = Number(p.qty) * p.entry * 0.0006;
+  const cash0 = r.store.db.prepare("SELECT equity FROM paper_portfolios WHERE analyst='balanced'").get().equity;
+  assert.ok(Math.abs(cash0 - (1000 - fee)) < 1e-9, "entry fee leaves cash at entry, not at close");
+  assert.equal(r.engine.fills(p.position_id).length, 1);
+  r.trade(65360, 1000); r.engine.manage();
+  const f = r.engine.fills(p.position_id), P = A.positionFromFills(1, f, INS());
+  assert.equal(P.state, "CLOSED"); assert.deepEqual(f.map(x => x.kind), ["ENTRY", "EXIT"]);
+  const row = pos(r.store, "balanced");
+  assert.ok(Math.abs(row.pnl - (P.realized_gross - P.entry_fees - P.exit_fees)) < 1e-9, "position result equals the result recomputed from its fills");
+  assert.ok(r.engine.reconcile().every(x => x.ok));
+  r.store.db.prepare("UPDATE paper_portfolios SET equity = equity + 5 WHERE analyst='balanced'").run();     // corrupt the cached balance
+  assert.equal(r.engine.reconcile().find(x => x.analyst === "balanced").ok, false);
+  assert.equal(r.store.db.prepare("SELECT COUNT(*) n FROM paper_events WHERE type='RECONCILIATION_FAILURE'").get().n, 1);
+});
+
+test("accounting: funding and fills cannot be posted twice (repeat management passes, restart)", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alexismeta-fund-")), file = path.join(dir, "m.db");
+  let r = rig({ file });
+  r.store.enqueue({ type: "ticker", instrument_id: ID, exch_ts: CLOSE + 4 * 3600000 - 1000, recv_ts: CLOSE + 4 * 3600000 - 900, last: "64950", bid: "64949.9", ask: "64950", bid_sz: "1", ask_sz: "1",
+    mark: "64951", index_px: "64952", funding_rate: "0.0005", next_funding_ts: CLOSE + 4 * 3600000, open_interest: "1", oi_unit: "base_coin", source: "test", schema_version: 1, quality: [] }); r.store.flush();
+  r.engine.onBarClose(ID, CLOSE, CLOSE + 3000);
+  r.at(CLOSE + 4 * 3600000 + 1000); r.engine.manage(); r.engine.manage();
+  const n1 = r.store.db.prepare("SELECT COUNT(*) n FROM paper_funding").get().n, cash1 = r.store.db.prepare("SELECT equity FROM paper_portfolios WHERE analyst='balanced'").get().equity;
+  r.store.db.prepare("UPDATE paper_positions SET next_funding_ts = ? WHERE analyst='balanced'").run(CLOSE + 4 * 3600000);   // simulate a lost cursor after a crash
+  r.engine.releaseLock(); r.store.close();
+  r = rig({ file, t0: CLOSE + 4 * 3600000 + 60000 }); r.engine.manage();
+  assert.equal(r.store.db.prepare("SELECT COUNT(*) n FROM paper_funding").get().n, n1, "the settlement is posted once");
+  assert.equal(r.store.db.prepare("SELECT equity FROM paper_portfolios WHERE analyst='balanced'").get().equity, cash1);
+  assert.ok(r.engine.reconcile().every(x => x.ok));
+  assert.throws(() => r.store.db.prepare("INSERT INTO paper_fills (fill_id, position_id, analyst, instrument_id, ts, recorded_ts, kind, side, qty, price, fee) SELECT fill_id, position_id, analyst, instrument_id, ts, recorded_ts, kind, side, qty, price, fee FROM paper_fills LIMIT 1").run(), /UNIQUE/);
+  r.store.close(); fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("gap policy: a position hit by a data gap stays open and fully accounted, is flagged while open, and is counted as uncertain", () => {
+  const r = rig(); r.engine.onBarClose(ID, CLOSE, CLOSE + 3000);
+  r.store.addGap(ID, "trade", CLOSE + 4000, CLOSE + 9000, "ws_disconnect"); r.at(CLOSE + 10000); r.engine.manage();
+  const p = pos(r.store, "balanced");
+  assert.equal(p.state, "OPEN", "not closed, not deleted"); assert.equal(p.gap_affected, 1); assert.match(p.note, /unresolved/);
+  assert.equal(r.store.db.prepare("SELECT COUNT(*) n FROM paper_events WHERE type='DATA_GAP'").get().n, 3);
+  assert.equal(r.engine.summary().find(x => x.analyst === "balanced").open_gap_affected, 1);
+  r.trade(64000, 1000); r.engine.manage();                                  // first OBSERVED price after the gap is far through the stop
+  const c = pos(r.store, "balanced");
+  assert.ok(Math.abs(c.exit_price - 64000 * (1 - 0.0002)) < 1e-6, "filled at the observed price, never at the requested stop");
+  const s = r.engine.summary().find(x => x.analyst === "balanced");
+  assert.equal(s.uncertain_closed, 1); assert.equal(s.evaluable_closed, 0); assert.equal(s.uncertain_share, 1);
+  assert.ok(s.net_pnl_all_closed < 0 && s.net_pnl_uncertain === s.net_pnl_all_closed && s.net_pnl_evaluable === 0, "the loss stays in the account; it is only excluded from evaluable metrics");
+  assert.ok(r.store.db.prepare("SELECT equity FROM paper_portfolios WHERE analyst='balanced'").get().equity < 1000);
+});
+
+test("single writer: a second engine on the same database is refused while the first is alive; a wrong environment is refused", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alexismeta-lock-")), file = path.join(dir, "m.db");
+  const r = rig({ file });
+  const { EngineLocked } = require("../server/engine");
+  assert.throws(() => new PaperEngine({ store: r.store, ledger: r.ledger, collector: r.collector, health: {}, now: r.now }), EngineLocked);
+  assert.throws(() => new PaperEngine({ store: r.store, ledger: r.ledger, collector: r.collector, health: {}, now: () => r.now() + 60000, environment: "TEST" }), /environment is FORWARD/);
+  r.at(r.now() + 31000);                                                     // first instance stopped heart-beating
+  const e2 = new PaperEngine({ store: r.store, ledger: r.ledger, collector: r.collector, health: {}, now: r.now });
+  assert.throws(() => r.engine.tick(), EngineLocked, "the displaced instance stops writing");
+  e2.tick(); r.store.close(); fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test("isolated portfolios: analysts never share cash; within one analyst a second coin on the same bar sees the first's open risk", () => {
+  const r = rig();
+  r.store.upsertInstrument(fromBitgetContract(CONTRACTS.data.find(c => c.symbol === "ETHUSDT"), "USDT-FUTURES", 0));
+  r.engine.onBarClose(ID, CLOSE, CLOSE + 3000);
+  const ETH = "bitget:perp:ETHUSDT";
+  r.collector.latestTicker[ETH] = { last: "1820", bid: "1819.9", ask: "1820", recv_ts: r.now() };
+  r.setSnap(snapOf({ instrument_id: ETH, bid: 1819.9, ask: 1820, atr: 4, triggers: [T("RETEST_UP", 1, 1810)] }));
+  const out = r.engine.onBarClose(ETH, CLOSE, CLOSE + 3000);
+  const cash = Object.fromEntries(r.store.db.prepare("SELECT analyst, equity FROM paper_portfolios").all().map(x => [x.analyst, x.equity]));
+  for (const a of ["risk_taker", "balanced", "defensive"]) {
+    const P = r.engine.portfolio(a), openRisk = require("../server/risk").openRisk(P);
+    assert.ok(openRisk <= 10 + 1e-6, `${a}: combined open stop-risk ${openRisk.toFixed(3)} stays within 1% of 1,000`);
+    const fees = r.store.db.prepare("SELECT COALESCE(SUM(fee),0) f FROM paper_fills WHERE analyst=?").get(a).f;
+    assert.ok(Math.abs(cash[a] - (1000 - fees)) < 1e-9, `${a}: cash moved only by its own fills`);
+  }
+  assert.ok(out.results.every(x => x.code === "OPENED" || (x.code === "RISK_REJECTED" && x.reasons.includes("OPEN_RISK_LIMIT"))), JSON.stringify(out.results.map(x => x.code)));
 });

@@ -82,7 +82,34 @@ const MIGRATIONS = [
      credibility TEXT NOT NULL, cluster_id TEXT NOT NULL, content_hash TEXT NOT NULL);
    CREATE INDEX IF NOT EXISTS news_by_discovery ON news_items (discovered_ts);
    CREATE TABLE IF NOT EXISTS news_revisions (
-     id INTEGER PRIMARY KEY, item_id TEXT NOT NULL, replaced_ts INTEGER NOT NULL, title TEXT NOT NULL, summary TEXT, content_hash TEXT NOT NULL);`
+     id INTEGER PRIMARY KEY, item_id TEXT NOT NULL, replaced_ts INTEGER NOT NULL, title TEXT NOT NULL, summary TEXT, content_hash TEXT NOT NULL);`,
+  // v6: paper accounting from first principles. Fills and funding postings are the financial facts (unique keys make
+  //     every write idempotent); paper_events is the outbox the UI streams from, written in the SAME transaction as the
+  //     state change it describes; meta holds the opaque DB identity, its environment and the single-writer lock.
+  //     paper_portfolios.equity now means CASH BALANCE: fees and funding are booked when they occur, not at close.
+  `CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+   CREATE TABLE IF NOT EXISTS paper_fills (
+     fill_id TEXT PRIMARY KEY, position_id TEXT NOT NULL, analyst TEXT NOT NULL, instrument_id TEXT NOT NULL, ts INTEGER NOT NULL, recorded_ts INTEGER NOT NULL,
+     kind TEXT NOT NULL CHECK (kind IN ('ENTRY','EXIT')), side INTEGER NOT NULL, qty TEXT NOT NULL, price REAL NOT NULL, fee REAL NOT NULL, reason TEXT, model TEXT);
+   CREATE INDEX IF NOT EXISTS paper_fills_by_position ON paper_fills (position_id, ts);
+   CREATE TABLE IF NOT EXISTS paper_funding (
+     posting_id TEXT PRIMARY KEY, position_id TEXT NOT NULL, analyst TEXT NOT NULL, settlement_ts INTEGER NOT NULL, recorded_ts INTEGER NOT NULL,
+     rate TEXT, mark REAL, qty TEXT NOT NULL, amount REAL NOT NULL, note TEXT);
+   CREATE TABLE IF NOT EXISTS paper_events (
+     seq INTEGER PRIMARY KEY AUTOINCREMENT, event_key TEXT NOT NULL UNIQUE, ts INTEGER NOT NULL, recorded_ts INTEGER NOT NULL, type TEXT NOT NULL,
+     analyst TEXT, instrument_id TEXT, position_id TEXT, decision_id TEXT, payload TEXT NOT NULL);
+   ALTER TABLE paper_positions ADD COLUMN gap_affected INTEGER NOT NULL DEFAULT 0;
+   ALTER TABLE paper_positions ADD COLUMN evidence_hash TEXT;
+   ALTER TABLE paper_positions ADD COLUMN policy_version TEXT;
+   INSERT OR IGNORE INTO paper_fills (fill_id, position_id, analyst, instrument_id, ts, recorded_ts, kind, side, qty, price, fee, reason, model)
+     SELECT 'fill:entry:' || position_id, position_id, analyst, instrument_id, opened_ts, opened_ts, 'ENTRY', side, qty, entry, entry_fee, 'entry', 'migrated-v5' FROM paper_positions;
+   INSERT OR IGNORE INTO paper_fills (fill_id, position_id, analyst, instrument_id, ts, recorded_ts, kind, side, qty, price, fee, reason, model)
+     SELECT 'fill:exit:' || position_id, position_id, analyst, instrument_id, exit_ts, exit_ts, 'EXIT', side, qty, exit_price, exit_fee, exit_reason, 'migrated-v5' FROM paper_positions WHERE state = 'CLOSED';
+   INSERT OR IGNORE INTO paper_funding (posting_id, position_id, analyst, settlement_ts, recorded_ts, rate, mark, qty, amount, note)
+     SELECT 'funding:' || position_id || ':migrated', position_id, analyst, opened_ts, opened_ts, NULL, NULL, qty, funding, 'migrated-v5 total' FROM paper_positions WHERE funding <> 0;
+   UPDATE paper_portfolios SET equity = equity
+     - COALESCE((SELECT SUM(entry_fee) FROM paper_positions p WHERE p.analyst = paper_portfolios.analyst AND p.state = 'OPEN'), 0)
+     + COALESCE((SELECT SUM(funding) FROM paper_positions p WHERE p.analyst = paper_portfolios.analyst AND p.state = 'OPEN'), 0);`
 ];
 
 const DEFAULT_RETENTION_MS = {
@@ -152,7 +179,7 @@ class Store {
   }
 
   flush() {
-    if (!this.queue.length) return 0;
+    if (!this.queue.length || this.inTx) return 0;      // never interleave with an open engine transaction
     const t0 = Date.now(), batch = this.queue; this.queue = [];
     const persist = this.now();
     this.db.exec("BEGIN");
@@ -172,6 +199,25 @@ class Store {
     } catch (e) { this.db.exec("ROLLBACK"); this.queue = batch.concat(this.queue).slice(0, this.maxQueue); throw e; }
     this.stats.flushes++; this.stats.last_flush_ms = Date.now() - t0;
     return batch.length;
+  }
+
+  // ---------- transactions + meta ----------
+  /** Run fn inside one IMMEDIATE transaction (re-entrant: a nested call joins the outer transaction). */
+  tx(fn) {
+    if (this.inTx) return fn();
+    this.db.exec("BEGIN IMMEDIATE"); this.inTx = true;
+    try { const r = fn(); this.db.exec("COMMIT"); return r; }
+    catch (e) { try { this.db.exec("ROLLBACK"); } catch (e2) { /* already rolled back */ } throw e; }
+    finally { this.inTx = false; }
+  }
+  metaGet(key) { const r = this.db.prepare("SELECT value FROM meta WHERE key=?").get(key); return r ? r.value : null; }
+  metaSet(key, value) { this.db.prepare("INSERT INTO meta (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(key, String(value)); }
+  /** Opaque identity + environment of this database. The environment is fixed at creation and never changes. */
+  identity(environment = "FORWARD") {
+    let id = this.metaGet("db_id"), env = this.metaGet("environment");
+    if (!id) { id = require("node:crypto").randomUUID(); this.metaSet("db_id", id); this.metaSet("created_ts", this.now()); }
+    if (!env) { env = environment; this.metaSet("environment", env); }
+    return { db_id: id, environment: env, created_ts: Number(this.metaGet("created_ts")) };
   }
 
   quarantine(source, reason, raw) {

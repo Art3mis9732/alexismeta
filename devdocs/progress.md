@@ -4,7 +4,8 @@
 | When (UTC) | Action | Approved by |
 |---|---|---|
 | 2026-11-16 | Created personal cloud environment `alexismeta` (network allowlist: Bitget, OKX, Fed, SEC) | User (approval prompt) |
-| – | No push, merge, PR, deploy, workflow run or paid service | – |
+| 2026-11-16 | Push of feature branch `claude/friendly-dirac-ouvgn4` only (no PR, merge, deploy; triggers no workflow) | User (in chat) |
+| – | No merge, PR, deploy, workflow run or paid service | – |
 
 ## Milestones
 | Date | Milestone | State | Evidence |

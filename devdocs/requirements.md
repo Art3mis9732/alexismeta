@@ -12,7 +12,7 @@ Evidence references point to `verification.md` entries (V-xxx).
 |---|---|---|---|---|---|---|---|---|
 | G-01 | P2§3 | Read-only audit, preserve user work, no destructive git | – | A | 0 | git status before/after; no resets | VERIFIED | V-001 |
 | G-02 | P2§4 | Baseline build/tests recorded, pre-existing failures distinguished | – | A | 0 | test runs | VERIFIED | V-002 |
-| G-03 | P2§5 | Locate "Fable Advisor" | absent | A | 0 | repo search | PARTIAL (not in repo; meaning unconfirmed, B-02) | audit §5 |
+| G-03 | P2§5 | Locate "Fable Advisor" | absent | A | 0 | repo search | NOT_APPLICABLE_WITH_REASON (user confirmed: Claude Code dev reviewer, not a site feature) | audit §5 |
 | G-04 | P2§7 | Durable records (`devdocs/`) incl. resume.md | – | A | 0 | files exist, updated per commit | IN_PROGRESS | – |
 | G-05 | P2§15 | No push/merge/deploy/paid/live trading without approval | – | A | all | `remote actions` log in progress.md | IN_PROGRESS | – |
 | G-06 | P2§8 | Small verified milestones, diff review per milestone | – | A | all | progress.md | IN_PROGRESS | – |

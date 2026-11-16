@@ -14,7 +14,7 @@
 None.
 
 ## Pending approvals
-* B-01: push the feature branch (no workflow is triggered).
+* None. Pushing the feature branch is approved (B-01); merge/PR/deploy are NOT.
 
 ## Environment notes
 * Cloud container: Node needs `NODE_USE_ENV_PROXY=1` for outbound HTTPS/WSS. Python venv at `.venv` (git-ignored).

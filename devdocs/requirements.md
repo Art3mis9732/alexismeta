@@ -27,7 +27,7 @@ Evidence references point to `verification.md` entries (V-xxx).
 | D-02 | P1§3 | Canonical event/feature schema shared by live/replay/backtest | none | A | 2 | schema tests | PARTIAL (market events done; replay/features pending) | V-004 |
 | D-03 | P1§4 | Capability registry with live probe results, access dates | partial (SOURCES.md for rules only) | A | 2 | `data-sources.md` | IN_PROGRESS | – |
 | D-04 | P1§5 | Observation fields: venue, native id, base/quote/settle, class, linear/inverse, multiplier, exch ts, recv ts, persist ts, seq/trade id, source, schema ver, quality flags | none | A | 2 | schema + tests | VERIFIED (raw-record reference = quarantine copy only for rejected msgs) | V-004, V-005 |
-| D-05 | P1§5 | UTC internal; selectable display TZ default Asia/Kolkata | IST hard-coded | A | 3 | UI test | NOT_STARTED | – |
+| D-05 | P1§5 | UTC internal; selectable display TZ default Asia/Kolkata | IST hard-coded | A | 3 | UI test | PARTIAL (worker stores UTC ms; UI still fixed IST, no selector yet) | – |
 | D-06 | P1§5 | last/bid/ask/mark/index kept distinct | partly (ticker) | A | 2 | schema | VERIFIED | V-004, V-005 |
 | D-07 | P1§5 | REST snapshots + paginated backfill | partial (python) | A | 2 | tests + smoke | PARTIAL (≤1000-candle window backfill; deeper pagination stays in python scripts; unrecoverable gaps logged) | V-004 |
 | D-08 | P1§5 | WS heartbeat, supervision, backoff+jitter | partial (browser, no jitter) | A | 2 | fault tests | VERIFIED (worker; browser stream unchanged) | V-004 |
@@ -39,7 +39,7 @@ Evidence references point to `verification.md` entries (V-xxx).
 | D-14 | P1§5 | Graceful shutdown, restart recovery | none | A | 2 | restart test | VERIFIED (SIGINT path exercised by --smoke exit; kill -9 recovery relies on SQLite WAL, not tested) | V-004, V-006 |
 | D-15 | P1§5 | Order book snapshot/delta, seq checks, crossed/negative detection, invalidate→resync | none | A | 2 | seq-gap fixtures | VERIFIED (continuity rule observed, not documented: D-007) | V-004, V-005 |
 | D-16 | P1§5 | Missing ≠ zero, unknown ≠ neutral; gap flags propagate | violated (A-03) | A | 2,4 | tests | IN_PROGRESS | – |
-| D-17 | P1§5 | Data mode LIVE/DELAYED/REPLAY/SIMULATED; health HEALTHY/STALE/DISCONNECTED/RECOVERING; exec ANALYSIS_ONLY/PAPER | none | A | 2,3 | health tests + UI | PARTIAL (worker API verified; UI not yet) | V-004 |
+| D-17 | P1§5 | Data mode LIVE/DELAYED/REPLAY/SIMULATED; health HEALTHY/STALE/DISCONNECTED/RECOVERING; exec ANALYSIS_ONLY/PAPER | none | A | 2,3 | health tests + UI | PARTIAL (worker API + browser LIVE/STALE/RECOVERING/DISCONNECTED verified; REPLAY/SIMULATED modes not built yet) | V-004, V-008 |
 | D-18 | P1§5 | Feed-specific stale thresholds, tested | none | A | 2 | stale tests | PARTIAL (tested logic; values need long-run cadence data, B-05) | V-004, V-005 |
 | D-19 | P1§5 | Alternate venue never silently replaces Bitget quote | n/a | A | 6 | test | NOT_STARTED | – |
 | D-20 | P1§3 | Bounded retention, disk budget, compaction | none | A | 2 | retention test | PARTIAL (retention verified; disk budget not measured over a day) | V-004 |
@@ -89,15 +89,15 @@ Evidence references point to `verification.md` entries (V-xxx).
 | ID | Origin | Requirement | Existing | Feas. | Phase | Verification | Status |
 |---|---|---|---|---|---|---|---|
 | P-01 | P1§12 | Forecast objects separate from setups; explicit targets/horizons | logistic model, mislabelled (A-02) | A | 7 | – | NOT_STARTED |
-| P-02 | P1§12 | No probability shown until calibration gate passes | violated | A | 3 (relabel), 7 | UI test | NOT_STARTED |
+| P-02 | P1§12 | No probability shown until calibration gate passes | violated | A | 3 (relabel), 7 | UI test | PARTIAL: model card relabelled as uncalibrated score (V-008); calibration gate = Phase 7 |
 | P-03 | P1§12 | Baselines: random walk, rolling dist., momentum | none | A | 7 | – | NOT_STARTED |
 | P-04 | P1§12 | Unevaluable outcomes marked, not counted | none | A | 7 | test | NOT_STARTED |
 | N-01 | P1§15 | Official news sources w/ publication/discovery/revision, dedupe, untrusted handling | none | A (Fed/SEC hosts allowed) | 6 | tests | NOT_STARTED |
 | N-02 | P1§15 | Optional LLM: disabled by default, schema-validated, no authority | none | B | 6 | – | DEFERRED |
-| U-01 | P1§16 | Instrument selector, venue/class labels, feed age, mode labels | partial | A | 3 | Playwright | NOT_STARTED |
+| U-01 | P1§16 | Instrument selector, venue/class labels, feed age, mode labels | partial | A | 3 | Playwright | PARTIAL: feed age + honest mode + worker feed states verified (V-008); spot selector pending |
 | U-02 | P1§16 | Analyst cards w/ NO_TRADE reasons, hypotheses, news, portfolio/risk | partial | A | 3/5 | Playwright | NOT_STARTED |
 | U-03 | P1§16 | Verification workspace (forecast vs outcome, backtest vs forward separate) | partial (journal card) | A | 9 | Playwright | NOT_STARTED |
-| U-04 | P1§16 | Multiple tabs must not create duplicate upstream collectors | each tab opens own WS | A | 3 | worker serves tabs | NOT_STARTED |
+| U-04 | P1§16 | Multiple tabs must not create duplicate upstream collectors | each tab opens own WS | A | 3 | worker serves tabs | PARTIAL: worker is the single collector and tabs only poll /api; the page still opens its own browser stream for charts (not a collector; nothing persisted) |
 | U-05 | P1§16 | Accessible contrast, keyboard nav, text labels with colors | partial | A | 3 | audit | NOT_STARTED |
 | U-06 | P1§16 | In-app alerts w/ dedupe/cooldown | none | A | 8 | tests | NOT_STARTED |
 | X-01 | P1§17 | Drift/calibration monitoring, champion/challenger, predeclared promotion, rollback | lab dev/lock/holdout | A/C | 10 | tests | NOT_STARTED |

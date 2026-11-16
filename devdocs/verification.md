@@ -68,3 +68,24 @@ Each entry records: revision · command/procedure · when (UTC) · expected · o
   passed.
 * Limitation: a local file can be replaced wholesale. Detection needs the chain head stored elsewhere (e.g. committed
   daily or written to the backup log). Not yet implemented; listed in the roadmap.
+
+## V-008 Browser status labels (Phase 3) — Playwright 1.63 / Chromium, cloud container, 2026-11-16 ~08:10 UTC
+* `node tests_e2e/status.e2e.js http://127.0.0.1:8787/ http://127.0.0.1:8788/` against (a) the worker serving `docs/`
+  and (b) `python -m http.server` serving `docs/` (no `/api`, like GitHub Pages), with the published gh-pages
+  `data/*.json` copied into the git-ignored `docs/data/`. **15/15 checks pass.**
+* The run found and fixed two bugs:
+  1. `loadSnapshot()` parsed any response body as data. A JSON 404 (`{"error":"not found"}`) became `MARKET` and
+     crashed rendering ("Cannot read properties of undefined"). GitHub Pages returns HTML 404s, which failed
+     to parse and so masked the bug. Now only 2xx responses are parsed, and `MARKET` must have `symbols`.
+  2. The status label stayed "connecting…" for up to 5 s after the socket opened. `setMode()` now runs on open.
+* Defect A-01 is verified fixed in a real browser. With real data for 8 s and then only pongs (Playwright
+  `routeWebSocket` drops the data frames and answers pings), the label went `● LIVE …` → `◐ STALE · connected, but no
+  BTC market data for 11 s`. A socket that never delivers data shows `◐ RECOVERING`, never LIVE.
+* Defect A-02 is verified fixed: the model card reads "Model scores (uncalibrated, not probabilities)", the column
+  is "Score (uncalibrated)" with values shown as 0.502 rather than 50.2%, and the card explains that test metrics
+  come from the 70% model while the live model is refit.
+* Existing workflows: Buy/Sell, Patterns and Indicators views render; coin switch works; no page errors in either mode.
+* An apparent issue that turned out to be correct behaviour: right after load only BTC data had arrived, so switching
+  to ETH within about 1 s showed `◐ RECOVERING` until the first ETH message arrived about 1 s later. The label was true at
+  that moment. The e2e test now also asserts that the label then reports ETH data.
+* Not verified: Firefox/Safari, mobile layouts, keyboard navigation, screen readers.

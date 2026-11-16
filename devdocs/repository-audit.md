@@ -84,14 +84,15 @@ It does not block foundation work.
 
 | ID | Where | Defect | Severity | Planned fix (phase) |
 |---|---|---|---|---|
-| A-01 | `index.html` `setMode` | `● LIVE` is driven by `lastMsg`, which is also refreshed by `"pong"` replies. A connection whose subscriptions stopped, but which still answers pings, shows LIVE | High (honest-status rule) | P3: base freshness on data messages per channel |
-| A-02 | `index.html` model card | Headed "Chance the price is higher" and shows a raw logistic output as a percentage. That is an **uncalibrated score**, and the displayed test metrics come from the 70% model while the live model is refit on 100% | High (probability rule) | P7: relabel as "uncalibrated score" now, calibration gate later |
+| A-01 | `index.html` `setMode` | `● LIVE` is driven by `lastMsg`, which is also refreshed by `"pong"` replies. A connection whose subscriptions stopped, but which still answers pings, shows LIVE | High (honest-status rule) | **Fixed** (V-008) |
+| A-02 | `index.html` model card | Headed "Chance the price is higher" and shows a raw logistic output as a percentage. That is an **uncalibrated score**, and the displayed test metrics come from the 70% model while the live model is refit on 100% | High (probability rule) | **Relabelled** (V-008); calibration gate = P7 |
 | A-03 | `fetch_market.py` | `float(t.get("fundingRate") or 0)`, `holdingAmount or 0`: missing becomes zero | Medium | P2: worker stores NULL plus a quality flag; the legacy script is patched later |
 | A-04 | `paper_trader.js` | The journal is rewritten in place (status changes overwrite the entry) and lives only on force-pushed `gh-pages` | High (append-only rule) | P2: append-only ledger in the worker; the legacy journal is kept and labelled legacy |
 | A-05 | `index.html` browser paper trades | Fill exactly at the stop or target on last price; no gap, slippage or funding; stored in `localStorage` | Medium | P8/P9 |
 | A-06 | `index.html` `tradePlan` | "BUY"/"SELL" in large type with a "Start paper trade" button and up to 100x leverage. No portfolio risk gate, no stale-data gate | High | P5/P8: risk engine plus NO_TRADE reasons |
 | A-07 | `patterns.js PROFILES` | 50x/10x/3x on $5 vs 2x ceiling / 1,000 USDT | Medium | P5: new policy versions alongside |
-| A-08 | `README.md` | States 14 engine tests; there are 23 | Low | Doc fix |
+| A-08 | `README.md` | States 14 engine tests; there are 23 | Low | Fixed in README 2026-11-16 |
+| A-12 | `index.html` `loadSnapshot` | Parsed any response body (incl. a JSON 404) as data and crashed. Masked on GitHub Pages because its 404 is HTML | Medium | **Fixed** (V-008) |
 | A-09 | `fetch_market.py` | Ticker `ts` stored, but no receipt time, no sequence, no schema version | Medium | P2 worker schema |
 | A-10 | `index.html` | Timezone fixed to IST in labels; no selector | Low | P3 |
 | A-11 | `taker-buy-sell` / trade `side` | Used as buy/sell pressure. Official classic docs (accessed 2026-11-16) do not define whether `side` is the taker side; only third-party wire-format docs say so | Medium | P4: label "aggressor semantics unverified" until confirmed |

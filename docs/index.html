@@ -68,6 +68,7 @@
     <div class="seg" id="views"><span class="on" data-view="trade">Buy / Sell</span><span data-view="patterns">Patterns</span><span data-view="indicators">Indicators</span></div>
     <span class="sub" id="mode">connecting…</span>
   </div>
+  <div class="sub" id="worker" style="margin-top:6px" aria-live="polite"></div>
   <div class="banner" id="banner"></div>
 </header>
 
@@ -75,7 +76,7 @@
 <!-- ======================= BUY / SELL VIEW ======================= -->
 <section id="tradeView">
   <div class="profiles" id="profiles"></div>
-  <div class="card" id="modelCard"><h2>Model forecasts — chance the price is higher 16 candles from now, on 5m, 15m and 4h</h2><div id="modelBody" class="sub">Loading…</div></div>
+  <div class="card" id="modelCard"><h2>Model scores (uncalibrated, not probabilities) — does the model lean up or down 16 candles ahead, on 5m, 15m and 4h</h2><div id="modelBody" class="sub">Loading…</div></div>
   <div class="row">
     <div class="card">
       <h2>What to do now — <span id="tSym">BTCUSDT</span> · <span id="tProf">Neutral</span></h2>
@@ -582,7 +583,7 @@ function renderModel() {
     P[t] = p;
     const lean = p === null ? "—" : p > 0.5 + M.band ? `<span class="up">UP</span>` : p < 0.5 - M.band ? `<span class="down">DOWN</span>` : `<span class="muted">no clear lean</span>`;
     return `<tr><td><b>${t === "4H" ? "4h" : t}</b> <span class="sub">next ${esc(M.ahead)}</span></td>
-      <td class="r"><b class="${p > 0.5 ? "up" : "down"}">${p === null ? "—" : pc(p, 1)}</b></td><td>${lean}</td>
+      <td class="r"><b class="${p > 0.5 ? "up" : "down"}">${p === null ? "—" : p.toFixed(3)}</b></td><td>${lean}</td>
       <td class="r">${pc(T.accuracy, 1)} <span class="sub">vs ${pc(T.coin_flip_best, 1)}</span>${Ts ? ` <span class="sub">(${sym.replace("USDT", "")} ${pc(Ts.accuracy, 1)})</span>` : ""}</td>
       <td class="r ${T.avg_net_bps > 0 ? "up" : "down"}">${T.avg_net_bps === null ? "—" : T.avg_net_bps + " bps"} <span class="sub">${T.trades} trades</span></td>
       <td><span class="pill ${beat > 0.02 && T.avg_net_bps > 0 ? "good" : "bad"}">${beat > 0.02 && T.avg_net_bps > 0 ? "held up in testing" : "no edge in testing"}</span></td></tr>`;
@@ -590,9 +591,11 @@ function renderModel() {
   const ok = ["5m", "15m", "4H"].every(t => P[t] !== null && P[t] !== undefined);
   const agreeNow = !ok ? "—" : ["5m", "15m", "4H"].every(t => P[t] > 0.5) ? `<b class="up">all three lean UP</b>` : ["5m", "15m", "4H"].every(t => P[t] < 0.5) ? `<b class="down">all three lean DOWN</b>` : `<span class="muted">they disagree, so no combined signal</span>`;
   const G = MODEL.agreement;
-  el.innerHTML = `<table><tr><th>Timeframe</th><th class="r">Chance higher</th><th>Lean</th><th class="r">Right on unseen data</th><th class="r">Trading its calls</th><th></th></tr>${rows}</table>
+  el.innerHTML = `<table><tr><th>Timeframe</th><th class="r" title="Raw logistic-model output between 0 and 1. It has not passed a calibration check, so it is NOT the chance that price rises.">Score (uncalibrated)</th><th>Lean</th><th class="r">Right on unseen data</th><th class="r">Trading its calls</th><th></th></tr>${rows}</table>
     <div style="margin-top:8px"><b>All three together:</b> ${agreeNow}.
       ${G && G.trades ? `<span class="sub">Tested on unseen data: they agreed ${pc(G.share_of_time)} of the time; trading only then won ${pc(G.win_rate)} of ${G.trades.toLocaleString()} trades and averaged <b class="${G.avg_net_bps > 0 ? "up" : "down"}">${G.avg_net_bps} bps</b> per trade after costs.</span>` : ""}</div>
+    <div class="sub" style="margin-top:6px"><b>Read this as a lean, not a probability.</b> A score of 0.60 does not mean a 60% chance: these outputs have not passed a calibration check.
+      The "unseen data" figures come from the model fitted on the first 70% of history; the live model is refit on all data, so the live model itself has no out-of-sample record yet.</div>
     <details><summary>How these models work</summary><div class="sub" style="margin-top:6px">${esc(MODEL.method.note)} "Right on unseen data" is compared with always guessing the more common direction in that test period.
       "Trading its calls" uses the confidence threshold picked on the training part only (shown as the UP/DOWN lean). bps = hundredths of a percent; 14 bps of costs are included. Retrained ${esc(MODEL.generated_at_utc)} UTC.</div></details>`;
 }
@@ -701,13 +704,15 @@ function upsertClosed(s, r) {
   if (!last || r[0] > last[0]) { rows.push(r); if (rows.length > 1200) rows.shift(); return true; }
   return false;
 }
-let ws = null, lastMsg = 0, pingT = null, retryT = null, retries = 0;
+let ws = null, lastFrame = 0, pingT = null, retryT = null, retries = 0;
+const lastData = {};                          // per symbol: time of the last MARKET DATA message (pongs do not count)
+const DATA_STALE_MS = 10000;                  // ticker pushes several times a second; 10 s without data = stale
 function connectStream() {
   clearTimeout(retryT); clearInterval(pingT);
   if (ws) { ws.onclose = null; try { ws.close(); } catch (e) {} }
   try { ws = new WebSocket("wss://ws.bitget.com/v2/ws/public"); } catch (e) { scheduleRetry(); return; }
   ws.onopen = () => {
-    retries = 0;
+    retries = 0; setTimeout(setMode, 0);
     ws.send(JSON.stringify({ op: "subscribe", args: SYMS.flatMap(s => [
       { instType: "USDT-FUTURES", channel: "candle15m", instId: s }, { instType: "USDT-FUTURES", channel: "candle5m", instId: s },
       { instType: "USDT-FUTURES", channel: "ticker", instId: s }]) }));
@@ -717,11 +722,12 @@ function connectStream() {
     pingT = setInterval(() => { if (ws && ws.readyState === 1) ws.send("ping"); }, 25000);
   };
   ws.onmessage = ev => {
-    lastMsg = Date.now();
+    lastFrame = Date.now();
     if (ev.data === "pong") return;
     let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
     if (!m.arg || !m.data || !SYMS.includes(m.arg.instId)) return;
     const s = m.arg.instId;
+    lastData[s] = Date.now();
     if (m.arg.channel === "candle15m") {
       let closedNew = false;
       m.data.forEach(a => { const r = a.slice(0, 6).map(Number);
@@ -752,14 +758,16 @@ function connectStream() {
 }
 function scheduleRetry() { clearTimeout(retryT); retryT = setTimeout(connectStream, Math.min(30000, 2000 * Math.pow(2, retries++))); }
 function setMode() {
-  const age = lastMsg ? (Date.now() - lastMsg) / 1000 : null;
-  if (ws && ws.readyState === 1 && age !== null && age < 30) $("mode").innerHTML = `<span class="up">● LIVE</span> · last tick ${istHMS(lastMsg)} IST`;
-  else if (live[sym]) $("mode").innerHTML = `<span class="warn">○ reconnecting to the live stream…</span>`;
-  else $("mode").innerHTML = `<span class="muted">○ snapshot only (this browser could not reach Bitget)</span>`;
+  const open = ws && ws.readyState === 1, t = lastData[sym], age = t ? Date.now() - t : null;
+  if (open && age !== null && age < DATA_STALE_MS) $("mode").innerHTML = `<span class="up">● LIVE</span> · Bitget public data · last ${sym.replace("USDT", "")} update ${istHMS(t)} IST (${(age / 1000).toFixed(1)} s ago)`;
+  else if (open && t) $("mode").innerHTML = `<span class="warn">◐ STALE</span> · connected, but no ${sym.replace("USDT", "")} market data for ${Math.round(age / 1000)} s · prices below may be old`;
+  else if (open) $("mode").innerHTML = `<span class="warn">◐ RECOVERING</span> · connected, waiting for the first market data`;
+  else if (live[sym]) $("mode").innerHTML = `<span class="warn">○ DISCONNECTED</span> · reconnecting to the live stream… prices below are from the last update`;
+  else $("mode").innerHTML = `<span class="muted">○ SNAPSHOT ONLY</span> · this browser could not reach Bitget; showing the 15-minute snapshot`;
 }
 setInterval(() => {
   setMode();
-  if (ws && ws.readyState === 1 && lastMsg && Date.now() - lastMsg > 40000) connectStream();
+  if (ws && ws.readyState === 1 && ((lastFrame && Date.now() - lastFrame > 40000) || (lastData[sym] && Date.now() - lastData[sym] > 60000))) connectStream();
   const f = forming[sym];                     // a candle closed but the stream missed it: fetch it
   if (f && f.t + M15 + 8000 < Date.now()) { delete forming[sym]; fetchRest(sym).then(() => renderAll(true)); }
   const f5 = forming5[sym];
@@ -769,21 +777,46 @@ document.addEventListener("visibilitychange", async () => {
   if (document.visibilityState !== "visible") return;
   await Promise.all([fetchRest(sym), fetchRest(sym, "5m"), sym !== "BTCUSDT" ? fetchRest("BTCUSDT") : null]);
   renderAll(true);
-  if (!ws || ws.readyState !== 1 || Date.now() - lastMsg > 30000) connectStream();
+  if (!ws || ws.readyState !== 1 || !lastData[sym] || Date.now() - lastData[sym] > 30000) connectStream();
+  pollWorker();
 });
 
+/* Local worker (server/main.js) status. On GitHub Pages there is no /api, the probe fails once and the page
+ * says so; nothing else changes. When the worker serves this page, its per-feed health is shown here. */
+let WORKER = undefined, workerT = null;
+async function pollWorker() {
+  let h = null;
+  try { const r = await fetch("api/health", { cache: "no-store" }); if (r.ok) { h = await r.json(); if (!h || !h.data_mode) h = null; } } catch (e) { h = null; }
+  const first = WORKER === undefined; WORKER = h;
+  const el = $("worker");
+  if (!h) {
+    el.innerHTML = first || !workerT ? `Execution: <b>analysis only</b> — no orders are ever sent to Bitget (paper trades below are simulated in this browser). No local worker on this page.`
+                                     : `<span class="down">Local worker not responding</span> — the page falls back to this browser's own stream.`;
+    return;
+  }
+  const id = "bitget:perp:" + sym, short = { ticker: "ticker", trade: "trades", books: "order book", candle1m: "1m candles", candle15m: "15m candles" };
+  const cls = st => st === "HEALTHY" ? "up" : st === "STALE" || st === "RECOVERING" ? "warn" : "down";
+  const feeds = h.feeds.filter(f => f.feed.startsWith(id + "|")).map(f => `${short[f.kind] || esc(f.kind)} <span class="${cls(f.state)}">${esc(f.state)}</span>`).join(" · ");
+  const bk = (h.books || []).find(b => b.instrument_id === id);
+  const off = h.clock && h.clock.offset_ms !== null ? `${h.clock.offset_ms > 0 ? "+" : ""}${h.clock.offset_ms} ms` : "unknown";
+  el.innerHTML = `Local worker · data <b>${esc(h.data_mode)}</b> · execution <b>${esc(h.execution_mode.replace("_", " "))}</b> (no order code exists) · ${sym.replace("USDT", "")} perp: ${feeds}` +
+    (bk ? ` · book check <span class="${bk.state === "VALID" ? "up" : "down"}">${esc(bk.state)}</span>` : "") + ` · exchange clock offset ${esc(off)} · reconnects ${Number(h.socket.reconnects) || 0}`;
+  if (!workerT) workerT = setInterval(pollWorker, 5000);
+}
+
+async function loadJson(name) {               // a missing file (any non-2xx) is "no data", never parsed as data
+  try { const r = await fetch("data/" + name + "?" + Date.now(), { cache: "no-store" }); return r.ok ? await r.json() : null; } catch (e) { return null; }
+}
 async function loadSnapshot() {
-  try { MARKET = await (await fetch("data/market.json?" + Date.now(), { cache: "no-store" })).json(); } catch (e) { MARKET = null; }
-  try { STATS = await (await fetch("data/stats.json?" + Date.now(), { cache: "no-store" })).json(); } catch (e) { STATS = null; }
-  try { MODEL = await (await fetch("data/model.json?" + Date.now(), { cache: "no-store" })).json(); } catch (e) { MODEL = null; }
-  try { JOURNAL = await (await fetch("data/journal.json?" + Date.now(), { cache: "no-store" })).json(); } catch (e) { JOURNAL = null; }
+  [MARKET, STATS, MODEL, JOURNAL] = await Promise.all(["market.json", "stats.json", "model.json", "journal.json"].map(loadJson));
+  if (MARKET && !MARKET.symbols) MARKET = null;
 }
 
 /* ================= wiring ================= */
 document.querySelectorAll("#coins span").forEach(t => t.onclick = async () => {
   document.querySelectorAll("#coins span").forEach(x => x.classList.remove("on")); t.classList.add("on");
   sym = t.dataset.sym;
-  renderAll(false);
+  renderAll(false); setMode(); if (WORKER) pollWorker();
   if (!live[sym] || !live5[sym] || !live4[sym]) { await Promise.all([fetchRest(sym), fetchRest(sym, "5m"), fetchRest(sym, "4H")]); renderAll(false); }
 });
 document.querySelectorAll("#views span").forEach(t => t.onclick = () => {
@@ -806,6 +839,7 @@ $("tMargin").oninput = $("tLev").onchange = () => renderTrade();
 (async () => {
   CH.t = makeChart($("tChart")); CH.p = makeChart($("chart"));
   guide(); renderLog();
+  pollWorker();
   await loadSnapshot();
   renderAll(false);
   $("tLev").value = String(Patterns.PROFILES[profile].lev);

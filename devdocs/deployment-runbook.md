@@ -85,3 +85,33 @@ The monitor, ledger and paper engine need a running worker.
 | 3. Co-hosted: one small server runs the worker and serves the app | As option 2 | As option 2 | Reverse proxy with TLS | Same auth requirement; simplest network model | Small paid VM is the realistic choice | As option 2 | The GitHub Pages site would stay a static mirror or be retired |
 Do not expose the current worker to the internet: it has no authentication. No always-on claim is made for any free tier.
 Before any release: prepare the artifact and config, run both e2e suites against it, and get explicit approval.
+
+## Updating your Windows checkout to this work (PowerShell) — read before the first start
+The cloud session works in its own checkout and its own database. **Nothing in the cloud updates your Windows folder, and the
+cloud ledger is a different database from yours**: your decisions, positions and news history live only in your
+`data\worker\market.db`. Only a pushed branch can reach you; the latest push approved so far is `ae70a94` and the news milestone
+described in `news-diagnosis.md` is NOT pushed yet (a push needs the user's approval for that specific commit range).
+```powershell
+cd $HOME\path\to\alexismeta
+node --version; npm --version                                   # you reported v26.13.0 / 12.2.2; the tested build is Linux Node 22.23.4
+git status                                                      # must be clean, otherwise stop and look at what changed
+# Stop the running worker first: Ctrl+C in its window, wait for "shutting down"
+# 1. BACK UP THE DATABASE FIRST (the new version migrates it in place; schema v8 is not reversible by code)
+New-Item -ItemType Directory -Force data\backups | Out-Null
+node server\admin.js backup "data\backups\market-before-update-$(Get-Date -Format yyyyMMdd-HHmmss).db"
+node server\admin.js verify-ledger                              # expect {"ok":true,...}
+# 2. Update
+git fetch origin
+git checkout claude/friendly-dirac-ouvgn4
+git pull --ff-only origin claude/friendly-dirac-ouvgn4          # refuses if histories diverged instead of merging silently
+npm test                                                        # expect all tests to pass; no npm install is needed (no dependencies)
+# 3. Start, then hard-refresh the browser (Ctrl+F5) so it does not keep the old page and scripts
+npm start
+```
+Check **http://127.0.0.1:8787/api/runtime**: `build.revision` must be the commit you pulled and `database.environment` must be
+`FORWARD`. Open the **News** tab. The first start after the update re-classifies stored news and applies schema v7 and v8; the
+paper ledger is not touched by those migrations. **Restarting the worker while paper positions are open creates a data gap that
+flags those positions as unresolved (decision D-022); update when none are open if you can.** If something looks wrong, stop the
+worker, restore the backup file over `data\worker\market.db`, and `git checkout` the previous commit.
+Not verified by me: Windows itself, Node 26, PowerShell behaviour of these commands. The user-reported successful start is the only
+Windows evidence.

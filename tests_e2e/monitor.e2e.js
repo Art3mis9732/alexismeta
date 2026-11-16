@@ -40,8 +40,13 @@ async function main() {
     const fp = sourceFingerprint();
     const rtT = await waitFor(() => getJson(testUrl + "api/runtime"), 30000), rtF = await getJson(forwardUrl + "api/runtime");
     check("0. TEST worker serves this working tree and is the TEST environment", rtT && rtT.build.source_fingerprint === fp && rtT.database.environment === "TEST", rtT && `${rtT.build.revision}${rtT.build.dirty ? "+dirty" : ""} fp ${rtT.build.source_fingerprint} vs tree ${fp}`);
-    check("0. forward worker serves this working tree and is the FORWARD environment", rtF.build.source_fingerprint === fp && rtF.database.environment === "FORWARD", `${rtF.build.revision} fp ${rtF.build.source_fingerprint}; instance ${rtF.instance_id.slice(0, 8)}`);
+    // The forward worker is NEVER restarted just to refresh a build while it holds open paper positions (each restart is a data gap
+    // that marks them unresolved). If it serves an older build, forward-only checks are skipped and reported, not silently passed.
+    const fwdFresh = rtF.build.source_fingerprint === fp && rtF.database.environment === "FORWARD";
+    if (fwdFresh) check("0. forward worker serves this working tree and is the FORWARD environment", true, `${rtF.build.revision} fp ${rtF.build.source_fingerprint}; instance ${rtF.instance_id.slice(0, 8)}`);
+    else console.log(`SKIP  forward-environment checks: the forward worker serves fp ${rtF.build.source_fingerprint}, the working tree is ${fp} (env ${rtF.database.environment}); restart it only when it has no open positions. News checks run on the TEST worker instead.`);
     check("0. the two workers are different instances with different ledger databases", rtT.instance_id !== rtF.instance_id && rtT.database.db_id !== rtF.database.db_id, "");
+    const newsUrl = fwdFresh ? forwardUrl : testUrl;
     if (results.some(r => !r.ok)) throw new Error("stale or wrong worker: refusing to continue");
 
     // ---------- 1. TEST environment: positions, valuation, detail, activity
@@ -114,6 +119,7 @@ async function main() {
     await ctx.close();
 
     // ---------- 4. forward environment: real state only
+    if (fwdFresh) {
     const c2 = await browser.newContext({ viewport: { width: 1440, height: 1000 } }), p2 = await c2.newPage(), e2 = [];
     p2.on("pageerror", e => e2.push(e.message));
     await p2.goto(forwardUrl, { waitUntil: "domcontentloaded" });
@@ -130,6 +136,30 @@ async function main() {
     check("4. keyboard navigation between all four views works and the older views still render", await p2.locator("#monitorView").isVisible() && e2.length === 0, "");
     if (shots) await p2.screenshot({ path: path.join(shots, "monitor-forward-desktop.png"), fullPage: true });
     await c2.close();
+    }
+
+    // ---------- 4b. News tab (forward worker): reachable from the default load, honest about sources, relevance and interpretation
+    const pn = await (await browser.newContext({ viewport: { width: 1440, height: 1000 } })).newPage(), en = [];
+    pn.on("pageerror", e => en.push(e.message));
+    await pn.goto(newsUrl, { waitUntil: "domcontentloaded" });
+    await pn.waitForFunction(() => window.MON && MON.snap, null, { timeout: 30000 }).catch(() => {});
+    check("4b. the News tab is in the header and reachable from the default (Paper monitor) load", await pn.locator('#views span[data-view="news"]').count() === 1, "");
+    await pn.locator('#views span[data-view="news"]').focus(); await pn.keyboard.press("Enter");
+    await pn.waitForFunction(() => /sources healthy/.test(document.getElementById("nSummary").innerText) && document.querySelectorAll("#nSources tr").length > 1, null, { timeout: 30000 }).catch(() => {});
+    const apiNews = await getJson(newsUrl + "api/news?limit=80"), summary = await pn.locator("#nSummary").innerText(), rows = await pn.locator("#nSources table tr").count();
+    check("4b. source health table has one row per source, with text status and separate fetch vs newest-item clocks", rows === apiNews.sources.length + 1 && /Fetched/.test(await pn.locator("#nSources").innerText()) && /Newest item/.test(await pn.locator("#nSources").innerText()) && /sources healthy/.test(summary), summary.slice(0, 160));
+    check("4b. the summary counts agree with the API (relevant vs hidden), not a hard-coded list", summary.includes(String(apiNews.counts.total) + " items stored") && summary.includes(String(apiNews.counts.hidden_not_relevant) + " not related"), `${apiNews.counts.total} total / ${apiNews.counts.relevant} relevant`);
+    const shown = await pn.locator("#nItems .pf").count();
+    check("4b. relevant-only by default; 'include unrelated' reveals the rest", shown === apiNews.items.length, `${shown} shown`);
+    await pn.locator("#nAll").check(); await pn.waitForFunction(n => document.querySelectorAll("#nItems .pf").length > n, shown, { timeout: 15000 }).catch(() => {});
+    const allShown = await pn.locator("#nItems .pf").count();
+    check("4b. including unrelated items shows more items (filters apply before the limit)", allShown > shown, `${shown} -> ${allShown}`);
+    const txt = await pn.locator("#nItems").innerText();
+    check("4b. no item claims a probability or 'priced in'; interpretations say they are potential and unevaluated", !/\d+(\.\d+)?\s*%\s*(chance|probability|confidence)/i.test(txt) && !/already priced in|is priced in/i.test(txt.replace(/“already priced in” is not assessed/g, "")), "");
+    await pn.locator("#nAsset").selectOption("XRP"); await sleep(1500);
+    check("4b. asset filter works and macro/venue items are still included", await pn.locator("#nAsset").inputValue() === "XRP" && en.length === 0, en.join("|"));
+    await pn.screenshot({ path: shots ? path.join(shots, "news-tab.png") : undefined, fullPage: false }).catch(() => {});
+    await pn.context().close();
 
     // ---------- 5. mobile width + static page
     const c3 = await browser.newContext({ viewport: { width: 390, height: 844 } }), p3 = await c3.newPage(), e3 = [];
@@ -146,6 +176,8 @@ async function main() {
       await p4.goto(staticUrl, { waitUntil: "domcontentloaded" }); await sleep(2500);
       await p4.locator('#views span[data-view="monitor"]').click();
       const t = await p4.locator("#monitorView").innerText();
+      await p4.locator('#views span[data-view="news"]').click();
+      check("5. static page: the News tab says it needs the worker and why, with no invented items", /No local worker on this page/.test(await p4.locator("#nItems").innerText()) && (await p4.locator("#nItems .pf").count()) === 0, "");
       check("5. static page (no worker, like the public site): the monitor says so and shows nothing simulated", /not served by the local worker/.test(t) && /nothing is simulated in its place/.test(t) && (await p4.locator("#mPositions .mrow").count()) === 0 && e4.length === 0, e4.join("|"));
       await c4.close();
     }

@@ -110,11 +110,51 @@ const MIGRATIONS = [
    UPDATE paper_portfolios SET equity = equity
      - COALESCE((SELECT SUM(entry_fee) FROM paper_positions p WHERE p.analyst = paper_portfolios.analyst AND p.state = 'OPEN'), 0)
      + COALESCE((SELECT SUM(funding) FROM paper_positions p WHERE p.analyst = paper_portfolios.analyst AND p.state = 'OPEN'), 0);`
+  ,
+  // v7: News Intelligence. Items are keyed by CANONICAL URL (a story syndicated by several feeds is ONE row with a list of
+  //     source references). New columns carry language, source category, timestamp certainty, verification class, relevance
+  //     scope, first-poll backlog flag and parser provenance. Interpretations are a separate APPEND-ONLY table keyed by
+  //     (item, content hash, interpreter version, asset), so a later correction never rewrites what an earlier decision could see.
+  //     news_fetch_log records every retrieval attempt (source-level health, cadence, discovery lag).
+  `ALTER TABLE news_items ADD COLUMN canonical_url TEXT;
+   ALTER TABLE news_items ADD COLUMN language TEXT NOT NULL DEFAULT 'en';
+   ALTER TABLE news_items ADD COLUMN source_category TEXT NOT NULL DEFAULT 'unknown';
+   ALTER TABLE news_items ADD COLUMN ts_certainty TEXT NOT NULL DEFAULT 'SOURCE_STATED';
+   ALTER TABLE news_items ADD COLUMN verification TEXT NOT NULL DEFAULT 'OFFICIAL_PRIMARY';
+   ALTER TABLE news_items ADD COLUMN scope TEXT NOT NULL DEFAULT 'OTHER';
+   ALTER TABLE news_items ADD COLUMN backlog INTEGER NOT NULL DEFAULT 0;
+   ALTER TABLE news_items ADD COLUMN refs TEXT NOT NULL DEFAULT '[]';
+   ALTER TABLE news_items ADD COLUMN parser_version TEXT;
+   UPDATE news_items SET canonical_url = url, backlog = 1,
+     source_category = CASE source WHEN 'fed_press_all' THEN 'central_bank' WHEN 'sec_press' THEN 'regulator' ELSE 'unknown' END,
+     ts_certainty = CASE WHEN published_ts IS NULL THEN 'UNKNOWN' ELSE 'SOURCE_STATED' END;
+   CREATE UNIQUE INDEX IF NOT EXISTS news_canonical ON news_items (canonical_url);
+   CREATE INDEX IF NOT EXISTS news_by_scope ON news_items (scope, discovered_ts);
+   CREATE TABLE IF NOT EXISTS news_interpretations (
+     id INTEGER PRIMARY KEY, item_id TEXT NOT NULL, content_hash TEXT NOT NULL, interpreter TEXT NOT NULL, created_ts INTEGER NOT NULL, asset TEXT NOT NULL,
+     stance TEXT NOT NULL CHECK (stance IN ('BULLISH','BEARISH','NEUTRAL','MIXED','UNCERTAIN')), kind TEXT NOT NULL, mechanism TEXT, horizon TEXT,
+     supporting TEXT NOT NULL, contradicting TEXT NOT NULL, limitations TEXT NOT NULL, rule_ids TEXT NOT NULL, UNIQUE (item_id, content_hash, interpreter, asset));
+   CREATE TRIGGER IF NOT EXISTS news_interp_no_update BEFORE UPDATE ON news_interpretations BEGIN SELECT RAISE(ABORT, 'interpretations are append-only'); END;
+   CREATE TRIGGER IF NOT EXISTS news_interp_no_delete BEFORE DELETE ON news_interpretations BEGIN SELECT RAISE(ABORT, 'interpretations are append-only'); END;
+   CREATE TABLE IF NOT EXISTS news_fetch_log (
+     id INTEGER PRIMARY KEY, source TEXT NOT NULL, ts INTEGER NOT NULL, ok INTEGER NOT NULL, http_status INTEGER, items INTEGER, added INTEGER, revised INTEGER, error TEXT, latency_ms INTEGER);
+   CREATE INDEX IF NOT EXISTS news_fetch_by_source ON news_fetch_log (source, ts);`
+  ,
+  // v8: interpretation RUNS. A run is the fact "interpreter X looked at version H of item I at time T and produced N assets".
+  //     It is what lets a corrected rule supersede an earlier interpretation (including "now not applicable") without deleting
+  //     or editing the earlier rows, and lets a point-in-time view pick the run that existed at that time.
+  `CREATE TABLE IF NOT EXISTS news_interpretation_runs (
+     id INTEGER PRIMARY KEY, item_id TEXT NOT NULL, content_hash TEXT NOT NULL, interpreter TEXT NOT NULL, created_ts INTEGER NOT NULL, n_assets INTEGER NOT NULL,
+     UNIQUE (item_id, content_hash, interpreter));
+   CREATE TRIGGER IF NOT EXISTS news_run_no_update BEFORE UPDATE ON news_interpretation_runs BEGIN SELECT RAISE(ABORT, 'interpretation runs are append-only'); END;
+   CREATE TRIGGER IF NOT EXISTS news_run_no_delete BEFORE DELETE ON news_interpretation_runs BEGIN SELECT RAISE(ABORT, 'interpretation runs are append-only'); END;
+   INSERT OR IGNORE INTO news_interpretation_runs (item_id, content_hash, interpreter, created_ts, n_assets)
+     SELECT item_id, content_hash, interpreter, MIN(created_ts), COUNT(*) FROM news_interpretations GROUP BY item_id, content_hash, interpreter;`
 ];
 
 const DEFAULT_RETENTION_MS = {
   trades: 3 * 86400000, book_tops: 2 * 86400000, tickers: 7 * 86400000,
-  candles_1m: 90 * 86400000, quarantine: 7 * 86400000, feed_events: 30 * 86400000
+  candles_1m: 90 * 86400000, quarantine: 7 * 86400000, feed_events: 30 * 86400000, news_fetch_log: 30 * 86400000
 };
 
 class Store {
@@ -294,6 +334,7 @@ class Store {
     del("candles_1m", "DELETE FROM candles WHERE interval='1m' AND open_ts < ?", now - R.candles_1m);
     del("quarantine", "DELETE FROM quarantine WHERE recv_ts < ?", now - R.quarantine);
     del("feed_events", "DELETE FROM feed_events WHERE ts < ?", now - R.feed_events);
+    del("news_fetch_log", "DELETE FROM news_fetch_log WHERE ts < ?", now - R.news_fetch_log);
     return out;
   }
 

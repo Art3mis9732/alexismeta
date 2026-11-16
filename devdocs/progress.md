@@ -26,3 +26,6 @@
 | 2026-11-16 (s2) | Stage D (part): tab inventory, 2 timeframe-label fixes, indicator reference fixtures | PARTIAL | tab-inventory.md |
 | – | Natural forward entry/exit | PENDING (0 observed in 36 decisions) | V-023 |
 | – | Stages E–K | NOT_STARTED (see requirements T-13…T-20) | – |
+| 2026-11-16 (s3) | Milestone A/B: reconciliation, news diagnosis, News tab, 7 sources, canonical dedupe, interpretation, reaction | VERIFIED (unit 148, e2e 31 + 23) | V-025, V-026, news-diagnosis.md |
+| 2026-11-16 (s3) | First natural forward entries (12:30 UTC) observed; tainted by an operator restart | OBSERVED, flagged | V-027 |
+| – | Milestones C-stress, D (historical evaluation), E–G | NOT_STARTED | requirements.md |

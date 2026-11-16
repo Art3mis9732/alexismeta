@@ -77,7 +77,7 @@
   <div class="bar2">
     <div class="seg" id="coins"><span class="on" data-sym="BTCUSDT">BTC</span><span data-sym="ETHUSDT">ETH</span><span data-sym="XRPUSDT">XRP</span></div>
     <div class="seg" id="tfs" title="Chart timeframe"><span data-tf="5m">5m</span><span class="on" data-tf="15m">15m</span><span data-tf="4H">4h</span></div>
-    <div class="seg" id="views" role="tablist" aria-label="Views"><span data-view="monitor" tabindex="0" role="tab">Paper monitor</span><span class="on" data-view="trade" tabindex="0" role="tab">Buy / Sell</span><span data-view="patterns" tabindex="0" role="tab">Patterns</span><span data-view="indicators" tabindex="0" role="tab">Indicators</span></div>
+    <div class="seg" id="views" role="tablist" aria-label="Views"><span data-view="monitor" tabindex="0" role="tab">Paper monitor</span><span data-view="news" tabindex="0" role="tab">News</span><span class="on" data-view="trade" tabindex="0" role="tab">Buy / Sell</span><span data-view="patterns" tabindex="0" role="tab">Patterns</span><span data-view="indicators" tabindex="0" role="tab">Indicators</span></div>
     <label class="sub" for="tzSel">Times</label> <select id="tzSel" aria-label="Display timezone" style="width:auto"><option value="IST">Asia/Kolkata (IST)</option><option value="UTC">UTC</option></select>
     <span class="sub" id="mode">connecting…</span>
   </div>
@@ -108,15 +108,27 @@
   <div class="card"><h2>Strategy and model registry · research jobs</h2><div id="mRegistry" class="sub"></div></div>
 </section>
 
+<!-- ======================= NEWS & MARKET EVENTS (worker-backed; render only) ======================= -->
+<section id="newsView" class="hidden" aria-label="News and market events">
+  <div class="card">
+    <h2>News &amp; market events — official sources, context only, never a trade signal</h2>
+    <div id="nSummary" class="sub" aria-live="polite">Loading…</div>
+    <div class="bar2" style="margin-top:8px">
+      <label class="sub" for="nAsset">Asset</label> <select id="nAsset" style="width:auto"><option value="">all tracked coins + macro</option><option>BTC</option><option>ETH</option><option>XRP</option></select>
+      <label class="sub" for="nSource">Source</label> <select id="nSource" style="width:auto"><option value="">all sources</option></select>
+      <label class="sub"><input type="checkbox" id="nAll"> include items not related to BTC/ETH/XRP</label>
+    </div>
+  </div>
+  <div class="card"><h2>Source health — freshness of retrieval, not age of articles</h2><div id="nSources" class="sub"></div></div>
+  <div class="card"><h2>Items (newest first)</h2><div id="nItems" class="sub">Loading…</div></div>
+</section>
+
 <!-- ======================= BUY / SELL VIEW ======================= -->
 <section id="tradeView">
   <div class="card hidden" id="analystsCard">
     <h2>Analysts v1 — decided by the local worker at each 15-minute close · paper only · identical evidence for all three</h2>
     <div id="analystsBody" class="sub">Loading…</div>
   </div>
-  <div class="card hidden" id="newsCard">
-    <h2>Official announcements — Federal Reserve and SEC only · context, not a trading signal</h2>
-    <div id="newsBody" class="sub">Loading…</div>
   </div>
   <div class="sub" id="legacyNote" style="margin-top:10px">Legacy v0 profiles (rules unchanged, shown for continuity; computed in this browser):</div>
   <div class="profiles" id="profiles"></div>
@@ -219,6 +231,7 @@
 <script src="vendor/lightweight-charts.standalone.production.js"></script>
 <script src="patterns.js"></script>
 <script src="monitor.js"></script>
+<script src="news.js"></script>
 <script>
 "use strict";
 /* Display timezone (all storage and logic is UTC). Fixed-offset zones only, so no daylight-saving ambiguity. */
@@ -712,6 +725,7 @@ function renderAll(keepRange) {
   if (view === "trade") { setChartData("t", sym, keepRange, tf); renderTrade(); renderModel(); renderJournal(); }
   else if (view === "indicators") renderIndicators();
   else if (view === "monitor") renderMonitor(true);
+  else if (view === "news") { newsRender(); if (WMODE) newsLoad(); }
   else renderPatterns(keepRange);
 }
 let lastLight = 0;
@@ -899,22 +913,7 @@ async function workerTick() {
 /* v1 analysts from the worker's paper engine. Everything shown comes from /api/paper (ledger-backed). */
 const AN = { risk_taker: "Risk Taker", balanced: "Balanced Trader", defensive: "Defensive Trader" };
 const INTENT_TXT = { OPEN_LONG: ["OPEN LONG", "s-buy"], OPEN_SHORT: ["OPEN SHORT", "s-sell"], WAIT: ["WAIT", "s-wait"], NO_TRADE: ["NO TRADE", "s-none"] };
-let PAPER = null, NEWS = null;
-const attr = s => String(s).replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
-async function loadNews() { try { NEWS = await apiJson("api/news?limit=8"); } catch (e) { NEWS = null; } renderNews(); }
-function renderNews() {
-  $("newsCard").classList.toggle("hidden", !WMODE);
-  if (!WMODE) return;
-  if (!NEWS || !NEWS.items) { $("newsBody").textContent = "News is not available from the worker."; return; }
-  if (!NEWS.items.length) { $("newsBody").textContent = "No items fetched yet (sources are polled every 10 minutes)."; return; }
-  const coin = sym.replace("USDT", "");
-  $("newsBody").innerHTML = `<table><tr><th>Published (${TZ.label})</th><th>Seen here</th><th>Publisher</th><th>Headline</th><th>Type</th><th>Tags</th></tr>` +
-    NEWS.items.map(n => `<tr><td style="white-space:nowrap">${n.published_ts ? istT(n.published_ts) : "unknown"}</td><td style="white-space:nowrap">${istT(n.discovered_ts)}</td>
-      <td>${esc(n.source === "sec_press" ? "SEC" : n.source === "fed_press_all" ? "Federal Reserve" : n.publisher)}</td>
-      <td><a href="${attr(n.url)}" target="_blank" rel="noopener noreferrer">${esc(n.title)}</a>${n.revisions_known ? ` <span class="pill">revised</span>` : ""}</td>
-      <td class="sub">${esc(n.event_type.replace(/_/g, " "))}</td><td>${n.assets.map(a => `<span class="pill${a === coin ? " good" : ""}">${esc(a)}</span>`).join(" ")}</td></tr>`).join("") +
-    `</table><div class="sub" style="margin-top:6px">${esc(NEWS.coverage)} Items are shown as published, with no interpretation. Whether something is "priced in" is not assessed.</div>`;
-}
+let PAPER = null;
 async function loadPaper() { try { PAPER = await apiJson("api/paper"); } catch (e) { PAPER = null; } renderAnalysts(); }
 function renderAnalysts() {
   const card = $("analystsCard"); card.classList.toggle("hidden", !WMODE);
@@ -939,11 +938,11 @@ function renderAnalysts() {
 function startWorkerMode() {
   WMODE = true; if (!workerLoop) workerLoop = setInterval(workerTick, 2000); workerTick();
   loadPaper();
-  loadNews(); if (!startWorkerMode.timers) { startWorkerMode.timers = true; setInterval(() => { if (WMODE) loadPaper(); }, 10000); setInterval(() => { if (WMODE) loadNews(); }, 60000); }
+  newsLoad(); if (!startWorkerMode.timers) { startWorkerMode.timers = true; setInterval(() => { if (WMODE) loadPaper(); }, 10000); }
   monitorStart();
 }
 function leaveWorkerMode() {
-  WMODE = false; WORKER_LOST = true; clearInterval(workerLoop); workerLoop = null; renderAnalysts(); renderNews(); monitorLost();
+  WMODE = false; WORKER_LOST = true; clearInterval(workerLoop); workerLoop = null; renderAnalysts(); newsRender(); monitorLost();
   connectStream(); setMode();
 }
 
@@ -994,6 +993,7 @@ document.querySelectorAll("#views span").forEach(t => t.onclick = () => {
   document.querySelectorAll("#views span").forEach(x => x.classList.remove("on")); t.classList.add("on");
   view = t.dataset.view;
   $("monitorView").classList.toggle("hidden", view !== "monitor");
+  $("newsView").classList.toggle("hidden", view !== "news");
   $("tradeView").classList.toggle("hidden", view !== "trade");
   $("patternsView").classList.toggle("hidden", view !== "patterns");
   $("indicatorsView").classList.toggle("hidden", view !== "indicators");
@@ -1012,11 +1012,12 @@ $("tMargin").oninput = $("tLev").onchange = () => renderTrade();
 $("tzSel").value = TZ.label;
 document.querySelectorAll(".tzl").forEach(e => e.textContent = TZ.label);
 $("tzSel").onchange = () => { TZ = TZS[$("tzSel").value] || TZS.IST; try { localStorage.setItem("radar.tz", TZ.label); } catch (e) {}
-  document.querySelectorAll(".tzl").forEach(e => e.textContent = TZ.label); renderAll(false); renderLog(); setMode(); if (WMODE) { renderAnalysts(); renderNews(); } };
+  document.querySelectorAll(".tzl").forEach(e => e.textContent = TZ.label); renderAll(false); renderLog(); setMode(); if (WMODE) renderAnalysts(); newsRender(); };
 
 (async () => {
   CH.t = makeChart($("tChart")); CH.p = makeChart($("chart"));
   guide(); renderLog();
+  newsStart(); newsRender();
   await pollWorker();
   if (WORKER) WMODE = true;                   // decide the data path before any market data is loaded
   await loadSnapshot();

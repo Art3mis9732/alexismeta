@@ -132,7 +132,7 @@ Evidence references point to `verification.md` entries (V-xxx).
 | T-10 | P3§7 | Fail safely on worker/browser disconnect | C | e2e step 3 | VERIFIED | V-022 |
 | T-11 | P3§8 | Two evidence tracks; no manufactured success | C | TEST env separation; forward ledger | VERIFIED separation; natural entry/exit PENDING (elapsed time) | V-022, V-023 |
 | T-12 | P3§9 | Tab inventory; patterns/indicators audit; visual checks | D | inventory + fixtures | PARTIAL: inventory done, 2 label bugs fixed, 6 indicator references added; per-detector confirmation times, contrast tooling, screen reader NOT done | tab-inventory.md |
-| T-13 | P3§10 | News & market events expansion | E | – | NOT_STARTED beyond the existing Fed/SEC slice | V-014 |
+| T-13 | P3 s10 / P4 s7 | News & market events | E | news tests + e2e | PARTIAL: 7 sources verified live, canonical dedupe, source health, rule interpretation, reaction since discovery, News tab (V-026). MISSING: CFTC/ECB/BLS/ETF issuers/Ethereum+Ripple channels (hosts not allowed here), language/region filters, optional NLP/LLM interpretation (disabled by design), evaluation of interpretation usefulness (ablation) | V-026 |
 | T-14 | P3§11 | Historical evaluation with an availability matrix | F | – | NOT_STARTED | – |
 | T-15 | P3§12 | Intelligence & Model Lab | G | registry test | PARTIAL: registry (DETERMINISTIC / NOT_APPLICABLE / NOT_DEMONSTRATED) and "training backend unavailable"; no job system | V-021 |
 | T-16 | P3§13 | Research registry and experiment pipeline | G | – | NOT_STARTED | – |
@@ -140,3 +140,21 @@ Evidence references point to `verification.md` entries (V-xxx).
 | T-18 | P3§15 | System status view from runtime observations | C/J | e2e chips | PARTIAL: status chips + `/api/runtime` + `/api/health`; storage/WAL, pending forecast evaluations, backtest summaries not shown | V-022 |
 | T-19 | P3§16 | Reliability/security additions | J | tests | PARTIAL: cross-origin refusal, restart with open positions, duplicate fills/funding, stale valuation, unsupported multipliers VERIFIED; DB-corruption drill, backup-restore drill, clock-drift alert, Windows NOT done | V-020..022 |
 | T-20 | P3§17 | Deployment diagnosis + options, no deploy | K | git evidence | VERIFIED diagnosis; release candidate NOT prepared | deployment-runbook.md |
+
+## Fourth prompt (P4) - milestone map
+
+| ID | Requirement | Milestone | Status | Evidence |
+|---|---|---|---|---|
+| P4-01 | Reconcile repository and runtime; identify stale workers | A | VERIFIED | V-025 |
+| P4-02 | Repair UI/backend connections; every tab works or says it is unavailable | A | PARTIAL: News tab added, old duplicate card retired, defects fixed. Still open: pattern detection/confirmation timestamps, ledger setup markers on charts, contrast and screen-reader audit | tab-inventory.md |
+| P4-03 | Diagnose the news display (stage by stage) | B | VERIFIED | news-diagnosis.md |
+| P4-04 | Source-linked news interpretation without headline-to-trade mapping | B | VERIFIED for rule-based interpretation; policies, risk, evidence and engine do not import news (tested) | V-026 |
+| P4-05 | Monitor and continuous analysis verified | C | PARTIAL: natural forward entries observed (tainted by an operator restart); stress module NOT_STARTED | V-027 |
+| P4-06 | Market-stress module (NORMAL/WATCH/STRESSED/RECOVERING) | C | NOT_STARTED | - |
+| P4-07 | Trustworthy historical evaluation; investigate the adverse legacy result | D | PARTIAL: claim re-scoped (related to, not identical with, Balanced v1); no new backtest | defect-inventory.md #7 |
+| P4-08 | Research registry, real job system, Model Lab | E | NOT_STARTED (registry labels only) | - |
+| P4-09 | First real model; GA/RL research | F | NOT_STARTED | - |
+| P4-10 | Controlled adaptation | G | NOT_STARTED | - |
+| P4-11 | System-visibility views | - | PARTIAL: status chips, runtime identity, news source health | V-022, V-026 |
+| P4-12 | Windows usability | - | the user reports Node v26.13.0 / npm 12.2.2 started the app; NOT verified by me | runbook |
+| P4-13 | Release preparation without deploying | K | NOT_STARTED beyond the hosting analysis | runbook |

@@ -120,3 +120,21 @@ a fallback where `EventSource` is missing.
 All P&L, valuation and account figures come from the worker. On worker loss the last values are frozen and labelled.
 The legacy manual "Start paper trade" simulator on Buy/Sell is kept for continuity but labelled as a browser-only
 sandbox outside every account total; replacing it with ledger-backed setups is listed in the tab inventory.
+
+## D-020 News items are keyed by canonical URL; each source has its own link-host allowlist (2026-11-16)
+`press_monetary` repeats `press_all` items; keying on (source, guid) would double-count them. A story is one row with a list of
+source references; the first source stays primary and only it can revise the stored text. Links must be https on the host(s)
+declared for that source, so a look-alike or foreign host in a feed is dropped. Exchange/issuer items are labelled
+INTERESTED_PARTY_CLAIM and are never independent corroboration.
+
+## D-021 Interpretations are append-only and versioned by RUN (2026-11-16)
+A row per (item, content hash, interpreter version, asset) plus a run record per (item, hash, interpreter). A corrected rule adds a
+new run (possibly "not applicable") and never edits or deletes the earlier one; a point-in-time view picks the latest run that
+existed at that time. UNAVAILABLE (never interpreted, or the interpreter failed) is distinct from NOT_APPLICABLE and from NEUTRAL.
+No numeric score or probability exists in the schema; the LLM interpreter slot is registered as disabled.
+
+## D-022 Do not restart the forward worker while it holds open paper positions (2026-11-16)
+Every restart is a data gap; under D-016 it flags each open position as unresolved and excludes its outcome from path-dependent
+metrics. Demonstrated live (V-027). Code changes are verified on the TEST worker and on COPIES of the forward database; the
+forward worker is restarted only when no position is open, or when the user accepts the gap. The browser suite skips and reports
+forward-only checks when the forward build differs from the tree instead of forcing a restart.

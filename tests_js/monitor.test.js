@@ -178,3 +178,24 @@ test("environments: a TEST database is labelled TEST everywhere and can never be
   assert.throws(() => require("../server/fixture").start({ engine: {}, collector: {}, store: {}, health: {}, log() {}, identity: { environment: "FORWARD" }, timers: [] }), /not TEST/);
   assert.throws(() => require("../server/main").args(["n", "m", "--fixture"]), /only allowed with --env test/);
 });
+
+test("news API: validated filters, source health, counts and no private paths; relevant-only by default", async () => {
+  const { NewsIngester, SOURCES } = require("../server/news");
+  const r = rig(), news = new NewsIngester({ store: r.store, now: r.now, sources: SOURCES });
+  const fs = require("node:fs");
+  news.ingest(SOURCES.find(s => s.id === "sec_press"), fs.readFileSync(path.join(__dirname, "fixtures", "news", "sec_press.xml"), "utf8"));
+  const api = buildApi({ store: r.store, health: r.health, collector: { ...r.collector, bookSummaries: () => [], sup: { stats: {} }, rest: { stats: {} } }, startedAt: 0, ledger: r.ledger, getEngine: () => r.engine, monitor: r.monitor, runtime: r.runtime, news });
+  const server = createServer({ api, staticDir: path.join(__dirname, "..", "docs") });
+  await new Promise(res => server.listen(0, "127.0.0.1", res)); const port = server.address().port;
+  const get = p => new Promise((res, rej) => http.get({ host: "127.0.0.1", port, path: p, headers: { host: `127.0.0.1:${port}` } }, x => { let s = ""; x.on("data", d => s += d); x.on("end", () => res({ code: x.statusCode, body: s })); }).on("error", rej));
+  try {
+    const a = JSON.parse((await get("/api/news")).body);
+    assert.equal(a.schema_version, "news-v2"); assert.equal(a.counts.total, 25); assert.ok(a.counts.relevant >= 1 && a.counts.hidden_not_relevant === 25 - a.counts.relevant);
+    assert.ok(a.items.length === a.counts.relevant && a.items.every(i => ["ASSET", "MACRO", "EXCHANGE_OPS"].includes(i.scope)));
+    assert.equal(a.sources.length, 7); assert.ok(a.sources.find(s => s.source === "sec_press").newest_item_published_ts); assert.equal(a.interpreters["llm-grounded"].enabled, false);
+    const all = JSON.parse((await get("/api/news?all=1&limit=200")).body); assert.equal(all.items.length, 25);
+    assert.equal((await get("/api/news?asset=DOGE")).code, 400); assert.equal((await get("/api/news?scope=x%27")).code, 400); assert.equal((await get("/api/news?source=a/b")).code, 400); assert.equal((await get("/api/news?all=yes")).code, 400);
+    assert.ok(!/\/home\/|\/tmp\/|\.db"/.test((await get("/api/news?all=1")).body));
+    const item = a.items[0]; assert.ok(Array.isArray(item.reaction) && item.reaction.every(x => x.horizons.every(h => h.status !== "OK")), "no candles stored -> reactions are N/A or pending, never invented");
+  } finally { server.close(); r.monitor.stop(); r.store.close(); }
+});

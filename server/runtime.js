@@ -14,7 +14,7 @@ function listFiles() {
   const out = [];
   const walk = d => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else if (e.name.endsWith(".js")) out.push(p); } };
   walk(path.join(ROOT, "server"));
-  for (const f of ["docs/index.html", "docs/patterns.js", "docs/monitor.js"]) out.push(path.join(ROOT, f));
+  for (const f of ["docs/index.html", "docs/patterns.js", "docs/monitor.js", "docs/news.js"]) out.push(path.join(ROOT, f));
   return out.sort();
 }
 /** sha256 over the served source files (relative name + content), first 16 hex chars. */
@@ -28,7 +28,7 @@ function git(args) {
 }
 /** Captured ONCE at process start: the identity of the code that is actually running. */
 function buildInfo() {
-  const rev = git(["rev-parse", "--short=12", "HEAD"]), st = git(["status", "--porcelain", "--", "server", "docs/index.html", "docs/patterns.js", "docs/monitor.js"]);
+  const rev = git(["rev-parse", "--short=12", "HEAD"]), st = git(["status", "--porcelain", "--", "server", "docs/index.html", "docs/patterns.js", "docs/monitor.js", "docs/news.js"]);
   return { revision: rev || "unknown", dirty: st === null ? null : st.length > 0, source_fingerprint: sourceFingerprint(), captured_at: Date.now() };
 }
 

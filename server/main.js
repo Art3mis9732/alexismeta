@@ -15,7 +15,9 @@ const { BitgetCollector } = require("./collector");
 const { createServer } = require("./http");
 const { Ledger } = require("./ledger");
 const { PaperEngine } = require("./engine");
-const { NewsIngester } = require("./news");
+const { NewsIngester, SOURCES: NEWS_SOURCES, PARSER_VERSION } = require("./news");
+const { withReaction } = require("./news_reaction");
+const { appliesTo, INTERPRETERS } = require("./news_interpret");
 const { Monitor, MONITOR_SCHEMA } = require("./monitor");
 const { API_SCHEMA_VERSION, buildInfo } = require("./runtime");
 const { ENGINE_VERSION } = require("./engine");
@@ -88,8 +90,17 @@ function buildApi({ store, health, collector, startedAt, ledger, getEngine = () 
       news: news ? news.status().map(s => ({ source: s.source, ok: !!s.last_ok_ts && !s.last_error, last_ok_ts: s.last_ok_ts })) : [],
       stream: monitor ? { clients: monitor.clients.size, ...monitor.streamStats } : null, fixture: runtime.fixture || null,
       execution: "PAPER / SIMULATED. No order-placement code exists in this application." } : null,
-    news: (n, asset) => news ? { coverage: "Federal Reserve + SEC press releases only (official primary sources). Not comprehensive news coverage.",
-      note: "context only; no interpretation; nothing here triggers a trade", as_of: Date.now(), items: news.itemsAsOf(Date.now(), { limit: n, asset }) } : { items: [] },
+    news: (o = {}) => {
+      if (!news) return { schema_version: "news-v2", items: [], sources: [], counts: null, unavailable: "news ingestion is not running" };
+      const now = Date.now(), items = withReaction(store.db, news.itemsAsOf(now, o), now, appliesTo), counts = news.counts(now), sources = news.sourceHealth();
+      const ok = sources.filter(s => s.status === "OK").length;
+      return { schema_version: "news-v2", parser_version: PARSER_VERSION, as_of: now, environment: runtime ? runtime.database.environment : null,
+        coverage: `${NEWS_SOURCES.length} sources: Federal Reserve (3 feeds), SEC press releases, Bitget and OKX exchange announcements. Not comprehensive: no CFTC, ECB, BLS, ETF issuers, Ethereum/Ripple project channels or independent journalism.`,
+        note: "context only; interpretations are potential directions from unevaluated keyword rules, not probabilities and not trade signals",
+        filters: { limit: o.limit, asset: o.asset || null, source: o.source || null, scope: o.scope || null, all: !!o.all },
+        counts, source_summary: { total: sources.length, ok, not_ok: sources.length - ok }, sources,
+        interpreters: Object.fromEntries(Object.entries(INTERPRETERS).map(([k, v]) => [k, { enabled: v.enabled, note: v.note }])), items };
+    },
     paper: () => getEngine() ? { execution_mode: "PAPER (simulated; no orders are sent anywhere)", accounting_day: "UTC",
       portfolios: getEngine().summary(), open_positions: store.db.prepare("SELECT * FROM paper_positions WHERE state='OPEN' ORDER BY opened_ts").all(),
       recent_closed: store.db.prepare("SELECT * FROM paper_positions WHERE state='CLOSED' ORDER BY exit_ts DESC LIMIT 20").all(),

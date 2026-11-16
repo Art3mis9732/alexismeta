@@ -298,3 +298,48 @@ Each entry records: revision · command/procedure · when (UTC) · expected · o
 * Consequence for the forward track: the 11:15 and 11:30 UTC bars have **no decisions (missed)**. They are not
   reconstructed; a replay made now would not be an original forward decision.
 * Forward ledger at 11:32: 36 original decisions (08:45, 09:00, 10:45, 11:00), 0 positions, 0 fills.
+
+# Session 3 — 2026-11-16 12:20–12:45 UTC
+
+## V-025 Reconciliation and news diagnosis
+* Git: HEAD `ae70a94` = remote feature branch; `9c3b84b` is an ancestor; `main` = `8de2e2a`. No CLAUDE.md/AGENTS.md exists.
+* Both workers were down (cloud session restart) and were restarted. `/api/runtime` fingerprints equalled the working tree.
+  Forward and TEST are different files (`db_id` differs; TEST environment `TEST`).
+* Baseline at `ae70a94`: `npm test` 129/129, pytest 22/22, ledger chain ok. Backup taken before any migration:
+  `data/backups/market-pre-news-*.db` (integrity ok); schema v7 was applied to a COPY first, then to the live file.
+* News diagnosis: see `news-diagnosis.md`. Defects: asset filter after limit; card hidden on the default tab.
+
+## V-026 News Intelligence (news-v2) — tests and live sources
+* `npm test` **148/148** (news 25, incl. 12 new: limit-before-filter, cross-feed duplicate, per-source host allowlists, provider
+  error / HTML-200 quarantine, classification and scope, unknown publication time, backlog flag + discovery lag, a rate-limited
+  source backs off while others stay visible, source health restored after restart, interpretation honesty rules, append-only
+  tables, a revision keeps the earlier interpretation point-in-time, interpreter failure leaves the article visible,
+  prompt-injection text inert, observed reaction N/A on backlog or candle gaps, tokenized-equity rule fix + supersession).
+* Fixtures captured 2026-11-16: Fed press_all / press_monetary / speeches, SEC press, Bitget announcements + maintenance +
+  error body (code 40017), OKX announcements, SEC 403 rate-limit page, Fed HTML soft-404.
+* **Live sources contacted from this container (2026-11-16 12:33 UTC): federalreserve.gov (3 feeds), sec.gov (press RSS),
+  api.bitget.com (announcements x2), okx.com (announcements). All 200; 105 items stored; 0 quarantined.** Not contacted:
+  CFTC, ECB, BLS, ETF issuers, Ethereum/Ripple channels (hosts are not allowed in this environment).
+* Real-data finding: "tokenized" tagged an SEC item about tokenized NMS **stock** as crypto and gave BULLISH for BTC/ETH/XRP.
+  Rule fixed (news-rules-v1.1, parse v2.1) and superseded without deleting: on a copy of the live forward DB the item is now
+  NOT_APPLICABLE, a view as of 12:35 still shows what was displayed then, all 96 earlier interpretation rows are kept.
+* Browser: `tests_e2e/monitor.e2e.js` **31/31** on the new build (TEST worker; news checks incl. keyboard, filters, counts match
+  the API, no probability / "priced in" claims, static page says it needs the worker). Forward-only checks were SKIPPED and
+  reported because the forward worker still serves the older build `c58d076` (see V-027). `status.e2e.js` 23/23.
+  Screenshots at desktop 1440 px and phone 390 px (no horizontal page scroll).
+* Interpretation outcome on the 105 real items: 29 UNCERTAIN (Fed), 1 NEUTRAL (FOMC schedule, explicit admin rule), 1 BULLISH
+  (SEC custody proposal), 74 not applicable. Nothing is a probability; reactions are N/A for all (every item is backlog).
+
+## V-027 First NATURAL forward entries, and an operational hazard (forward ledger, cloud container)
+* **12:30 UTC bar:** 5 `OPEN_SHORT` decisions from the unchanged v1 policies (BTC: Risk Taker, Balanced, Defensive; ETH: Risk
+  Taker, Balanced), 5 risk approvals, 5 paper fills, written 12:30:04-12:30:09. BTC evidence: 1h trend down, below VWAP,
+  `RETEST_DN`, spread 0.016 bps, coverage complete, nothing missing. The other four decisions were WAITs by their own predicates.
+  Accounts reconcile with the fills.
+* **My restart at 12:33:14-12:33:18 (to apply the schema migration) put a 4-second gap under all five open positions.** Policy D-016
+  worked as designed: positions kept, flagged GAP_AFFECTED, accounting intact. Consequence: **both ETH stops (12:34:13, exits
+  1794.80, net -2.47 and -4.94 USDT) are marked UNCERTAIN and excluded from path-dependent metrics**; the three BTC shorts are
+  open and gap-flagged. These are the first natural forward trades and they are tainted by my restart, not by the market data.
+* Replay (`server/replay.js --verify`): 54 decisions, 36 with recorded context re-derived exactly (incl. the five OPEN_SHORT),
+  0 mismatches, 0 tampered snapshots; 18 pre-context rows not verifiable. Ledger chain ok (68 entries).
+* The forward worker was left on build `c58d076` (news-v2.0, schema v7) so that it is not restarted again while positions are open.
+* Statistical weight: five positions from ONE bar on two highly correlated coins are one observation of market behaviour.

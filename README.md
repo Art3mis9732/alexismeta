@@ -38,6 +38,8 @@ Needs Node.js 22.23 or later (the tested version) and **no** npm packages. While
 * records every decision, risk check, fill and outcome in an append-only, hash-chained ledger;
 * lists official Federal Reserve and SEC press releases as context (not a trading signal);
 * serves this site at http://127.0.0.1:8787 with prices taken from the worker (one exchange connection per PC);
+* shows a **News** tab: official Federal Reserve and SEC releases plus Bitget and OKX announcements, with per-source health, relevance counts,
+  rule-based interpretations (potential direction only, no probabilities) and observed price reaction since discovery; context only, never a trade signal;
 * shows a live **Paper monitor** tab (the first tab): accounts, open positions with mark-based and close-now figures,
   position detail, activity timeline and "why no trade" diagnostics, all computed by the worker and streamed to the page.
 

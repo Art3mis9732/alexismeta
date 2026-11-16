@@ -67,9 +67,10 @@ function createServer({ api, staticDir, port }) {
         if (p === "/api/ledger/verify") return send(res, 200, api.ledgerVerify());
         if (p === "/api/paper") return send(res, 200, api.paper ? api.paper() : { portfolios: [] });
         if (p === "/api/news") {
-          const n = intParam(q("limit"), 30, 1, 200), asset = q("asset");
-          if (Number.isNaN(n) || (asset !== null && !/^(BTC|ETH|XRP)$/.test(asset))) return err(res, 400, "bad limit/asset");
-          return send(res, 200, api.news ? api.news(n, asset) : { items: [] });
+          const n = intParam(q("limit"), 30, 1, 200), asset = q("asset"), source = q("source"), scope = q("scope"), all = q("all");
+          if (Number.isNaN(n) || (asset !== null && !/^(BTC|ETH|XRP)$/.test(asset)) || (source !== null && !/^[a-z_]{3,40}$/.test(source)) ||
+              (scope !== null && !/^(ASSET|MACRO|EXCHANGE_OPS|UNRELATED_LISTING|OTHER)$/.test(scope)) || (all !== null && !/^[01]$/.test(all))) return err(res, 400, "bad news filter");
+          return send(res, 200, api.news ? api.news({ limit: n, asset, source, scope, all: all === "1" }) : { items: [] });
         }
         const id = q("instrument");
         if (p === "/api/feed-events") { const n = intParam(q("limit"), 50, 1, 500); return Number.isNaN(n) ? err(res, 400, "bad limit") : send(res, 200, api.feedEvents(n)); }

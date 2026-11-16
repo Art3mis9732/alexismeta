@@ -16,25 +16,36 @@ const { createServer } = require("./http");
 const { Ledger } = require("./ledger");
 const { PaperEngine } = require("./engine");
 const { NewsIngester } = require("./news");
+const { Monitor, MONITOR_SCHEMA } = require("./monitor");
+const { API_SCHEMA_VERSION, buildInfo } = require("./runtime");
+const { ENGINE_VERSION } = require("./engine");
+const { RULES } = require("./policies");
+const { EVIDENCE_VERSION } = require("./evidence");
+const { VALUATION_VERSION } = require("./accounting");
 
 const ROOT = path.resolve(__dirname, "..");
-const VERSION = "worker-0.1.0";
+const VERSION = "worker-0.2.0";
 
 function args(argv) {
-  const a = { port: 8787, db: path.join(ROOT, "data", "worker", "market.db"), symbols: ["BTCUSDT", "ETHUSDT", "XRPUSDT"], smoke: null };
+  const a = { port: 8787, db: null, symbols: ["BTCUSDT", "ETHUSDT", "XRPUSDT"], smoke: null, env: "FORWARD", fixture: false };
   for (let i = 2; i < argv.length; i++) {
     const k = argv[i], v = argv[i + 1];
     if (k === "--port") { a.port = Number(v); i++; }
     else if (k === "--db") { a.db = path.resolve(v); i++; }
     else if (k === "--symbols") { a.symbols = v.split(",").map(s => s.trim().toUpperCase()).filter(Boolean); i++; }
     else if (k === "--smoke") { a.smoke = Number(v) || 30; i++; }
+    else if (k === "--env") { a.env = String(v).toUpperCase(); i++; }
+    else if (k === "--fixture") a.fixture = true;
     else throw new Error("unknown option " + k);
   }
   if (!a.symbols.every(s => /^[A-Z0-9]{2,20}$/.test(s))) throw new Error("bad --symbols");
+  if (a.env !== "FORWARD" && a.env !== "TEST") throw new Error("--env must be forward or test");
+  if (a.fixture && a.env !== "TEST") throw new Error("--fixture is only allowed with --env test (fixtures never touch the forward ledger)");
+  if (!a.db) a.db = path.join(ROOT, "data", "worker", a.env === "TEST" ? "test-fixture.db" : "market.db");   // separate database per environment
   return a;
 }
 
-function buildApi({ store, health, collector, startedAt, ledger, getEngine = () => null, news = null }) {
+function buildApi({ store, health, collector, startedAt, ledger, getEngine = () => null, news = null, monitor = null, runtime = null }) {
   const num = v => v === null || v === undefined ? null : Number(v);
   let counts = null, countsAt = 0;                      // COUNT(*) over millions of rows is slow: refresh at most once a minute
   const rowCounts = () => { if (!counts || Date.now() - countsAt > 60000) { countsAt = Date.now();
@@ -69,6 +80,14 @@ function buildApi({ store, health, collector, startedAt, ledger, getEngine = () 
     book: (id, n) => collector.bookTop(id, n),
     ledgerRecent: n => ledger ? { note: "append-only; originals are never modified, outcomes are separate rows", entries: ledger.recent(n) } : { entries: [] },
     ledgerVerify: () => ledger ? ledger.verify() : { ok: false, reason: "ledger not configured" },
+    monitor,
+    runtime: () => runtime ? { app: "alexismeta-worker", worker_version: VERSION, build: runtime.build, instance_id: runtime.instance_id, started_at: runtime.started_at,
+      uptime_ms: Date.now() - runtime.started_at, api_schema_version: API_SCHEMA_VERSION, monitor_schema: MONITOR_SCHEMA, database: runtime.database,
+      strategy_versions: Object.fromEntries(Object.entries(RULES).map(([k, v]) => [k, v.version])), evidence_version: EVIDENCE_VERSION, valuation_version: VALUATION_VERSION,
+      engine_version: ENGINE_VERSION, engine: monitor ? monitor.engineState() : null, collector: monitor ? monitor.feedSummary() : null,
+      news: news ? news.status().map(s => ({ source: s.source, ok: !!s.last_ok_ts && !s.last_error, last_ok_ts: s.last_ok_ts })) : [],
+      stream: monitor ? { clients: monitor.clients.size, ...monitor.streamStats } : null, fixture: runtime.fixture || null,
+      execution: "PAPER / SIMULATED. No order-placement code exists in this application." } : null,
     news: (n, asset) => news ? { coverage: "Federal Reserve + SEC press releases only (official primary sources). Not comprehensive news coverage.",
       note: "context only; no interpretation; nothing here triggers a trade", as_of: Date.now(), items: news.itemsAsOf(Date.now(), { limit: n, asset }) } : { items: [] },
     paper: () => getEngine() ? { execution_mode: "PAPER (simulated; no orders are sent anywhere)", accounting_day: "UTC",
@@ -84,13 +103,17 @@ async function main() {
   const startedAt = Date.now();
   const log = m => console.log(new Date().toISOString() + " " + m);
   const store = new Store(a.db);
+  const identity = store.identity(a.env);
+  if (identity.environment !== a.env) throw new Error(`this database belongs to the ${identity.environment} environment; refusing to open it as ${a.env}`);
+  const runtime = { build: buildInfo(), instance_id: require("node:crypto").randomUUID(), started_at: startedAt, database: identity, engine_error: null, fixture: null };
   const health = new Health();
   const rest = new BitgetRest();
   const collector = new BitgetCollector({ rest, store, health, symbols: a.symbols, log });
   const ledger = new Ledger(store, { codeRev: gitRev() });
   const engineRef = { current: null };    // the paper engine starts once instruments are loaded
   const news = new NewsIngester({ store, log });
-  const api = buildApi({ store, health, collector, startedAt, ledger, getEngine: () => engineRef.current, news });
+  const monitor = new Monitor({ store, collector, health, getEngine: () => engineRef.current, runtime });
+  const api = buildApi({ store, health, collector, startedAt, ledger, getEngine: () => engineRef.current, news, monitor, runtime });
   const server = createServer({ api, staticDir: path.join(ROOT, "docs"), port: a.port });
 
   const timers = [
@@ -104,7 +127,8 @@ async function main() {
     if (stopping) return; stopping = true;
     log("shutting down");
     timers.forEach(clearInterval);
-    collector.stop();
+    collector.stop(); monitor.stop();
+    try { if (engineRef.current) engineRef.current.releaseLock(); } catch (e) { /* closing anyway */ }
     server.close();
     try { store.feedEvent("worker", "shutdown", null); store.close(); } catch (e) { log("close: " + e.message); }
     process.exit(code);
@@ -113,15 +137,22 @@ async function main() {
   process.on("SIGTERM", () => shutdown(0));
 
   await new Promise((res, rej) => { server.once("error", rej); server.listen(a.port, "127.0.0.1", res); });
-  log(`listening on http://127.0.0.1:${a.port}  db=${a.db}`);
+  log(`listening on http://127.0.0.1:${a.port}  environment=${a.env}  build=${runtime.build.revision}${runtime.build.dirty ? "+dirty" : ""}/${runtime.build.source_fingerprint}  instance=${runtime.instance_id.slice(0, 8)}`);
   const prev = store.lastWorkerEvent(), unclean = !!prev && prev.event === "start";
   if (unclean) { store.feedEvent("worker", "unclean_shutdown_detected", "previous run started at " + prev.ts + " and never recorded a shutdown"); log("previous run did not shut down cleanly; downtime recorded as a gap"); }
   store.feedEvent("worker", "start", VERSION);
   await collector.start({ unclean, prevStopTs: prev && prev.event === "shutdown" ? prev.ts : null });
   log(`collecting ${a.symbols.join(", ")} from Bitget public v2`);
-  engineRef.current = new PaperEngine({ store, ledger, collector, health, log });
-  timers.push(setInterval(() => { try { collector.checkStalls(); engineRef.current.tick(); } catch (e) { log("engine: " + e.message); } }, 5000));
-  log("paper engine running: decisions at each 15m bar close; execution mode PAPER");
+  try {
+    engineRef.current = new PaperEngine({ store, ledger, collector, health, log, instanceId: runtime.instance_id, environment: a.env });
+    log(`paper engine running (${a.env}): decisions at each 15m bar close; execution mode PAPER`);
+  } catch (e) { runtime.engine_error = e.message; log("paper engine NOT started: " + e.message + " (this instance serves data read-only)"); }
+  timers.push(setInterval(() => {
+    try { collector.checkStalls(); if (engineRef.current) engineRef.current.tick(); }
+    catch (e) { log("engine: " + e.message); if (e.constructor && e.constructor.name === "EngineLocked") { runtime.engine_error = e.message; engineRef.current = null; } }
+  }, 5000));
+  timers.push(setInterval(() => { try { if (engineRef.current) engineRef.current.reconcile(); } catch (e) { log("reconcile: " + e.message); } }, 60000));
+  if (a.fixture && engineRef.current) runtime.fixture = require("./fixture").start({ engine: engineRef.current, collector, store, health, log, identity, timers });
   news.poll().catch(e => log("news: " + e.message));
   timers.push(setInterval(() => { news.poll().catch(e => log("news: " + e.message)); }, 60000));   // each source polls every 10 min
 

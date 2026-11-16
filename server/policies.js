@@ -103,4 +103,39 @@ function contradictions(snap, dir) {
   return c;
 }
 
-module.exports = { RULES, ANALYSTS, decide };
+/** Predicate-level view of the SAME rules, for diagnostics ("which condition blocked an entry?"). Display only:
+ *  decide() remains the single decision function. `blocking` is the first failed predicate in decision order. */
+function explain(analyst, snap) {
+  const R = RULES[analyst], P = [], add = (name, pass, detail) => P.push({ name, pass: pass === null ? null : !!pass, detail });
+  const h = snap.health || {}, trig = snap.triggers || [], trend = snap.trend_1h;
+  add("evidence complete", !(snap.missing && snap.missing.length), (snap.missing || []).join("; ") || "all inputs present");
+  add("feeds healthy", ["ticker", "books", "trade", "candle15m"].every(k => h[k] === "HEALTHY"), ["ticker", "books", "trade", "candle15m"].map(k => `${k} ${h[k] || "UNKNOWN"}`).join(", "));
+  add("order book valid", snap.book_state === "VALID", String(snap.book_state));
+  add("coverage (ticker + book, last 60 s)", !!snap.coverage_complete, (snap.coverage_reasons || []).join(", ") || "complete");
+  const reclaim = R.reclaim && trend === 0 ? trig.find(x => R.reclaim.triggers.includes(x.code)) : null;
+  const reclaimOk = !!reclaim && snap.atr_pctile !== null && snap.atr_pctile <= R.reclaim.maxAtrPctile;
+  add("1h trend present" + (R.reclaim ? " (or flat-trend reclaim)" : ""), trend !== 0 || reclaimOk, trend === 1 ? "up" : trend === -1 ? "down" : reclaimOk ? "flat, reclaim rule applies" : "flat");
+  add("trend and VWAP side agree", reclaimOk ? true : trend === 0 ? null : (trend === 1) === !!snap.above_vwap, trend === 0 ? "n/a (flat trend)" : `trend ${trend > 0 ? "up" : "down"}, price ${snap.above_vwap ? "above" : "below"} VWAP`);
+  const inTrend = trig.filter(x => x.dir === trend), pick = reclaimOk ? reclaim : inTrend.find(x => R.triggers.includes(x.code));
+  add(`accepted trigger on this bar (${R.triggers.map(c => c.replace(/_(UP|DN)$/, "")).filter((v, i, a) => a.indexOf(v) === i).join(", ")}${R.reclaim ? ", FAIL reclaim" : ""})`, !!pick,
+    trig.length ? "patterns on this bar: " + trig.map(t => t.code).join(", ") : "no directional pattern completed on this bar");
+  const dir = pick ? pick.dir : trend;
+  if (R.require24h) add("last 24 h moved the same way", snap.change_24h === null || !dir ? null : Math.sign(snap.change_24h) === dir, snap.change_24h === null ? "unknown" : `${(snap.change_24h * 100).toFixed(2)}%`);
+  if (R.maxAtrPctile !== undefined) add(`volatility not in the top ${Math.round((1 - R.maxAtrPctile) * 100)}%`, snap.atr_pctile === null ? null : snap.atr_pctile <= R.maxAtrPctile, snap.atr_pctile === null ? "warming up" : `ATR percentile ${snap.atr_pctile.toFixed(2)}`);
+  if (R.minDepthUsdt !== undefined) add(`depth >= ${R.minDepthUsdt} USDT per side within 10 bps`, snap.depth_10bps ? Math.min(snap.depth_10bps.bid, snap.depth_10bps.ask) >= R.minDepthUsdt : null,
+    snap.depth_10bps ? `${Math.round(Math.min(snap.depth_10bps.bid, snap.depth_10bps.ask))} USDT` : "unknown");
+  add(`spread <= ${R.maxSpreadBps} bps`, Number.isFinite(snap.spread_bps) ? snap.spread_bps <= R.maxSpreadBps : null, Number.isFinite(snap.spread_bps) ? `${snap.spread_bps.toFixed(3)} bps` : "unknown");
+  const blocking = P.find(x => x.pass === false) || null;
+  return { analyst, version: R.version, predicates: P, blocking: blocking ? blocking.name : null, all_pass: P.every(x => x.pass === true) };
+}
+
+/** Strategy registry entries: these are deterministic rule sets, not trained models. */
+function registry() {
+  return ANALYSTS.map(a => ({ id: a, version: RULES[a].version, name: RULES[a].name, type: "DETERMINISTIC", purpose: "15m setup proposals for the paper engine", training: "NOT_APPLICABLE",
+    instruments: "Bitget USDT-margined perpetuals: BTCUSDT, ETHUSDT, XRPUSDT", horizon: `entry valid 1 bar (15m); time exit ${RULES[a].timeExitBars} bars`,
+    feature_schema: "evidence-v1", parameters: RULES[a], validation: "fixture scenarios S1-S8 pass; forward paper sample far too small", edge: "NOT_DEMONSTRATED",
+    deployment_state: "PAPER_ACTIVE", parent: "legacy v0 profile rules (docs/patterns.js), unchanged", known_weaknesses: ["no historical backtest of v1 yet", "trigger definitions come from the legacy engine, whose 180-day test showed negative expectancy after fees for the legacy profiles", "no news/event-risk input"],
+    history: [{ event: "REGISTERED", at: "2026-11-16", note: "v1 created; never promoted on evidence" }] }));
+}
+
+module.exports = { RULES, ANALYSTS, decide, explain, registry };

@@ -148,3 +148,18 @@ test("evidence: coverage is required for what v1 consumes (ticker + book, last 6
   assert.deepEqual(COVERAGE, { ticker_book_ms: 60000, trade_ms: 0 });
   st.close();
 });
+
+test("explain(): predicate diagnostics agree with decide() on every scenario (all predicates pass <=> an OPEN intent)", () => {
+  const { explain, registry } = require("../server/policies");
+  const cases = [base({ atr_pctile: 0.85, triggers: [T("BO_UP", 1, 64700)] }), base({ triggers: [T("BO_UP_WEAK", 1, 64700)] }), base({ triggers: [T("RETEST_UP", 1, 64600)] }),
+    base({ trend_1h: 0, above_vwap: false, atr_pctile: 0.3, triggers: [T("FAIL_DN", 1, 64650)] }), base({ spread_bps: 2.5, triggers: [T("RETEST_UP", 1, 64600)] }), base({}),
+    base({ book_state: "INVALID", triggers: [T("RETEST_UP", 1, 64600)] }), base({ trend_1h: -1, above_vwap: false, triggers: [T("RETEST_DN", -1, 65200)] }), base({ above_vwap: false, triggers: [T("RETEST_UP", 1, 64600)] }),
+    base({ change_24h: -0.01, triggers: [T("RETEST_UP", 1, 64600)] }), base({ depth_10bps: { bid: 10, ask: 10 }, triggers: [T("RETEST_UP", 1, 64600)] })];
+  for (const s of cases) for (const a of ANALYSTS) {
+    const d = decide(a, s), e = explain(a, s), opens = d.intent === "OPEN_LONG" || d.intent === "OPEN_SHORT";
+    assert.equal(e.all_pass, opens, `${a}: decide=${d.intent}/${d.code} but explain.blocking=${e.blocking}`);
+    if (!opens) assert.ok(e.blocking, "a blocked decision names the blocking predicate");
+  }
+  const reg = registry();
+  assert.equal(reg.length, 3); assert.ok(reg.every(r => r.type === "DETERMINISTIC" && r.training === "NOT_APPLICABLE" && r.edge === "NOT_DEMONSTRATED"));
+});

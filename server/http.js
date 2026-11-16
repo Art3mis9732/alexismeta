@@ -35,8 +35,32 @@ function createServer({ api, staticDir, port }) {
       if ((req.url || "").length > 2048) return err(res, 414, "uri too long");
       const u = new URL(req.url, "http://localhost");
       const q = k => u.searchParams.get(k);
+      // loopback binding is not the whole security model: a page from another origin must not be able to drive this API
+      const origin = req.headers.origin;
+      if (origin && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return err(res, 403, "cross-origin requests are refused");
       if (u.pathname.startsWith("/api/")) {
         const p = u.pathname;
+        if (p === "/api/runtime") return send(res, 200, api.runtime ? api.runtime() : { error: "runtime identity unavailable" });
+        const M = api.monitor;
+        if (M && (p.startsWith("/api/paper/") || p === "/api/registry" || p === "/api/jobs" || p === "/api/stream")) {
+          const cur = k => { const v = intParam(q(k), null, 0, 9e15); return v; };
+          const word = (k, re) => { const v = q(k); return v === null ? null : re.test(v) ? v : NaN; };
+          if (p === "/api/stream") { const a = req.headers["last-event-id"] !== undefined ? intParam(String(req.headers["last-event-id"]), null, 0, 9e15) : cur("after"); if (Number.isNaN(a)) return err(res, 400, "bad cursor"); return M.attachStream(req, res, a); }
+          if (p === "/api/paper/snapshot") return send(res, 200, M.snapshot());
+          if (p === "/api/paper/accounts") return send(res, 200, M.env(M.accounts()));
+          if (p === "/api/paper/positions") return send(res, 200, M.env({ positions: M.positions() }));
+          if (p === "/api/paper/closed") { const n = intParam(q("limit"), 50, 1, 500); return Number.isNaN(n) ? err(res, 400, "bad limit") : send(res, 200, M.env({ closed: M.closed(n) })); }
+          if (p === "/api/paper/diagnostics") return send(res, 200, M.env(M.diagnostics()));
+          if (p === "/api/registry") return send(res, 200, M.env(M.registry()));
+          if (p === "/api/jobs") return send(res, 200, M.env(M.jobs()));
+          if (p === "/api/paper/position") { const id = q("id"); if (!id || !/^[A-Za-z0-9:._|-]{1,200}$/.test(id)) return err(res, 400, "bad position id"); const d = M.detail(id); return d ? send(res, 200, M.env(d)) : err(res, 404, "unknown position"); }
+          if (p === "/api/paper/activity") {
+            const after = cur("after"), before = cur("before"), n = intParam(q("limit"), 100, 1, 500), type = word("type", /^[A-Z_]{1,40}$/), an = word("analyst", /^[a-z_]{1,20}$/), ins = word("instrument", ID_RE);
+            if ([after, before, n, type, an, ins].some(v => typeof v === "number" && Number.isNaN(v))) return err(res, 400, "bad activity filter");
+            return send(res, 200, M.env({ events: M.activity({ after, before, limit: n, type, analyst: an, instrument: ins }) }));
+          }
+          return err(res, 404, "not found");
+        }
         if (p === "/api/health") return send(res, 200, api.health());
         if (p === "/api/instruments") return send(res, 200, api.instruments());
         if (p === "/api/ledger") { const n = intParam(q("limit"), 50, 1, 500); return Number.isNaN(n) ? err(res, 400, "bad limit") : send(res, 200, api.ledgerRecent(n)); }

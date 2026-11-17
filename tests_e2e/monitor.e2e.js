@@ -62,9 +62,10 @@ async function main() {
     await page.waitForFunction(() => /● STREAMING/.test(document.getElementById("mStatus").innerText) && /● HEALTHY/.test(document.getElementById("mStatus").innerText), null, { timeout: 15000 }).catch(() => {});
     const chips = await page.locator("#mStatus .chip").allInnerTexts();
     check("1. five separate status chips with text states (not colour only)", chips.length === 5 && ["MARKET FEED", "DECISION ENGINE", "PAPER ENGINE", "BROWSER CONNECTION", "POSITION VALUATION"].every((t, i) => chips[i].toUpperCase().includes(t)) && chips.every(c => /HEALTHY|RUNNING|STREAMING|LIVE|DEGRADED|STALE/.test(c)), chips.map(c => c.replace(/\n/g, " ").slice(0, 46)).join(" | "));
-    const cmp = await page.evaluate(() => { const p = MON.val.positions[0], row = document.querySelector('#mPositions .mrow[data-pid="' + p.position_id + '"]'); return { shown: row.children[8].innerText, backend: p.valuation.u_mark, life: row.children[9].innerText, lifeB: p.valuation.lifecycle_if_closed_now, fill: row.children[4].innerText, fillB: p.entry_fill_price }; });
+    const cmp = await page.evaluate(() => { const p = MON.val.positions[0], row = document.querySelector('#mPositions .mrow[data-pid="' + p.position_id + '"]'); const f = k => row.querySelector('[data-f="' + k + '"]').innerText;
+      return { shown: f("gross"), backend: p.valuation.u_mark, life: f("net"), lifeB: p.valuation.lifecycle_if_closed_now, mark: f("mark"), markB: p.live.prices.mark, margin: f("margin"), marginB: p.live.margin.allocated_now }; });
     const fmt = x => (x > 0 ? "+" : x < 0 ? "−" : "") + Math.abs(x).toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
-    check("1. displayed unrealised and close-now figures are the backend's numbers (the browser does not recompute)", cmp.shown.startsWith(fmt(cmp.backend)) && cmp.life.startsWith(fmt(cmp.lifeB)) && cmp.backend !== cmp.lifeB, `${cmp.shown.split("\n")[0]} / ${cmp.life.split("\n")[0]}`);
+    check("1. displayed unrealised and close-now figures are the backend's numbers (the browser does not recompute)", cmp.shown.startsWith(fmt(cmp.backend)) && cmp.life.startsWith(fmt(cmp.lifeB)) && cmp.backend !== cmp.lifeB && cmp.margin.startsWith(cmp.marginB.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })), `${cmp.shown} / ${cmp.life} / margin ${cmp.margin}`);
     check("1. worker-mode page opened no exchange socket of its own", sockets.filter(u => /bitget/.test(u)).length === 0, sockets.join(","));
     const a1 = await page.locator("#mAccounts").innerText();
     check("1. three independent accounts, never summed", (a1.match(/Starting capital/g) || []).length === 3 && /3 independent paper portfolios of 1000 USDT each \(total starting capital 3000 USDT\)/.test(a1) && (a1.match(/reconciles with fills/g) || []).length === 3, "");
@@ -226,6 +227,67 @@ async function main() {
       await p6.waitForFunction(() => window.STRESS && STRESS.data, null, { timeout: 30000 }).catch(() => {}); await p6.click('#views span[data-view="stress"]'); await sleep(1500);
       const ov = await p6.evaluate(() => ({ sw: document.scrollingElement.scrollWidth, iw: innerWidth, cards: document.querySelectorAll("#sInst .scard").length }));
       check("4d. phone width: the stress tab has three asset cards and no horizontal page scroll", ov.cards === 3 && ov.sw <= ov.iw + 1, JSON.stringify(ov)); await c6.close();
+    }
+
+    // ---------- 4e. Open positions panel and live accounting (TEST fixture positions on live prices; the browser only renders backend numbers)
+    {
+      const c7 = await browser.newContext({ viewport: { width: 1440, height: 1000 } }), p7 = await c7.newPage(), e7 = [];
+      p7.on("pageerror", e => e7.push(e.message)); p7.on("response", r => { if (r.status() >= 400) e7.push(r.status() + " " + r.url()); });
+      await p7.goto(testUrl, { waitUntil: "domcontentloaded" });
+      await p7.waitForFunction(() => document.querySelectorAll("#mPositions .opcard").length > 0 && MON.conn === "STREAMING", null, { timeout: 120000 }).catch(() => {});
+      const lay = await p7.evaluate(() => ({ p: document.getElementById("mPositions").getBoundingClientRect().top, a: document.getElementById("mAccounts").getBoundingClientRect().top, n: document.querySelectorAll("#mPositions .opcard").length }));
+      check("4e. the Open positions panel comes before the account cards and shows cards for the open positions", lay.n > 0 && lay.p < lay.a, JSON.stringify(lay));
+      const txt = await p7.locator("#mPositions .opcard").first().innerText();
+      const need = [[/account paper:/, "account"], [/LONG|SHORT/, "direction"], [/GROSS P&L AT MARK/i, "gross label"], [/ROI · GROSS, ON INITIAL MARGIN/i, "ROI label"], [/÷ [\d,.]+ USDT initial margin/, "ROI denominator"], [/EST\. NET IF CLOSED NOW/i, "net label"],
+        [/Margin allocated/, "margin"], [/Notional/, "notional"], [/Leverage/, "leverage"], [/× margin setting/, "setting"], [/notional ÷ margin now/, "effective"], [/Entry → mark/, "entry/mark"], [/Stop \/ target/, "stop"], [/Risk budget/, "risk"], [/Fees · funding/, "fees"], [/mark OK .* old · book OK .* old/, "freshness"]];
+      const miss = need.filter(([re]) => !re.test(txt)).map(x => x[1]);
+      check("4e. each card shows account, direction, margin, notional, leverage (setting and effective), entry and mark, gross P&L, ROI with its denominator, net if closed, risk and freshness", miss.length === 0, miss.join(",") || txt.slice(0, 80).replace(/\n/g, " "));
+      // independent recomputation from raw API fields, at two different marks
+      const sample = () => p7.evaluate(() => { renderMonitorPositions(); return MON.val.positions.map(p => { const L = p.live, s = p.side, q = L.quantity_base, e = L.prices.average_entry, m = L.prices.mark, gross = s * q * (m - e), im = q * e / L.margin.margin_setting_leverage;
+        const row = document.querySelector('#mPositions .mrow[data-pid="' + p.position_id + '"]'), num = k => { const t = row ? row.querySelector('[data-f="' + k + '"]').innerText : ""; return parseFloat(t.replace("−", "-").replace(/[^0-9+\-.]/g, "")); };
+        return { id: p.position_id, mark: m, gross, apiGross: L.gross_unrealized.value, domGross: num("gross"), roi: gross / im * 100, apiRoi: L.roi.filter(r => r.primary)[0].value, domRoi: num("roi"), im, apiIm: L.margin.initial }; }); });
+      const a = await sample(); let b = a; const t0 = Date.now();
+      while (Date.now() - t0 < 40000) { await sleep(2000); b = await sample(); if (b.some(y => { const x = a.find(z => z.id === y.id); return x && x.mark !== y.mark; })) break; }
+      const all = [...a, ...b], badCalc = all.filter(x => Math.abs(x.gross - x.apiGross) > 1e-6 || Math.abs(x.roi - x.apiRoi) > 1e-6 || Math.abs(x.im - x.apiIm) > 1e-6), badDom = all.filter(x => !(Math.abs(x.domGross - x.apiGross) < 6e-5) || !(Math.abs(x.domRoi - x.apiRoi) < 6e-3));
+      const moved = b.some(y => { const x = a.find(z => z.id === y.id); return x && x.mark !== y.mark && x.apiGross !== y.apiGross; });
+      check("4e. P&L, ROI and margin equal an independent recomputation from the raw fields (s·q·(mark−entry), ÷ initial margin), in the API and on screen", badCalc.length === 0 && badDom.length === 0 && all.length > 0, `${all.length} samples; calc mismatches ${badCalc.length}; screen mismatches ${badDom.length}`);
+      check("4e. a changed mark price changes gross P&L and ROI accordingly", moved, moved ? "mark and P&L both moved between samples" : "the market did not move within 40 s (not a failure of the code, but this check could not be exercised)");
+      const col = await p7.evaluate(() => [...document.querySelectorAll("#mPositions .opcard")].map(c => { const g = c.querySelector('[data-f="gross"] span'), t = g.innerText.trim(), rgb = getComputedStyle(g).color; return { t, rgb, v: parseFloat(t.replace("−", "-").replace(/[^0-9+\-.]/g, "")) }; }));
+      const UP = "rgb(47, 191, 113)", DOWN = "rgb(229, 72, 77)", TOL = 0.005;      // display tolerance: |P&L| < 0.005 USDT is neutral even when its rounded text carries a sign
+      const okc = x => (x.v >= TOL ? x.rgb === UP : x.v <= -TOL ? x.rgb === DOWN : x.rgb !== UP && x.rgb !== DOWN) && (x.v >= TOL ? x.t.startsWith("+") : x.v <= -TOL ? x.t.startsWith("−") : true);
+      check("4e. profit/loss colours and signs agree on every card (green +, red −, neutral under the 0.005 USDT display tolerance)", col.length > 0 && col.every(okc), col.map(x => x.t.split(" ")[0] + ":" + (x.rgb === UP ? "green" : x.rgb === DOWN ? "red" : "neutral")).join(" | ").slice(0, 170));
+      const ml = await p7.evaluate(() => [...document.querySelectorAll("#mPositions .opcard")].map(c => { const g = k => parseFloat(c.querySelector('[data-f="' + k + '"]').innerText.replace(/[^0-9.]/g, "")); return { margin: g("margin"), notional: g("notional") }; }));
+      check("4e. margin and notional are distinct figures (notional ≈ 2× margin at the 2× setting, never displayed as the same number)", ml.length > 0 && ml.every(x => x.margin > 0 && Math.abs(x.notional / x.margin - 2) < 0.01), JSON.stringify(ml[0]));
+      // staleness (render test: a backend view with a stale mark is injected into the page; the last valid value must stay visible and labelled)
+      const stale = await p7.evaluate(() => { const v = JSON.parse(JSON.stringify(MON.val)), p = v.positions[0], g = p.live.gross_unrealized.value; p.live.prices.mark_status = "STALE"; p.live.prices.mark_age_ms = 61000; p.live.prices.book_status = "STALE"; p.live.prices.book_age_ms = 61000;
+        MON.val = v; renderMonitorPositions(); const c = document.querySelector('#mPositions .mrow[data-pid="' + p.position_id + '"]'); return { t: c.innerText, g, shown: c.querySelector('[data-f="gross"]').innerText }; });
+      check("4e. STALE inputs are visible (stale mark and stale book chips, ages) and the last valid P&L stays on screen (not zero)", /STALE MARK · last valid value shown/.test(stale.t) && /STALE BOOK/.test(stale.t) && /mark STALE 61\.0 s old/.test(stale.t) && !/^0\.0000/.test(stale.shown.replace(/[+−]/, "")) && Math.abs(parseFloat(stale.shown.replace("−", "-").replace(/[^0-9+\-.]/g, "")) - stale.g) < 6e-5, stale.t.slice(0, 60).replace(/\n/g, " "));
+      // ordering and tombstones (front-end logic exercised by replaying frames)
+      const tomb = await p7.evaluate(() => { const cur = JSON.parse(JSON.stringify(MON.val)); cur.calc_ts += 1000; monitorAcceptValuation(cur);
+        const P = MON.val.positions[0].position_id, n0 = MON.val.positions.length;
+        const old = JSON.parse(JSON.stringify(MON.val)); old.calc_ts -= 5000; old.positions = old.positions.slice(0, 1); const acceptedOld = monitorAcceptValuation(old), keptAll = MON.val.positions.length === n0;     // an OLD frame must not roll the display back
+        monitorTomb(P); const again = JSON.parse(JSON.stringify(MON.val)); again.calc_ts += 1000; monitorAcceptValuation(again);                   // the position is known closed: a frame that still lists it must not resurrect it
+        const resurrected = MON.val.positions.some(p => p.position_id === P); delete MON.tomb[P]; return { acceptedOld, keptAll, resurrected, dropped: MON.staleDropped, filtered: MON.tombFiltered }; });
+      check("4e. an old valuation frame is rejected and a closed position is never resurrected by a later frame", tomb.acceptedOld === false && tomb.keptAll === true && tomb.resurrected === false && tomb.dropped >= 1 && tomb.filtered >= 1, JSON.stringify(tomb));
+      await p7.evaluate(() => monitorResnapshot("e2e: restore authoritative state")); await sleep(2500);
+      // refresh preserves positions; closed positions are not shown as open and appear once in history
+      const idsBefore = await p7.evaluate(() => [...document.querySelectorAll("#mPositions .mrow")].map(r => r.dataset.pid).sort());
+      await p7.reload({ waitUntil: "domcontentloaded" }); await p7.waitForFunction(() => document.querySelectorAll("#mPositions .opcard").length > 0 || /No open paper positions/.test(document.getElementById("mPositions").innerText), null, { timeout: 30000 }).catch(() => {}); await sleep(2500);
+      const domIds = () => p7.evaluate(() => [...document.querySelectorAll("#mPositions .mrow")].map(r => r.dataset.pid).sort());
+      let conv = await waitFor(async () => { const api = await getJson(testUrl + "api/paper/snapshot"), dom = await domIds(); const ao = api.positions.map(x => x.position_id).sort(); return JSON.stringify(ao) === JSON.stringify(dom) ? { api, dom } : null; }, 20000, 800);
+      const idsAfter = conv ? conv.dom : await domIds(), api = conv ? conv.api : await getJson(testUrl + "api/paper/snapshot");
+      const apiOpen = api.positions.map(x => x.position_id).sort(), closedIds = api.recent_closed.map(x => x.position_id);
+      await sleep(1500); const histRows = await p7.evaluate(() => [...document.querySelectorAll("#mClosed .mrow")].map(r => r.dataset.pid));
+      check("4e. after a refresh the page converges to exactly the backend's open positions; no closed position is shown as open; each closed position appears once in history", !!conv && closedIds.every(i => !idsAfter.includes(i)) && histRows.length === new Set(histRows).size && closedIds.slice(0, 10).every(i => histRows.includes(i)), `before ${idsBefore.length}, converged ${idsAfter.length}, api ${apiOpen.length}, closed ${closedIds.length}, history rows ${histRows.length}`);
+      const acc = await p7.locator("#mAccounts").innerText();
+      check("4e. account cards show estimated closeout equity, open exposure, pricing completeness and the account-return definition", (acc.match(/Est\. closeout equity/g) || []).length === 3 && (acc.match(/Open exposure/g) || []).length === 3 && (acc.match(/Pricing/g) || []).length === 3 && (acc.match(/Account return/g) || []).length === 3, "");
+      check("4e. no page errors or failed requests on the Open positions panel", e7.length === 0, e7.join(" | ").slice(0, 160));
+      await c7.close();
+      const c8 = await browser.newContext({ viewport: { width: 390, height: 844 } }), p8 = await c8.newPage(); await p8.goto(testUrl, { waitUntil: "domcontentloaded" });
+      await p8.waitForFunction(() => document.querySelectorAll("#mPositions .opcard").length > 0, null, { timeout: 90000 }).catch(() => {}); await sleep(1500);
+      const mo = await p8.evaluate(() => { const iw = innerWidth, cells = [...document.querySelectorAll("#mPositions .opcard td, #mPositions .opbig, #mPositions .oplbl")];     // a value is cut off when it extends past the right edge of ITS CARD (the card or its container scrolls instead of wrapping)
+      return { sw: document.scrollingElement.scrollWidth, iw, cards: document.querySelectorAll("#mPositions .opcard").length, clipped: cells.filter(c => c.getBoundingClientRect().right > c.closest(".opcard").getBoundingClientRect().right + 1 || c.scrollWidth > c.clientWidth + 1).length }; });
+      check("4e. phone width: position cards are fully readable (no value cut off at the right edge, no horizontal page scroll)", mo.cards > 0 && mo.clipped === 0 && mo.sw <= mo.iw + 1, JSON.stringify(mo)); await c8.close();
     }
 
     // ---------- 5. mobile width + static page

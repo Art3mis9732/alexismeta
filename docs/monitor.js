@@ -27,11 +27,21 @@ async function monitorStart() {
 async function monitorResnapshot(why) {
   try {
     var r = await Promise.all([apiJson("api/runtime"), apiJson("api/paper/snapshot")]);
-    MON.runtime = r[0]; MON.snap = r[1]; MON.val = r[1]; MON.cursor = r[1].cursor; MON.events = r[1].recent_activity.slice(); MON.closed = r[1].recent_closed;
+    MON.runtime = r[0]; MON.snap = r[1]; MON.val = r[1]; MON.tomb = {}; (r[1].recent_closed || []).forEach(function (c) { monitorTomb(c.position_id, c.closed && c.closed.exit_ts); }); MON.cursor = r[1].cursor; MON.events = r[1].recent_activity.slice(); MON.closed = r[1].recent_closed;
     MON.lastFrame = Date.now(); MON.lost = false; MON.resnapshots++; MON.lastResnapshot = why;
     monitorOpenStream(); renderMonitor(true);
     if (MON.detailId) monitorOpenDetail(MON.detailId);
   } catch (e) { MON.conn = "DISCONNECTED"; renderMonitor(true); }
+}
+/* Ordering and tombstones for the live valuation. A valuation frame older than the one on screen is dropped (the display never rolls back), and a position known to be
+ * closed (from a snapshot's recent_closed or a POSITION_CLOSED event) is removed from every later frame, so a late or replayed frame cannot resurrect it. Position ids are
+ * unique and a closed position never reopens, so the tombstone set is safe to keep for the page's lifetime. Authoritative resnapshots reset the set from the backend. */
+function monitorTomb(id, ts) { if (!MON.tomb) MON.tomb = {}; if (id) MON.tomb[id] = ts || Date.now(); }
+function monitorAcceptValuation(frame) {
+  if (!frame || typeof frame.calc_ts !== "number") { MON.rejected = (MON.rejected || 0) + 1; return false; }
+  if (MON.val && typeof MON.val.calc_ts === "number" && frame.calc_ts < MON.val.calc_ts) { MON.staleDropped = (MON.staleDropped || 0) + 1; return false; }
+  if (MON.tomb && Array.isArray(frame.positions)) { var n = frame.positions.length; frame.positions = frame.positions.filter(function (p) { return !MON.tomb[p.position_id]; }); if (frame.positions.length !== n) MON.tombFiltered = (MON.tombFiltered || 0) + (n - frame.positions.length); }
+  MON.val = frame; return true;
 }
 function monitorOpenStream() {
   if (MON.es) { MON.es.close(); MON.es = null; }
@@ -43,12 +53,13 @@ function monitorOpenStream() {
     var ev = JSON.parse(e.data); MON.lastFrame = Date.now();
     if (ev.seq <= MON.cursor) { MON.dupes++; return; }                                 // duplicate after a reconnect: ignore
     if (ev.prev !== MON.cursor) return monitorResnapshot("gap in the event sequence");  // missed something: reload, never guess
+    if (ev.type === "POSITION_CLOSED") { monitorTomb(ev.position_id, ev.ts); if (MON.val && MON.val.positions) MON.val.positions = MON.val.positions.filter(function (p) { return p.position_id !== ev.position_id; }); }
     MON.cursor = ev.seq; MON.events.unshift(ev); if (MON.events.length > 400) MON.events.length = 400;
     MON.lat.push(Date.now() - ev.recorded_ts); if (MON.lat.length > 50) MON.lat.shift();
     if (ev.type === "POSITION_CLOSED" || ev.type === "FILL") monitorSlow();
     renderMonitorActivity();
   });
-  es.addEventListener("valuation", function (e) { MON.val = JSON.parse(e.data); MON.lastFrame = Date.now(); MON.conn = "STREAMING"; MON.lost = false; MON.dirty = true; });
+  es.addEventListener("valuation", function (e) { monitorAcceptValuation(JSON.parse(e.data)); MON.lastFrame = Date.now(); MON.conn = "STREAMING"; MON.lost = false; MON.dirty = true; });
   es.addEventListener("resnapshot", function () { monitorResnapshot("server asked for a resnapshot"); });
   es.onerror = function () { MON.conn = es.readyState === 2 ? "DISCONNECTED" : "RECONNECTING"; };
 }
@@ -57,7 +68,7 @@ function monitorTick() {
   if (!MON.started) return;
   var age = Date.now() - MON.lastFrame;
   if (MON.snap && age > 5000 && !MON.lost) { MON.lost = true; MON.dirty = true; }
-  if (MON.conn === "POLLING" && WMODE && age > 2000) apiJson("api/paper/snapshot").then(function (s) { MON.val = s; MON.lastFrame = Date.now(); MON.lost = false; MON.dirty = true; }).catch(function () {});
+  if (MON.conn === "POLLING" && WMODE && age > 2000) apiJson("api/paper/snapshot").then(function (s) { monitorAcceptValuation(s); MON.lastFrame = Date.now(); MON.lost = false; MON.dirty = true; }).catch(function () {});
   if (MON.lost && WMODE === false && MON.es && MON.es.readyState === 2) MON.conn = "DISCONNECTED";
   if (view !== "monitor") return;
   if (MON.dirty || MON.lost) { MON.dirty = false; renderMonitor(false); }
@@ -120,10 +131,13 @@ function renderMonitorAccounts() {
       row("Cash balance", mNum(a.cash_balance, 4), "start + realised gross − booked fees + settled funding") +
       row("Unrealised at mark (gross)", '<span class="' + mCls(a.unrealized_mark) + '">' + mSigned(a.unrealized_mark, 4) + "</span>") +
       row("Mark equity", "<b>" + mNum(a.mark_equity, 4) + "</b>", "cash balance + unrealised at mark") +
+      row("Est. closeout equity", a.closeout && a.closeout.equity_estimate !== null ? mNum(a.closeout.equity_estimate, 4) : '<span class="muted">' + (a.closeout && a.closeout.positions_open ? "N/A" : mNum(a.cash_balance, 4)) + "</span>", a.closeout ? a.closeout.basis + (a.closeout.reason ? " · unavailable: " + a.closeout.reason : "") : "") +
+      row("Open exposure", a.exposure && a.exposure.gross_notional_at_mark !== null ? mNum(a.exposure.gross_notional_at_mark, 2) + " USDT · " + (a.exposure.notional_over_mark_equity === null ? "N/A" : mNum(a.exposure.notional_over_mark_equity, 3) + "× equity") : "0.00 USDT", a.exposure ? a.exposure.basis : "") +
+      row("Pricing", a.pricing ? esc(a.pricing.completeness) + (a.pricing.oldest_mark_age_ms !== null ? " · oldest mark " + mAge(a.pricing.oldest_mark_age_ms) : "") : "N/A", "open positions with a mark / with an executable close estimate; stale inputs are counted separately") +
       row("Reserved margin", mNum(a.reserved_margin, 2), a.margin_model) + row("Available balance", mNum(a.available_balance, 2), "cash − reserved margin (simulator convention)") +
       row("Realised gross / fees / funding", mSigned(a.realized_gross, 4) + " / −" + mNum(a.fees_booked, 4) + " / " + mSigned(a.funding_settled, 4)) +
       row("Realised net", '<span class="' + mCls(a.realized_net) + '">' + mSigned(a.realized_net, 4) + "</span>") +
-      row("Return on starting capital", mSigned(a.portfolio_return_pct_of_starting_capital, 3) + "%") +
+      row("Account return", mSigned(a.account_return ? a.account_return.value_pct : a.portfolio_return_pct_of_starting_capital, 3) + "%", a.account_return ? a.account_return.definition + " · denominator " + mNum(a.account_return.denominator_usdt, 2) + " USDT · " + a.account_return.capital_flow_assumption : "") +
       row("Drawdown from peak mark equity", mNum(a.drawdown_pct, 3) + "%") +
       row("Positions open / closed", a.counts.open + " / " + a.counts.closed) +
       row("Uncertain (data gap)", (a.counts.open_gap_affected + unc) + " trades" + (a.counts.closed ? " · " + Math.round(a.counts.uncertain_share * 100) + "% of closed" : "") + " · exposure " + mNum(a.unresolved_exposure_usdt, 2), "kept in the account; excluded only from evaluable metrics") +
@@ -131,31 +145,44 @@ function renderMonitorAccounts() {
       "</table>" + '<div class="rec">Valuation ' + esc(a.valuation_status) + " · cash " + (a.cash_reconciles ? "reconciles with fills" : '<b class="down">DOES NOT RECONCILE with fills</b>') + " · <b>No demonstrated edge</b></div></div>";
   }).join("") + "</div>" + '<div class="sub" style="margin-top:6px">' + esc(v.structure || (MON.snap && MON.snap.structure) || "") + " Daily accounting boundary: 00:00 UTC.</div>";
 }
+/* ---- Open positions (live-metrics-v1). RENDER ONLY: every number, sign class, ROI and denominator below comes from the backend's position.live block. ---- */
+var OP_CLS = { GAIN: "up", LOSS: "down", FLAT: "muted", UNAVAILABLE: "muted" };
+function opMoney(v, d) { return v === null || v === undefined ? "N/A" : mSigned(v, d === undefined ? 4 : d) + " USDT"; }
+function opFig(label, valueHtml, subHtml, f) { return '<div class="opf"><div class="oplbl">' + label + '</div><div class="opbig" data-f="' + f + '">' + valueHtml + "</div>" + (subHtml ? '<div class="sub">' + subHtml + "</div>" : "") + "</div>"; }
+function opRow(k, v, tip) { return "<tr" + (tip ? ' title="' + esc(tip) + '"' : "") + "><td>" + k + '</td><td class="num">' + v + "</td></tr>"; }
 function renderMonitorPositions() {
   var v = MON.val || MON.snap, P = v.positions || [];
   $("mPosAsOf").textContent = "· backend valuation at " + istHMS(v.calc_ts) + " " + TZ.label + (MON.lost ? " — FROZEN (worker not reachable)" : "");
   if (!P.length) { $("mPositions").innerHTML = "<b>No open paper positions.</b> Nothing is shown here unless the worker's engine actually opened it. See “Why there is or is not a trade” below for the last decisions and the conditions that blocked an entry."; return; }
-  var head = "<tr><th>Analyst · strategy</th><th>Instrument</th><th>Side · state</th><th>Entered (" + TZ.label + ") · held</th><th class=\"r\">Fill price</th><th class=\"r\">Quantity · notional</th><th class=\"r\">Margin (sim.)</th><th class=\"r\">Stop / target</th>" +
-    "<th class=\"r\" title=\"s × q × (mark − entry). Gross: no fees, no funding.\">Unrealised at mark (gross)</th><th class=\"r\" title=\"Estimate: realised + depth-weighted close of the remainder − all fees + settled funding. Not a fill.\">Net if closed now (est.)</th>" +
-    "<th class=\"r\">Fees paid · funding · est. exit fee</th><th class=\"r\">Open risk · to stop</th><th>Mark / book age</th><th>Trade · evidence</th></tr>";
-  $("mPositions").innerHTML = '<table class="' + (MON.lost ? "frozen" : "") + '">' + head + P.map(function (p) {
-    var x = p.valuation || {}, d = mDp(p.entry_fill_price), pct = x.pct || {}, cn = x.close_now || {};
-    var st = p.state + (p.data_state !== "COMPLETE" ? " · UNRESOLVED PATH (data gap)" : "");
-    return '<tr class="mrow" tabindex="0" data-pid="' + esc(p.position_id) + '" title="Open position detail"><td><b>' + esc(M_AN[p.analyst] || p.analyst) + "</b><br><span class=\"sub\">" + esc(p.strategy_version || "") + "</span></td>" +
-      "<td>" + esc(p.symbol) + '<br><span class="sub">' + esc(p.venue) + " · " + esc(p.inst_class) + "</span></td>" +
-      '<td><b class="' + (p.side > 0 ? "up" : "down") + '">' + esc(p.direction) + '</b><br><span class="sub' + (p.data_state !== "COMPLETE" ? " warn" : "") + '">' + esc(st) + "</span></td>" +
-      "<td>" + istT(p.opened_ts) + '<br><span class="sub">' + mDur(p.duration_ms) + "</span></td>" +
-      '<td class="num">' + mNum(p.entry_fill_price, d) + '<br><span class="sub">recorded sim. fill</span></td>' +
-      '<td class="num">' + esc(String(p.remaining_qty)) + " " + esc(p.qty_unit || "") + '<br><span class="sub">' + mNum(p.remaining_entry_notional, 2) + " USDT</span></td>" +
-      '<td class="num">' + mNum(p.margin.reserved, 2) + '<br><span class="sub">' + esc(String(p.margin.leverage_setting)) + "× setting</span></td>" +
-      '<td class="num"><span class="down">' + mNum(p.stop, d) + '</span><br><span class="up">' + mNum(p.target, d) + "</span></td>" +
-      '<td class="num"><b class="' + mCls(x.u_mark) + '">' + mSigned(x.u_mark, 4) + "</b>" + (x.u_mark_is_stale ? ' <span class="pill bad">stale mark</span>' : "") + '<br><span class="sub">' + mSigned(pct.gross_unrealized_pct_of_entry_notional, 3) + "% of entry notional · " + mSigned(pct.gross_unrealized_pct_of_initial_margin, 3) + "% of margin</span></td>" +
-      '<td class="num"><b class="' + mCls(x.lifecycle_if_closed_now) + '">' + mSigned(x.lifecycle_if_closed_now, 4) + '</b><br><span class="sub">' + (cn.status === "OK" ? "close ≈ " + mNum(cn.x, d) + (cn.is_stale ? " (stale book)" : "") : cn.status === "PARTIAL_LIQUIDITY" ? "book covers only " + Math.round(cn.coverage * 100) + "%" : esc(cn.status || "UNAVAILABLE")) + "</span></td>" +
-      '<td class="num">−' + mNum(p.fees_paid, 4) + " · " + mSigned(p.funding_settled, 4) + '<br><span class="sub">exit fee est. ' + (cn.exit_fee_est === null || cn.exit_fee_est === undefined ? "N/A" : "−" + mNum(cn.exit_fee_est, 4)) + "</span></td>" +
-      '<td class="num">' + mNum(p.open_risk_usdt, 4) + '<br><span class="sub">' + mNum(p.distance_to_invalidation_pct, 3) + "% to stop</span></td>" +
-      "<td>" + esc(x.mark ? x.mark.status : "N/A") + " " + mAge(x.mark ? x.mark.age_ms : null) + '<br><span class="sub">book ' + esc(x.book ? x.book.status : "N/A") + " " + mAge(x.book ? x.book.age_ms : null) + "</span></td>" +
-      '<td class="sub">' + esc(mShort(p.trade_id)) + "<br>ev " + esc((p.evidence_hash || "").slice(0, 8)) + "</td></tr>";
-  }).join("") + "</table>" + '<div class="sub" style="margin-top:6px">Mark, last, bid and ask are different prices. “Unrealised at mark” is gross. “Net if closed now” is an estimate from current book depth, not a guaranteed fill. Leverage only sets the margin; it never multiplies P&L. Click a row (or press Enter) for the full record.</div>';
+  $("mPositions").innerHTML = '<div class="opgrid' + (MON.lost ? " frozen" : "") + '">' + P.map(function (p) {
+    var L = p.live, d = mDp(p.entry_fill_price), x = p.valuation || {}, an = M_AN[p.analyst] || p.analyst;
+    var head = '<div class="ophead"><span><b>' + esc(an) + '</b> <span class="sub">' + esc(p.strategy_version || "") + " · account paper:" + esc(p.analyst) + '</span></span><span><b class="opsym">' + esc(p.symbol) + '</b> <b class="dir ' + (p.side > 0 ? "up" : "down") + '">' + esc(p.direction) + "</b></span></div>";
+    if (!L) return '<div class="opcard mrow" tabindex="0" data-pid="' + esc(p.position_id) + '">' + head + '<div class="warn">This worker build does not provide the live-metrics block; restart it on the current build to see margin, ROI and freshness.</div></div>';
+    var pr = L.prices, roi = L.roi.filter(function (r) { return r.primary; })[0], nw = L.net_if_closed.whole_trade, rl = L.net_if_closed.remaining_leg, gc = OP_CLS[L.gross_unrealized.class];
+    var chips = "";
+    if (p.data_state !== "COMPLETE") chips += '<span class="pill bad" title="a trade-feed gap occurred while this position was open">UNRESOLVED PATH (data gap)</span> ';
+    if (pr.mark_status === "STALE") chips += '<span class="pill bad">STALE MARK · last valid value shown</span> '; else if (pr.mark_status === "UNAVAILABLE") chips += '<span class="pill bad">MARK UNAVAILABLE</span> ';
+    if (pr.book_status === "STALE") chips += '<span class="pill bad">STALE BOOK · close estimate is old</span> '; else if (pr.close_status === "PARTIAL_LIQUIDITY") chips += '<span class="pill bad">BOOK TOO THIN FOR THE FULL SIZE</span> '; else if (pr.close_status !== "OK") chips += '<span class="pill unknown">CLOSE ESTIMATE UNAVAILABLE</span> ';
+    var figs = opFig("Gross P&L at mark", '<span class="' + gc + '">' + opMoney(L.gross_unrealized.value, 4) + "</span>", "unrealised · before fees and funding", "gross") +
+      opFig("ROI · gross, on initial margin", roi && roi.value !== null ? '<span class="' + gc + '">' + mSigned(roi.value, 2) + "%</span>" : '<span class="muted">N/A</span>',
+        roi && roi.value !== null ? "÷ " + mNum(roi.denominator_usdt, 2) + " USDT initial margin" : esc(roi ? roi.reason : ""), "roi") +
+      opFig("Est. net if closed now", nw ? '<span class="' + OP_CLS[nw.class] + '">' + opMoney(nw.net, 4) + "</span>" : '<span class="muted">N/A</span>',
+        nw ? "whole trade, after all fees · close ≈ " + mNum(pr.estimated_close, d) : esc(L.net_if_closed.status === "PARTIAL_LIQUIDITY" ? "book covers only " + Math.round((x.close_now || {}).coverage * 100) + "% of the size" : "no executable estimate (" + esc(L.net_if_closed.status) + ")"), "net");
+    var cm = L.margin, nt = L.notional, rb = L.risk_budget, rbv = rb.gross_unrealized_per_risk_budget;
+    var rows = opRow("Entry → mark", mNum(pr.average_entry, d) + " → <b data-f=\"mark\">" + mNum(pr.mark, d) + "</b>", "recorded simulated fill; exchange mark price") +
+      opRow("Margin allocated", "<b data-f=\"margin\">" + mNum(cm.allocated_now, 2) + " USDT</b>", "simulator: remaining entry-fill notional ÷ margin setting. A reservation of collateral, not a cost.") +
+      opRow("Notional", "<span data-f=\"notional\">" + mNum(nt.remaining_at_entry, 2) + "</span> at entry · " + mNum(nt.at_mark, 2) + " at mark USDT", "quantity × price") +
+      opRow("Leverage", esc(String(cm.margin_setting_leverage)) + "× margin setting · " + (cm.notional_at_mark_per_allocated_margin === null ? "N/A" : mNum(cm.notional_at_mark_per_allocated_margin, 2) + "× notional ÷ margin now"), "the setting only sets the margin; it never multiplies P&L") +
+      opRow("Quantity", esc(String(p.remaining_qty)) + " " + esc(p.qty_unit || "")) +
+      opRow("Stop / target", '<span class="down">' + mNum(p.stop, d) + '</span> / <span class="up">' + mNum(p.target, d) + "</span> · " + mNum(p.distance_to_invalidation_pct, 2) + "% to stop") +
+      opRow("Risk budget", rb.recorded_usdt ? mNum(rb.recorded_usdt, 4) + " USDT recorded · P&L = " + (rbv.value === null ? "N/A" : mSigned(rbv.value, 1) + "% of it") : "not recorded", "initial risk budget from the ledger risk record, not the ROI denominator") +
+      opRow("Fees · funding", "paid −" + mNum(p.fees_paid, 4) + " · settled " + mSigned(p.funding_settled, 4) + " · est. exit " + (nw && nw.exit_fee_est !== null ? "−" + mNum(nw.exit_fee_est, 4) : "N/A"), "booked fees and settled funding are in the net estimate; the estimated exit fee is too") +
+      opRow("Next funding (est.)", L.unsettled_funding_estimate.usdt === null ? "N/A" : mSigned(L.unsettled_funding_estimate.usdt, 4) + " USDT, not included in any figure", L.unsettled_funding_estimate.label) +
+      opRow("Held", mDur(p.duration_ms) + " · entered " + istT(p.opened_ts));
+    var fresh = '<div class="opfresh" data-f="fresh">mark <b>' + esc(pr.mark_status) + "</b> " + mAge(pr.mark_age_ms) + " old · book <b>" + esc(pr.book_status) + "</b> " + mAge(pr.book_age_ms) + " old · valuation " + istHMS(L.freshness.calc_ts) + " " + TZ.label + "</div>";
+    return '<div class="opcard mrow" tabindex="0" data-pid="' + esc(p.position_id) + '" role="button" title="Open position detail">' + head + (chips ? '<div class="opchips">' + chips + "</div>" : "") + '<div class="opfigs">' + figs + "</div>" +
+      '<table class="kv optab">' + rows + "</table>" + fresh + "</div>";
+  }).join("") + "</div>" + '<div class="sub" style="margin-top:6px">Mark, last, bid and ask are different prices. Gross P&L is at the exchange mark. ROI names its denominator; the primary ROI is gross P&L ÷ initial margin and other ROIs are in the position detail. “Est. net if closed now” is an estimate from current book depth, not a fill, and already includes every booked fee and the estimated exit fee. Values under ' + "0.005 USDT are shown as flat. Click a card (or press Enter) for the full record.</div>";
   $("mPositions").querySelectorAll(".mrow").forEach(function (r) { r.onclick = function () { monitorOpenDetail(r.dataset.pid); }; r.onkeydown = function (e) { if (e.key === "Enter") monitorOpenDetail(r.dataset.pid); }; });
 }
 function mEventText(e) {

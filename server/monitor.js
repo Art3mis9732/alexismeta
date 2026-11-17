@@ -52,12 +52,24 @@ class Monitor {
     const top = b.top(400);
     return { state: b.state, ts: b.recvTs, bids: top.bids, asks: top.asks };
   }
+  /** Entry sizing recorded in the ledger risk status at the moment the position was approved (immutable, so memoised). Null if not found. */
+  recordedSizing(decisionId) {
+    this._rec = this._rec || new Map();
+    if (this._rec.has(decisionId)) return this._rec.get(decisionId);
+    const r = this.db.prepare("SELECT payload FROM ledger_entries WHERE entry_id=?").get("risk:" + decisionId); let out = null;
+    if (r) { try { const z = JSON.parse(r.payload).size; if (z && z.risk_usdt > 0) out = { margin: z.margin, notional: z.notional, risk_usdt: z.risk_usdt }; } catch (e) { out = null; } }
+    if (out || this._rec.size < 5000) this._rec.set(decisionId, out);
+    return out;
+  }
   positionView(p) {
     const ins = this.store.instrument(p.instrument_id), fills = this.db.prepare("SELECT * FROM paper_fills WHERE position_id=? ORDER BY ts, fill_id").all(p.position_id);
     const pos = acct.positionFromFills(p.side, fills, ins), lev = this.config.exchangeLev, now = this.now();
     const funding = this.db.prepare("SELECT COALESCE(SUM(amount),0) AS a FROM paper_funding WHERE position_id=?").get(p.position_id).a;
     const q = this.quotes(p.instrument_id), book = this.bookOf(p.instrument_id);
     const v = p.state === "OPEN" ? acct.valuePosition({ pos, mark: q && q.mark ? { price: q.mark, ts: q.received_ts } : null, book, now, feeRate: this.config.taker, leverage: lev, settledFunding: funding }) : null;
+    const tk = this.collector.latestTicker ? this.collector.latestTicker[p.instrument_id] : null;
+    const fundingInfo = tk && tk.funding_rate !== null && tk.funding_rate !== undefined && Number.isFinite(Number(tk.funding_rate)) ? { rate: Number(tk.funding_rate), next_settlement_ts: tk.next_funding_ts || null } : null;
+    const live = p.state === "OPEN" && v ? acct.liveMetrics({ pos, valuation: v, leverage: lev, recorded: this.recordedSizing(p.decision_id), funding: fundingInfo }) : null;
     const notional = pos.remaining_qty * (pos.avg_entry || 0), stopDist = Math.max(0, p.side * ((pos.avg_entry || p.entry) - p.stop));
     return {
       position_id: p.position_id, decision_id: p.decision_id, trade_id: p.position_id, analyst: p.analyst, analyst_name: RULES[p.analyst] ? RULES[p.analyst].name : p.analyst,
@@ -71,7 +83,7 @@ class Monitor {
       fees_paid: pos.entry_fees + pos.exit_fees, entry_fees: pos.entry_fees, exit_fees: pos.exit_fees, funding_settled: funding, realized_gross: pos.realized_gross,
       open_risk_usdt: p.state === "OPEN" ? stopDist * pos.remaining_qty + notional * (2 * this.config.taker + this.config.slipFrac) : 0,
       distance_to_invalidation_pct: v && v.mark.price ? p.side * (v.mark.price - p.stop) / v.mark.price * 100 : null,
-      quotes: q, valuation: v, evidence_hash: p.evidence_hash || null, fills: fills.length,
+      quotes: q, valuation: v, live, evidence_hash: p.evidence_hash || null, fills: fills.length,
       closed: p.state === "CLOSED" ? { exit_price: p.exit_price, exit_ts: p.exit_ts, reason: p.exit_reason, net_usdt: p.pnl, evaluable: p.evaluable === 1 } : null
     };
   }
@@ -86,10 +98,11 @@ class Monitor {
       const parts = rows.map((p, i) => ({ pos: acct.positionFromFills(p.side, this.db.prepare("SELECT * FROM paper_fills WHERE position_id=?").all(p.position_id), this.store.instrument(p.instrument_id)),
         funding: views[i].funding_settled, u_mark: views[i].valuation ? views[i].valuation.u_mark : null }));
       const av = acct.accountView({ start: this.config.equity0, positions: parts, leverage: lev });
+      const extras = acct.accountExtras({ av, items: parts.map((pt, i) => ({ pos: pt.pos, v: views[i].valuation })), start: this.config.equity0 });
       const open = views.filter(v => v.state !== "CLOSED"), closed = views.filter(v => v.state === "CLOSED"), unc = closed.filter(v => !v.closed.evaluable), ev = closed.filter(v => v.closed.evaluable);
       const sum = L => L.reduce((s, v) => s + v.closed.net_usdt, 0);
       const stale = open.some(v => v.valuation && (v.valuation.mark.status !== "OK"));
-      out.push({ account_id: `paper:${a}`, analyst: a, analyst_name: RULES[a].name, strategy_version: RULES[a].version, kill_switch: !!pf.kill_switch, ...av,
+      out.push({ account_id: `paper:${a}`, analyst: a, analyst_name: RULES[a].name, strategy_version: RULES[a].version, kill_switch: !!pf.kill_switch, ...av, ...extras,
         cash_balance_stored: pf.equity, cash_reconciles: Math.abs(pf.equity - av.cash_balance) < 1e-6, valuation_status: !open.length ? "NO_OPEN_POSITIONS" : av.mark_equity === null ? "UNAVAILABLE" : stale ? "STALE" : "OK",
         peak_mark_equity: pf.peak_equity, drawdown_pct: av.mark_equity !== null && pf.peak_equity > 0 ? Math.min(0, av.mark_equity / pf.peak_equity - 1) * 100 : null,
         portfolio_return_pct_of_starting_capital: av.mark_equity !== null ? (av.mark_equity / this.config.equity0 - 1) * 100 : null,

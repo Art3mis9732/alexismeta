@@ -145,12 +145,92 @@ function valuePosition({ pos, mark, book, now, feeRate, leverage, settledFunding
   const ce = bStatus === "UNAVAILABLE" ? { status: "UNAVAILABLE", coverage: 0, x: null, exit_fee_est: null, remaining_close_contribution: null } : closeEstimate(pos, book, { feeRate });
   if (ce.status === "PARTIAL_LIQUIDITY") quality.push("insufficient_close_depth");
   const life = lifecycleIfClosedNow(pos, ce, settledFunding);
-  return { valuation_method: VALUATION_VERSION, calc_ts: now,
+  return { valuation_method: VALUATION_VERSION, calc_ts: now, settled_funding: settledFunding,
     mark: { price: mark && okPrice(mark.price) ? mark.price : null, ts: mark ? mark.ts || null : null, age_ms: mAge, status: mStatus },
     book: { ts: book ? book.ts || null : null, age_ms: bAge, status: bStatus },
     u_mark: u, u_mark_is_stale: mStatus === "STALE", close_now: { ...ce, is_stale: bStatus === "STALE" }, lifecycle_if_closed_now: life,
     pct: percentages(pos, u, life, leverage), quality };
 }
 
-module.exports = { VALUATION_VERSION, toUnits, fromUnits, baseUnits, positionFromFills, markUnrealized, closeEstimate, lifecycleIfClosedNow, fundingCashflow,
+/* ================================================================ live-metrics-v1 (ADDITIVE: no valuation-v1 formula or key is changed)
+ * Everything here is a presentation-grade restatement of quantities that valuation-v1 already computes, with every ratio naming its denominator.
+ * Margin basis: the SIMULATOR's reserved margin = entry-fill notional / margin setting (the same convention accountView uses). The ledger's risk record
+ * (written at entry) holds a margin and notional computed on the PRE-slippage reference price; they differ from the fill-based numbers by about the
+ * entry slippage (2 bps) and are exposed separately as `recorded_at_entry`, never mixed into a ratio unless the ratio says so.
+ * There is no margin add/remove operation in this engine: a margin change would alter only the margin denominators, never any price P&L (tested as arithmetic). */
+const LIVE_METRICS_VERSION = "live-metrics-v1";
+const DISPLAY_TOLERANCE_USDT = 0.005;            // |value| below half a cent is displayed as FLAT, not as a gain or a loss
+function signClass(v, tol = DISPLAY_TOLERANCE_USDT) { if (typeof v !== "number" || !Number.isFinite(v)) return "UNAVAILABLE"; return v >= tol ? "GAIN" : v <= -tol ? "LOSS" : "FLAT"; }
+/** numerator / denominator with an explicit reason when it cannot be formed. Never 0% and never Infinity. */
+function ratio(num, den, denLabel, why) {
+  if (typeof num !== "number" || !Number.isFinite(num)) return { value: null, denominator_usdt: den > 0 ? den : null, denominator: denLabel, reason: why || "NUMERATOR_UNAVAILABLE" };
+  if (!(den > 0) || !Number.isFinite(den)) return { value: null, denominator_usdt: null, denominator: denLabel, reason: "DENOMINATOR_UNAVAILABLE" };
+  return { value: num / den * 100, denominator_usdt: den, denominator: denLabel, reason: null };
+}
+/** @param valuation  the object valuePosition() returned   @param recorded {margin, notional, risk_usdt} from the entry risk record, or null
+ *  @param funding   {rate, next_settlement_ts} from the latest ticker, or null */
+function liveMetrics({ pos, valuation, leverage, recorded = null, funding = null }) {
+  const v = valuation || {}, lev = leverage > 0 ? leverage : null, avg = pos.avg_entry;
+  const entryNotional = avg !== null ? pos.entry_qty * avg : null, remNotional = avg !== null ? pos.remaining_qty * avg : null;
+  const mark = v.mark && v.mark.price ? v.mark.price : null, markNotional = mark !== null ? pos.remaining_qty * mark : null;
+  const initialMargin = lev && entryNotional !== null ? entryNotional / lev : null, allocatedMargin = lev && remNotional !== null ? remNotional / lev : null;
+  const u = typeof v.u_mark === "number" ? v.u_mark : null, ce = v.close_now || { status: "UNAVAILABLE" };
+  const okClose = ce.status === "OK";
+  const remLeg = okClose ? (() => { const gross = pos.side * pos.remaining_qty * (ce.x - avg); return { gross_close: gross, exit_fee_est: ce.exit_fee_est, entry_fee_allocated: pos.entry_fees_open, net: gross - ce.exit_fee_est - pos.entry_fees_open }; })() : null;
+  const settled = typeof (valuation && valuation.settled_funding) === "number" ? valuation.settled_funding : 0;
+  const whole = v.lifecycle_if_closed_now === null || v.lifecycle_if_closed_now === undefined ? null : v.lifecycle_if_closed_now;
+  const realizedPart = pos.realized_gross - pos.entry_fees_closed - pos.exit_fees + settled;       // booked, closed-leg part of the lifetime result
+  const roi = [
+    { key: "gross_return_on_initial_margin", label: "Gross return on initial margin", ...ratio(u, initialMargin, "initial margin = full entry fill notional / margin setting", u === null ? "MARK_UNAVAILABLE" : null), primary: true },
+    { key: "gross_return_on_current_margin", label: "Gross return on current allocated margin", ...ratio(u, allocatedMargin, "current allocated margin = remaining entry notional / margin setting", u === null ? "MARK_UNAVAILABLE" : null) },
+    { key: "return_on_entry_notional", label: "Gross return on remaining entry notional", ...ratio(u, remNotional, "remaining quantity x average entry price", u === null ? "MARK_UNAVAILABLE" : null) },
+    { key: "net_if_closed_on_initial_margin", label: "Estimated net (whole trade, if closed now) on initial margin", ...ratio(whole, initialMargin, "initial margin", whole === null ? "CLOSE_ESTIMATE_UNAVAILABLE" : null) }
+  ];
+  const risk = recorded && recorded.risk_usdt > 0 ? recorded.risk_usdt : null;
+  const estFunding = funding && Number.isFinite(funding.rate) && mark !== null && pos.remaining_qty > 0 ? fundingCashflow(pos.side, pos.remaining_qty, funding.rate, mark) : null;
+  return {
+    contract: LIVE_METRICS_VERSION, direction: pos.side > 0 ? "LONG" : "SHORT", quantity_base: pos.remaining_qty,
+    prices: { average_entry: avg, mark, mark_ts: v.mark ? v.mark.ts : null, mark_age_ms: v.mark ? v.mark.age_ms : null, mark_status: v.mark ? v.mark.status : "UNAVAILABLE",
+      estimated_close: okClose ? ce.x : null, close_ts: v.book ? v.book.ts : null, book_age_ms: v.book ? v.book.age_ms : null, book_status: v.book ? v.book.status : "UNAVAILABLE", close_status: ce.status },
+    notional: { entry_full: entryNotional, remaining_at_entry: remNotional, at_mark: markNotional },
+    margin: { model: "simulator", margin_setting_leverage: lev, initial: initialMargin, allocated_now: allocatedMargin,
+      notional_at_mark_per_allocated_margin: markNotional !== null && allocatedMargin > 0 ? markNotional / allocatedMargin : null,
+      recorded_at_entry: recorded ? { margin: recorded.margin, notional: recorded.notional, risk_usdt: recorded.risk_usdt, basis: "ledger risk record, computed on the pre-slippage reference price" } : null },
+    gross_unrealized: { value: u, class: signClass(u), tolerance_usdt: DISPLAY_TOLERANCE_USDT },
+    roi, roi_primary_key: "gross_return_on_initial_margin",
+    risk_budget: { recorded_usdt: risk, gross_unrealized_per_risk_budget: ratio(u, risk, "recorded initial risk budget (ledger risk record)", u === null ? "MARK_UNAVAILABLE" : null) },
+    net_if_closed: { status: okClose ? "OK" : ce.status, remaining_leg: remLeg && { ...remLeg, class: signClass(remLeg.net) },
+      whole_trade: whole === null ? null : { net: whole, class: signClass(whole), realized_gross: pos.realized_gross, remaining_leg_gross: remLeg ? remLeg.gross_close : null, funding_settled: settled,
+        entry_fees: pos.entry_fees, exit_fees_booked: pos.exit_fees, exit_fee_est: ce.exit_fee_est, realized_part: realizedPart,
+        identity_residual: remLeg ? whole - (remLeg.net + realizedPart) : null, identity: "whole-trade net = remaining-leg net + realized part (realized gross - closed share of entry fees - exit fees booked + settled funding)" } },
+    unsettled_funding_estimate: { usdt: estFunding, rate: funding ? funding.rate : null, next_settlement_ts: funding ? funding.next_settlement_ts : null, included_in_any_net_figure: false,
+      label: "estimate for the next settlement if the position is still open then; not booked; not part of any figure above" },
+    freshness: { calc_ts: v.calc_ts || null, mark_fresh: v.mark ? v.mark.status === "OK" : false, book_fresh: v.book ? v.book.status === "OK" : false }
+  };
+}
+
+/** Account-level extras. items = [{ pos, v (valuePosition result) }] for the OPEN positions; av = accountView result. All keys are additive. */
+function accountExtras({ av, items, start, external = 0 }) {
+  const open = items.filter(i => i.pos.remaining_qty > 0);
+  const withClose = open.filter(i => i.v && i.v.close_now && i.v.close_now.status === "OK"), withMark = open.filter(i => i.v && i.v.mark && i.v.mark.price && i.v.mark.status !== "UNAVAILABLE");
+  const staleMark = open.filter(i => i.v && i.v.mark && i.v.mark.status === "STALE").length, staleBook = open.filter(i => i.v && i.v.book && i.v.book.status === "STALE").length;
+  const closeout = open.length === withClose.length ? av.cash_balance + withClose.reduce((a, i) => a + i.v.close_now.remaining_close_contribution, 0) : null;
+  const markNotional = open.length === withMark.length ? withMark.reduce((a, i) => a + i.pos.remaining_qty * i.v.mark.price, 0) : null;
+  const signed = open.length === withMark.length ? withMark.reduce((a, i) => a + i.pos.side * i.pos.remaining_qty * i.v.mark.price, 0) : null;
+  const ages = open.map(i => (i.v && i.v.mark ? i.v.mark.age_ms : null)).filter(x => x !== null);
+  const base = start + external;
+  return {
+    closeout: { equity_estimate: closeout, positions_open: open.length, positions_with_close_estimate: withClose.length,
+      basis: "booked cash + sum over open positions of (estimated gross close - estimated exit fee); entry fees and funding are already in cash and are not counted twice",
+      reason: closeout === null && open.length ? "an open position has no OK executable-close estimate" : null },
+    exposure: { gross_notional_at_mark: markNotional, net_signed_notional_at_mark: signed, reserved_margin: av.reserved_margin,
+      notional_over_mark_equity: markNotional !== null && av.mark_equity > 0 ? markNotional / av.mark_equity : null, basis: "account-level exposure; position-level leverage is shown per position" },
+    pricing: { open_positions: open.length, mark_available: withMark.length, close_estimate_available: withClose.length, mark_stale: staleMark, book_stale: staleBook, oldest_mark_age_ms: ages.length ? Math.max(...ages) : null,
+      completeness: !open.length ? "NO_OPEN_POSITIONS" : withMark.length === open.length && withClose.length === open.length && !staleMark && !staleBook ? "COMPLETE" : withMark.length ? "PARTIAL" : "NONE" },
+    account_return: { definition: "(mark equity - (starting capital + external paper cashflows)) / (starting capital + external paper cashflows); position ROIs are never averaged into it",
+      denominator_usdt: base > 0 ? base : null, value_pct: av.mark_equity !== null && base > 0 ? (av.mark_equity / base - 1) * 100 : null, external_cashflows: external, capital_flow_assumption: "no deposits, withdrawals or resets are supported by this engine" }
+  };
+}
+
+module.exports = { VALUATION_VERSION, LIVE_METRICS_VERSION, DISPLAY_TOLERANCE_USDT, signClass, ratio, liveMetrics, accountExtras, toUnits, fromUnits, baseUnits, positionFromFills, markUnrealized, closeEstimate, lifecycleIfClosedNow, fundingCashflow,
   accountView, percentages, valuePosition };

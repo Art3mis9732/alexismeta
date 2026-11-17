@@ -24,6 +24,20 @@
   .schip { text-decoration:none; color:var(--text); border:1px solid var(--line); border-radius:14px; padding:2px 10px; white-space:nowrap; }
   .schip:hover, .schip:focus-visible { border-color:var(--accent); }
   .crit { font-weight:800; }
+  .opgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(380px,1fr)); gap:12px; margin-top:4px; }
+  .opcard { background:#12151b; border:1px solid var(--line); border-radius:10px; padding:12px 14px; cursor:pointer; min-width:0; }
+  .opcard:hover, .opcard:focus-visible { border-color:var(--accent); }
+  .ophead { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; align-items:baseline; }
+  .opsym { font-size:16px; } .dir { letter-spacing:.04em; }
+  .opchips { margin-top:6px; display:flex; gap:6px; flex-wrap:wrap; }
+  .opfigs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:10px 0 6px; }
+  .oplbl { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+  .opbig { font-size:19px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .optab td { padding:3px 4px; } .optab td.num { text-align:right; }
+  .opfresh { margin-top:8px; color:var(--muted); font-size:12px; border-top:1px dashed var(--line); padding-top:6px; }
+  @media (max-width:640px) { .opgrid { grid-template-columns:minmax(0,1fr); } .opfigs { grid-template-columns:minmax(0,1fr); }
+    .optab, .optab tbody, .optab tr, .optab td { display:block; width:auto; } .optab tr { padding:4px 0; border-bottom:1px solid var(--line); }
+    .optab td { padding:0 4px; white-space:normal; overflow-wrap:anywhere; } .optab td.num { text-align:left; } .optab td:first-child { color:var(--muted); font-size:12px; } }
   .scard { margin-top:12px; } .scols { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:6px 22px; } .scols h4 { margin:12px 0 4px; }
   @media (max-width:1000px) { .scols { grid-template-columns:minmax(0,1fr); } }
   @media (max-width:600px) { #views { display:flex; flex-wrap:wrap; } #views span { flex:1 1 30%; text-align:center; border-bottom:1px solid var(--line); } }   /* all five tabs visible on a phone, none clipped */
@@ -104,8 +118,8 @@
     <div class="chips" id="mStatus" aria-live="polite"></div>
     <div class="sub" id="mBuild" style="margin-top:6px"></div>
   </div>
+  <div class="card"><h2>Open positions — live paper valuation <span class="muted" id="mPosAsOf"></span></h2><div id="mPositions" class="sub"></div></div>
   <div class="card"><h2>Paper accounts — independent portfolios, shown side by side, never added together</h2><div id="mAccounts" class="sub">Waiting for the local worker…</div></div>
-  <div class="card"><h2>Open paper positions <span class="muted" id="mPosAsOf"></span></h2><div id="mPositions" class="sub"></div></div>
   <div class="card hidden" id="mDetailCard"><h2>Position detail <button id="mDetailClose" style="float:right;padding:2px 10px">Close detail</button></h2><div id="mDetail"></div>
     <div class="sub" id="mChartNote" style="margin-top:8px"></div><div class="chart" id="mChart" style="height:260px"></div></div>
   <div class="card"><h2>Why there is or is not a trade — last decision per analyst for <span id="mDiagSym"></span></h2><div id="mDiag" class="sub"></div></div>

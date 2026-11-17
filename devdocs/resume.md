@@ -8,7 +8,7 @@
   * `hist-evaluation-report.md`: over 180 days no analyst makes money after costs and none is distinguishable from random entries (about -0.35 R per trade, break-even before costs). D-033.
   * `research-preregistration.md` (+ Amendments 1-2) was committed before any fit. `research-model-results.md`: first real fit = **REJECTED_ON_VALIDATION** (32 of 40 trials used; FINAL segment never read; boosting's log-loss gain is the cost effect, not an entry signal). Registry: `research/registry/`.
   * Data: `data/hist` (2 years of public candles, gitignored; refetch with `node research/fetch_native.js 730 && node scripts/stress_fetch_1m.js 730`, about 1 hour), dataset `data/research/dataset-v1` (rebuild reproduces sha256 `205a589a...`, peak memory about 2 GB, about 8 minutes).
-* Forward worker 8787 (when the session is alive) runs build `89826e4` (older than the working tree, so it does not show the Model Lab card until restarted; it had no open positions when last checked is NOT verified: check before any restart, D-022). It dies with the session; start it only if none is running (D-029). Back up `data/market.db` first.
+* Forward worker 8787 (when the session is alive) runs build `89826e4` (older than the working tree, so it does not show the Model Lab card until restarted; whether it holds open positions was not checked this session: check before any restart, D-022). It dies with the session; start it only if none is running (D-029). Back up `data/market.db` first.
 
 ## Next exact steps
 1. Ask the user whether to push the dev branch `claude/friendly-dirac-ouvgn4` (NOT main: main publishes the site). Nothing after the merge is pushed.

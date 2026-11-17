@@ -1,0 +1,601 @@
+{
+ "generated_at": "2026-11-17T09:44:16.810Z",
+ "config_version": "stress-v1",
+ "method": "see header of scripts/stress_calibrate.js",
+ "instruments": {
+  "BTCUSDT": {
+   "development": {
+    "days": 59,
+    "alert_episodes": 53,
+    "alert_episodes_per_day": 0.899,
+    "minutes_by_state": {
+     "NORMAL": 83550,
+     "ELEVATED": 962,
+     "HIGH_STRESS": 366,
+     "CRITICAL": 22
+    },
+    "share_of_time_restricted_pct": 0.457,
+    "labelled_episodes": 17,
+    "detected": 5,
+    "missed": 12,
+    "missed_rate": 0.706,
+    "median_detection_delay_min": 54,
+    "delay_minutes_p90": 61,
+    "alert_episodes_overlapping_a_labelled_episode": 5,
+    "alert_episodes_without_one": 48,
+    "base_rate_abnormal_forward_range": {
+     "n": 84900,
+     "k": 849,
+     "rate": 0.01
+    },
+    "conditional_on_state": [
+     {
+      "level": "NORMAL",
+      "minutes": 83550,
+      "abnormal_forward_range": 821,
+      "frequency": 0.009826451226810293,
+      "wilson95": [
+       0.009179761477310729,
+       0.010518214923094538
+      ]
+     },
+     {
+      "level": "ELEVATED",
+      "minutes": 962,
+      "abnormal_forward_range": 18,
+      "frequency": 0.018711018711018712,
+      "wilson95": [
+       0.01186779079901472,
+       0.029382865623322034
+      ]
+     },
+     {
+      "level": "HIGH_STRESS",
+      "minutes": 366,
+      "abnormal_forward_range": 10,
+      "frequency": 0.0273224043715847,
+      "wilson95": [
+       0.014907235130610817,
+       0.049557119338978314
+      ]
+     },
+     {
+      "level": "CRITICAL",
+      "minutes": 22,
+      "abnormal_forward_range": 0,
+      "frequency": 0,
+      "wilson95": [
+       1.1814722454179233e-17,
+       0.14865952572596122
+      ]
+     }
+    ]
+   },
+   "evaluation": {
+    "days": 30,
+    "alert_episodes": 28,
+    "alert_episodes_per_day": 0.935,
+    "minutes_by_state": {
+     "NORMAL": 42375,
+     "ELEVATED": 481,
+     "HIGH_STRESS": 140,
+     "CRITICAL": 144
+    },
+    "share_of_time_restricted_pct": 0.658,
+    "labelled_episodes": 14,
+    "detected": 4,
+    "missed": 10,
+    "missed_rate": 0.714,
+    "median_detection_delay_min": 65,
+    "delay_minutes_p90": 131,
+    "alert_episodes_overlapping_a_labelled_episode": 4,
+    "alert_episodes_without_one": 24,
+    "base_rate_abnormal_forward_range": {
+     "n": 43140,
+     "k": 818,
+     "rate": 0.01896152063050533
+    },
+    "conditional_on_state": [
+     {
+      "level": "NORMAL",
+      "minutes": 42375,
+      "abnormal_forward_range": 766,
+      "frequency": 0.018076696165191742,
+      "wilson95": [
+       0.016851161033291675,
+       0.019389603037050448
+      ]
+     },
+     {
+      "level": "ELEVATED",
+      "minutes": 481,
+      "abnormal_forward_range": 44,
+      "frequency": 0.09147609147609148,
+      "wilson95": [
+       0.06884838157386788,
+       0.12057760827518797
+      ]
+     },
+     {
+      "level": "HIGH_STRESS",
+      "minutes": 140,
+      "abnormal_forward_range": 8,
+      "frequency": 0.05714285714285714,
+      "wilson95": [
+       0.029236134754816862,
+       0.10870448882000434
+      ]
+     },
+     {
+      "level": "CRITICAL",
+      "minutes": 144,
+      "abnormal_forward_range": 0,
+      "frequency": 0,
+      "wilson95": [
+       0,
+       0.025984567266588023
+      ]
+     }
+    ]
+   },
+   "move_onset_latency": {
+    "development": {
+     "cutoff_abs_15m_return": 0.01489,
+     "events": 13,
+     "detected": 12,
+     "missed": 1,
+     "missed_rate": 0.077,
+     "delay_from_move_start_min": {
+      "median": 14,
+      "p90": 16,
+      "note": "negative = the alert preceded the start of the 15-minute window"
+     }
+    },
+    "evaluation": {
+     "cutoff_abs_15m_return": 0.01489,
+     "events": 12,
+     "detected": 9,
+     "missed": 3,
+     "missed_rate": 0.25,
+     "delay_from_move_start_min": {
+      "median": 12,
+      "p90": 26,
+      "note": "negative = the alert preceded the start of the 15-minute window"
+     }
+    }
+   },
+   "sensitivity_evaluation": {
+    "thresholds_x0.8": {
+     "alert_episodes_per_day": 1.702,
+     "missed_rate": 0.5,
+     "share_of_time_restricted_pct": 1.841,
+     "alert_episodes_without_one": 42
+    },
+    "thresholds_x1.25": {
+     "alert_episodes_per_day": 0.3,
+     "missed_rate": 0.929,
+     "share_of_time_restricted_pct": 0.329,
+     "alert_episodes_without_one": 8
+    },
+    "thresholds_x1.5": {
+     "alert_episodes_per_day": 0.067,
+     "missed_rate": 0.929,
+     "share_of_time_restricted_pct": 0.199,
+     "alert_episodes_without_one": 1
+    }
+   }
+  },
+  "ETHUSDT": {
+   "development": {
+    "days": 59,
+    "alert_episodes": 53,
+    "alert_episodes_per_day": 0.899,
+    "minutes_by_state": {
+     "NORMAL": 83434,
+     "ELEVATED": 929,
+     "HIGH_STRESS": 374,
+     "CRITICAL": 163
+    },
+    "share_of_time_restricted_pct": 0.633,
+    "labelled_episodes": 17,
+    "detected": 5,
+    "missed": 12,
+    "missed_rate": 0.706,
+    "median_detection_delay_min": 53,
+    "delay_minutes_p90": 59,
+    "alert_episodes_overlapping_a_labelled_episode": 6,
+    "alert_episodes_without_one": 47,
+    "base_rate_abnormal_forward_range": {
+     "n": 84900,
+     "k": 849,
+     "rate": 0.01
+    },
+    "conditional_on_state": [
+     {
+      "level": "NORMAL",
+      "minutes": 83434,
+      "abnormal_forward_range": 797,
+      "frequency": 0.009552460627561906,
+      "wilson95": [
+       0.008914649341717167,
+       0.01023543375439207
+      ]
+     },
+     {
+      "level": "ELEVATED",
+      "minutes": 929,
+      "abnormal_forward_range": 32,
+      "frequency": 0.03444564047362755,
+      "wilson95": [
+       0.024503591012421354,
+       0.048222153637045385
+      ]
+     },
+     {
+      "level": "HIGH_STRESS",
+      "minutes": 374,
+      "abnormal_forward_range": 16,
+      "frequency": 0.0427807486631016,
+      "wilson95": [
+       0.026501823689619463,
+       0.06835697428286423
+      ]
+     },
+     {
+      "level": "CRITICAL",
+      "minutes": 163,
+      "abnormal_forward_range": 4,
+      "frequency": 0.024539877300613498,
+      "wilson95": [
+       0.009583366662591223,
+       0.061391737867693794
+      ]
+     }
+    ]
+   },
+   "evaluation": {
+    "days": 30,
+    "alert_episodes": 32,
+    "alert_episodes_per_day": 1.068,
+    "minutes_by_state": {
+     "NORMAL": 42147,
+     "ELEVATED": 612,
+     "HIGH_STRESS": 297,
+     "CRITICAL": 84
+    },
+    "share_of_time_restricted_pct": 0.883,
+    "labelled_episodes": 14,
+    "detected": 6,
+    "missed": 8,
+    "missed_rate": 0.571,
+    "median_detection_delay_min": 60,
+    "delay_minutes_p90": 61,
+    "alert_episodes_overlapping_a_labelled_episode": 6,
+    "alert_episodes_without_one": 26,
+    "base_rate_abnormal_forward_range": {
+     "n": 43140,
+     "k": 769,
+     "rate": 0.01782568382012054
+    },
+    "conditional_on_state": [
+     {
+      "level": "NORMAL",
+      "minutes": 42147,
+      "abnormal_forward_range": 691,
+      "frequency": 0.016394998457778726,
+      "wilson95": [
+       0.015225948127209786,
+       0.017652199672334973
+      ]
+     },
+     {
+      "level": "ELEVATED",
+      "minutes": 612,
+      "abnormal_forward_range": 44,
+      "frequency": 0.0718954248366013,
+      "wilson95": [
+       0.05398999080877915,
+       0.09514186387593195
+      ]
+     },
+     {
+      "level": "HIGH_STRESS",
+      "minutes": 297,
+      "abnormal_forward_range": 31,
+      "frequency": 0.10437710437710437,
+      "wilson95": [
+       0.07451128483663161,
+       0.14434674543577752
+      ]
+     },
+     {
+      "level": "CRITICAL",
+      "minutes": 84,
+      "abnormal_forward_range": 3,
+      "frequency": 0.03571428571428571,
+      "wilson95": [
+       0.012219447773066114,
+       0.09981858432106692
+      ]
+     }
+    ]
+   },
+   "move_onset_latency": {
+    "development": {
+     "cutoff_abs_15m_return": 0.02156,
+     "events": 14,
+     "detected": 14,
+     "missed": 0,
+     "missed_rate": 0,
+     "delay_from_move_start_min": {
+      "median": 14,
+      "p90": 16,
+      "note": "negative = the alert preceded the start of the 15-minute window"
+     }
+    },
+    "evaluation": {
+     "cutoff_abs_15m_return": 0.02156,
+     "events": 10,
+     "detected": 10,
+     "missed": 0,
+     "missed_rate": 0,
+     "delay_from_move_start_min": {
+      "median": 15,
+      "p90": 22,
+      "note": "negative = the alert preceded the start of the 15-minute window"
+     }
+    }
+   },
+   "sensitivity_evaluation": {
+    "thresholds_x0.8": {
+     "alert_episodes_per_day": 1.936,
+     "missed_rate": 0.286,
+     "share_of_time_restricted_pct": 2.397,
+     "alert_episodes_without_one": 46
+    },
+    "thresholds_x1.25": {
+     "alert_episodes_per_day": 0.434,
+     "missed_rate": 0.714,
+     "share_of_time_restricted_pct": 0.262,
+     "alert_episodes_without_one": 9
+    },
+    "thresholds_x1.5": {
+     "alert_episodes_per_day": 0.267,
+     "missed_rate": 0.929,
+     "share_of_time_restricted_pct": 0.199,
+     "alert_episodes_without_one": 7
+    }
+   }
+  },
+  "XRPUSDT": {
+   "development": {
+    "days": 59,
+    "alert_episodes": 33,
+    "alert_episodes_per_day": 0.56,
+    "minutes_by_state": {
+     "NORMAL": 84033,
+     "ELEVATED": 448,
+     "HIGH_STRESS": 339,
+     "CRITICAL": 80
+    },
+    "share_of_time_restricted_pct": 0.494,
+    "labelled_episodes": 11,
+    "detected": 3,
+    "missed": 8,
+    "missed_rate": 0.727,
+    "median_detection_delay_min": 60,
+    "delay_minutes_p90": 261,
+    "alert_episodes_overlapping_a_labelled_episode": 3,
+    "alert_episodes_without_one": 30,
+    "base_rate_abnormal_forward_range": {
+     "n": 84900,
+     "k": 849,
+     "rate": 0.01
+    },
+    "conditional_on_state": [
+     {
+      "level": "NORMAL",
+      "minutes": 84033,
+      "abnormal_forward_range": 787,
+      "frequency": 0.00936536836718908,
+      "wilson95": [
+       0.00873617179282051,
+       0.010039421981993604
+      ]
+     },
+     {
+      "level": "ELEVATED",
+      "minutes": 448,
+      "abnormal_forward_range": 13,
+      "frequency": 0.029017857142857144,
+      "wilson95": [
+       0.017035066051464966,
+       0.0490093176440602
+      ]
+     },
+     {
+      "level": "HIGH_STRESS",
+      "minutes": 339,
+      "abnormal_forward_range": 22,
+      "frequency": 0.06489675516224189,
+      "wilson95": [
+       0.043243735080975676,
+       0.09630059092847008
+      ]
+     },
+     {
+      "level": "CRITICAL",
+      "minutes": 80,
+      "abnormal_forward_range": 27,
+      "frequency": 0.3375,
+      "wilson95": [
+       0.24345459812221978,
+       0.4464368161637671
+      ]
+     }
+    ]
+   },
+   "evaluation": {
+    "days": 30,
+    "alert_episodes": 16,
+    "alert_episodes_per_day": 0.534,
+    "minutes_by_state": {
+     "NORMAL": 42716,
+     "ELEVATED": 278,
+     "HIGH_STRESS": 112,
+     "CRITICAL": 34
+    },
+    "share_of_time_restricted_pct": 0.338,
+    "labelled_episodes": 5,
+    "detected": 0,
+    "missed": 5,
+    "missed_rate": 1,
+    "median_detection_delay_min": null,
+    "delay_minutes_p90": null,
+    "alert_episodes_overlapping_a_labelled_episode": 0,
+    "alert_episodes_without_one": 16,
+    "base_rate_abnormal_forward_range": {
+     "n": 43140,
+     "k": 150,
+     "rate": 0.0034770514603616135
+    },
+    "conditional_on_state": [
+     {
+      "level": "NORMAL",
+      "minutes": 42716,
+      "abnormal_forward_range": 150,
+      "frequency": 0.00351156475325405,
+      "wilson95": [
+       0.00299348312928216,
+       0.004118940246370056
+      ]
+     },
+     {
+      "level": "ELEVATED",
+      "minutes": 278,
+      "abnormal_forward_range": 0,
+      "frequency": 0,
+      "wilson95": [
+       -8.555392928537738e-19,
+       0.013630351232749175
+      ]
+     },
+     {
+      "level": "HIGH_STRESS",
+      "minutes": 112,
+      "abnormal_forward_range": 0,
+      "frequency": 0,
+      "wilson95": [
+       0,
+       0.03316252537948371
+      ]
+     },
+     {
+      "level": "CRITICAL",
+      "minutes": 34,
+      "abnormal_forward_range": 0,
+      "frequency": 0,
+      "wilson95": [
+       0,
+       0.10151790621961015
+      ]
+     }
+    ]
+   },
+   "move_onset_latency": {
+    "development": {
+     "cutoff_abs_15m_return": 0.03012,
+     "events": 11,
+     "detected": 6,
+     "missed": 5,
+     "missed_rate": 0.455,
+     "delay_from_move_start_min": {
+      "median": 16,
+      "p90": 49,
+      "note": "negative = the alert preceded the start of the 15-minute window"
+     }
+    },
+    "evaluation": {
+     "cutoff_abs_15m_return": 0.03012,
+     "events": 3,
+     "detected": 3,
+     "missed": 0,
+     "missed_rate": 0,
+     "delay_from_move_start_min": {
+      "median": 12,
+      "p90": 23,
+      "note": "negative = the alert preceded the start of the 15-minute window"
+     }
+    }
+   },
+   "sensitivity_evaluation": {
+    "thresholds_x0.8": {
+     "alert_episodes_per_day": 1.168,
+     "missed_rate": 1,
+     "share_of_time_restricted_pct": 0.844,
+     "alert_episodes_without_one": 34
+    },
+    "thresholds_x1.25": {
+     "alert_episodes_per_day": 0.2,
+     "missed_rate": 1,
+     "share_of_time_restricted_pct": 0.118,
+     "alert_episodes_without_one": 6
+    },
+    "thresholds_x1.5": {
+     "alert_episodes_per_day": 0.167,
+     "missed_rate": 1,
+     "share_of_time_restricted_pct": 0.065,
+     "alert_episodes_without_one": 5
+    }
+   }
+  }
+ },
+ "development": {
+  "period": [
+   "2026-08-20T09:34:00.000Z",
+   "2026-10-18T08:34:00.000Z"
+  ],
+  "quantiles": {
+   "E": 0.995,
+   "H": 0.999,
+   "C": 0.9997
+  },
+  "thresholds_chosen": {
+   "P": [
+    8.6,
+    13.9,
+    19.3
+   ],
+   "V": [
+    4.7,
+    8,
+    10.3
+   ],
+   "A": [
+    3.2,
+    4
+   ]
+  },
+  "note": "Liquidity thresholds (S, D) are NOT calibrated: no historical depth exists. They are provisional engineering values and shadow-only."
+ },
+ "labels": {
+  "definition": "forward 60-minute realised range >= the 99th percentile of that instrument's development-period distribution",
+  "cutoff_fraction": {
+   "BTCUSDT": 0.02088,
+   "ETHUSDT": 0.02935,
+   "XRPUSDT": 0.04671
+  }
+ },
+ "evaluation_period": [
+  "2026-10-18T09:34:00.000Z",
+  "2026-11-17T08:34:00.000Z"
+ ],
+ "limitations": [
+  "Price and volume families only; liquidity families unevaluated (no historical order book).",
+  "Labels are forward realised range (volatility), not direction and not 'crashes'; they measure whether abnormal conditions followed an alert.",
+  "Minute grid vs 5 s live evaluation: live alerts more often. Baselines refreshed hourly here.",
+  "Overlapping labels: effective sample size is far below the minute counts; Wilson intervals are optimistic.",
+  "One 30-day evaluation period: no claim about other regimes.",
+  "No accuracy percentage is produced."
+ ]
+}

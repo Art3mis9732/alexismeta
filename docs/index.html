@@ -19,6 +19,28 @@
   .seg span { padding:7px 16px; cursor:pointer; background:var(--card); border-right:1px solid var(--line); user-select:none; }
   .seg span:last-child { border-right:0; }
   .seg span.on { background:#1f2a3d; color:var(--accent); font-weight:600; }
+  .stressbar { border:1px solid var(--line); border-radius:8px; padding:8px 12px; margin-top:8px; background:var(--card); display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center; }
+  .stressbar.hot { border-color:var(--down); background:#2a1315; }
+  .schip { text-decoration:none; color:var(--text); border:1px solid var(--line); border-radius:14px; padding:2px 10px; white-space:nowrap; }
+  .schip:hover, .schip:focus-visible { border-color:var(--accent); }
+  .crit { font-weight:800; }
+  .opgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(380px,1fr)); gap:12px; margin-top:4px; }
+  .opcard { background:#12151b; border:1px solid var(--line); border-radius:10px; padding:12px 14px; cursor:pointer; min-width:0; }
+  .opcard:hover, .opcard:focus-visible { border-color:var(--accent); }
+  .ophead { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; align-items:baseline; }
+  .opsym { font-size:16px; } .dir { letter-spacing:.04em; }
+  .opchips { margin-top:6px; display:flex; gap:6px; flex-wrap:wrap; }
+  .opfigs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:10px 0 6px; }
+  .oplbl { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+  .opbig { font-size:19px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .optab td { padding:3px 4px; } .optab td.num { text-align:right; }
+  .opfresh { margin-top:8px; color:var(--muted); font-size:12px; border-top:1px dashed var(--line); padding-top:6px; }
+  @media (max-width:640px) { .opgrid { grid-template-columns:minmax(0,1fr); } .opfigs { grid-template-columns:minmax(0,1fr); }
+    .optab, .optab tbody, .optab tr, .optab td { display:block; width:auto; } .optab tr { padding:4px 0; border-bottom:1px solid var(--line); }
+    .optab td { padding:0 4px; white-space:normal; overflow-wrap:anywhere; } .optab td.num { text-align:left; } .optab td:first-child { color:var(--muted); font-size:12px; } }
+  .scard { margin-top:12px; } .scols { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:6px 22px; } .scols h4 { margin:12px 0 4px; }
+  @media (max-width:1000px) { .scols { grid-template-columns:minmax(0,1fr); } }
+  @media (max-width:600px) { #views { display:flex; flex-wrap:wrap; } #views span { flex:1 1 30%; text-align:center; border-bottom:1px solid var(--line); } }   /* all five tabs visible on a phone, none clipped */
   button { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 14px; cursor:pointer; font:inherit; }
   button:disabled { opacity:.45; cursor:not-allowed; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; margin-top:12px; overflow-x:auto; }
@@ -50,13 +72,26 @@
   select, input[type=number] { background:#0b0d11; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:5px 8px; font:inherit; width:90px; }
   .pnl { font-size:24px; font-weight:700; font-variant-numeric:tabular-nums; }
   .hidden { display:none !important; }
-  .profiles { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:12px; }
+  .profiles { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:12px; }
+  .profiles > * { min-width:0; overflow-x:auto; }   /* a wide table scrolls inside its own card instead of pushing the next account out of view */
   @media (max-width:860px) { .profiles { grid-template-columns:1fr; } }
   .pf { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; cursor:pointer; }
   .pf.on { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
   .pf .nm { font-weight:700; } .pf .tf { font-size:11px; color:var(--muted); margin-left:6px; }
   .pf .sg { font-size:22px; font-weight:800; margin-top:4px; }
   .pf .rec { font-size:12px; color:var(--muted); margin-top:4px; }
+  /* paper monitor */
+  .paperbar { border:1px dashed var(--warn); color:var(--warn); padding:6px 10px; border-radius:8px; font-weight:700; letter-spacing:.04em; }
+  .testbar { border:2px solid var(--down); background:repeating-linear-gradient(45deg,#2a1214,#2a1214 10px,#1c0d0e 10px,#1c0d0e 20px); color:#ffb4b6; padding:8px 12px; border-radius:8px; font-weight:800; margin-bottom:8px; }
+  .chips { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  .chip { border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-size:12px; min-width:150px; }
+  .chip b { display:block; font-size:11px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.05em; }
+  .chip.ok { border-color:#2a4a38; } .chip.warnc { border-color:var(--warn); } .chip.bad { border-color:var(--down); }
+  .mrow { cursor:pointer; } .mrow:hover, .mrow:focus { background:#1c2029; outline:1px solid var(--accent); }
+  .num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .frozen { opacity:.55; }
+  .kv td:first-child { color:var(--muted); width:42%; }
+  button:focus-visible, select:focus-visible, .seg span:focus-visible, a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 </style>
 </head>
 <body>
@@ -65,17 +100,64 @@
   <div class="bar2">
     <div class="seg" id="coins"><span class="on" data-sym="BTCUSDT">BTC</span><span data-sym="ETHUSDT">ETH</span><span data-sym="XRPUSDT">XRP</span></div>
     <div class="seg" id="tfs" title="Chart timeframe"><span data-tf="5m">5m</span><span class="on" data-tf="15m">15m</span><span data-tf="4H">4h</span></div>
-    <div class="seg" id="views"><span class="on" data-view="trade">Buy / Sell</span><span data-view="patterns">Patterns</span><span data-view="indicators">Indicators</span></div>
+    <div class="seg" id="views" role="tablist" aria-label="Views"><span data-view="monitor" tabindex="0" role="tab">Paper monitor</span><span data-view="news" tabindex="0" role="tab">News</span><span data-view="stress" tabindex="0" role="tab">Market stress</span><span class="on" data-view="trade" tabindex="0" role="tab">Buy / Sell</span><span data-view="patterns" tabindex="0" role="tab">Patterns</span><span data-view="indicators" tabindex="0" role="tab">Indicators</span></div>
+    <span style="white-space:nowrap"><label class="sub" for="tzSel">Times</label> <select id="tzSel" aria-label="Display timezone" style="width:auto"><option value="IST">Asia/Kolkata (IST)</option><option value="UTC">UTC</option></select></span>
     <span class="sub" id="mode">connecting…</span>
   </div>
+  <div class="sub" id="worker" style="margin-top:6px" aria-live="polite"></div>
+  <div class="stressbar" id="stressBar" aria-live="polite" role="status"></div>
   <div class="banner" id="banner"></div>
 </header>
 
 <main>
+<!-- ======================= PAPER MONITOR (worker-backed; the browser only renders backend views) ======================= -->
+<section id="monitorView" class="hidden" aria-label="Live paper-trading monitor">
+  <div class="card">
+    <div id="mTest"></div>
+    <div class="paperbar" role="note">PAPER · SIMULATED EXECUTION — no orders are sent to any exchange. Not real-money performance.</div>
+    <div class="chips" id="mStatus" aria-live="polite"></div>
+    <div class="sub" id="mBuild" style="margin-top:6px"></div>
+  </div>
+  <div class="card"><h2>Open positions — live paper valuation <span class="muted" id="mPosAsOf"></span></h2><div id="mPositions" class="sub"></div></div>
+  <div class="card"><h2>Paper accounts — independent portfolios, shown side by side, never added together</h2><div id="mAccounts" class="sub">Waiting for the local worker…</div></div>
+  <div class="card hidden" id="mDetailCard"><h2>Position detail <button id="mDetailClose" style="float:right;padding:2px 10px">Close detail</button></h2><div id="mDetail"></div>
+    <div class="sub" id="mChartNote" style="margin-top:8px"></div><div class="chart" id="mChart" style="height:260px"></div>
+    <div class="sub" id="mTimelineNote" style="margin-top:10px"></div><div class="chart hidden" id="mTimeline" style="height:180px"></div></div>
+  <div class="card"><h2>Why there is or is not a trade — last decision per analyst for <span id="mDiagSym"></span></h2><div id="mDiag" class="sub"></div></div>
+  <div class="card"><h2>Activity timeline
+      <label class="sub" style="text-transform:none;letter-spacing:0;margin-left:10px">Type <select id="mFType" style="width:auto"><option value="">all</option></select></label>
+      <label class="sub" style="text-transform:none;letter-spacing:0">Analyst <select id="mFAnalyst" style="width:auto"><option value="">all</option><option value="risk_taker">Risk Taker</option><option value="balanced">Balanced</option><option value="defensive">Defensive</option></select></label>
+      <label class="sub" style="text-transform:none;letter-spacing:0">Coin <select id="mFCoin" style="width:auto"><option value="">all</option><option>BTCUSDT</option><option>ETHUSDT</option><option>XRPUSDT</option></select></label></h2>
+    <div id="mActivity" class="sub"></div></div>
+  <div class="card"><h2>Closed paper positions</h2><div id="mClosed" class="sub"></div></div>
+  <div class="card"><h2>Strategy and model registry · research jobs</h2><div id="mRegistry" class="sub"></div></div>
+</section>
+
+<!-- ======================= NEWS & MARKET EVENTS (worker-backed; render only) ======================= -->
+<section id="newsView" class="hidden" aria-label="News and market events">
+  <div class="card">
+    <h2>News &amp; market events — official sources, context only, never a trade signal</h2>
+    <div id="nSummary" class="sub" aria-live="polite">Loading…</div>
+    <div class="bar2" style="margin-top:8px">
+      <label class="sub" for="nAsset">Asset</label> <select id="nAsset" style="width:auto"><option value="">all tracked coins + macro</option><option>BTC</option><option>ETH</option><option>XRP</option></select>
+      <label class="sub" for="nSource">Source</label> <select id="nSource" style="width:auto"><option value="">all sources</option></select>
+      <label class="sub"><input type="checkbox" id="nAll"> include items not related to BTC/ETH/XRP</label>
+    </div>
+  </div>
+  <div class="card"><h2>Items (newest first)</h2><div id="nItems" class="sub">Loading…</div></div>
+  <div class="card"><details id="nSrcBox"><summary id="nSrcSum"><b>Source health</b> — freshness of retrieval, not age of articles</summary><div id="nSources" class="sub" style="margin-top:8px"></div></details></div>
+</section>
+
 <!-- ======================= BUY / SELL VIEW ======================= -->
 <section id="tradeView">
+  <div class="card hidden" id="analystsCard">
+    <h2>Analysts v1 — decided by the local worker at each 15-minute close · paper only · identical evidence for all three</h2>
+    <div id="analystsBody" class="sub">Loading…</div>
+  </div>
+  </div>
+  <div class="sub" id="legacyNote" style="margin-top:10px">Legacy v0 profiles (rules unchanged, shown for continuity; computed in this browser):</div>
   <div class="profiles" id="profiles"></div>
-  <div class="card" id="modelCard"><h2>Model forecasts — chance the price is higher 16 candles from now, on 5m, 15m and 4h</h2><div id="modelBody" class="sub">Loading…</div></div>
+  <div class="card" id="modelCard"><h2>Model scores (uncalibrated, not probabilities) — does the model lean up or down 16 candles ahead, on 5m, 15m and 4h</h2><div id="modelBody" class="sub">Loading…</div></div>
   <div class="row">
     <div class="card">
       <h2>What to do now — <span id="tSym">BTCUSDT</span> · <span id="tProf">Neutral</span></h2>
@@ -97,20 +179,30 @@
     </div>
   </div>
   <div class="card">
-    <h2>Live chart (<span id="tTf">15m</span>) — <span class="muted">green dashed = take profit · red dashed = stop loss · white = entry · blue line = today's VWAP · times in IST</span></h2>
+    <h2>Live chart (<span id="tTf">15m</span>) — <span class="muted">green dashed = take profit · red dashed = stop loss · white = entry · blue line = today's VWAP · times in <span class="tzl">IST</span></span></h2>
     <div class="chart" id="tChart"></div>
   </div>
   <div class="card">
-    <h2>Automatic paper trader — runs every 15 minutes on GitHub, even when this page is closed</h2>
+    <h2>Legacy scheduled simulator (hypothetical) — a GitHub Actions job; separate from the worker's paper accounts</h2>
     <div id="journal" class="sub">Loading…</div>
   </div>
   <div class="card">
-    <h2>Your own paper trades (saved in this browser)</h2>
+    <h2>Manual sandbox trades — this browser only, not the worker's paper ledger, not part of any account total</h2>
     <div id="tLog" class="sub">No trades yet.</div>
   </div>
 </section>
 
 <!-- ======================= INDICATORS VIEW ======================= -->
+<!-- ======================= MARKET STRESS (worker-backed; render only) ======================= -->
+<section id="stressView" class="hidden" aria-label="Market stress">
+  <div class="card">
+    <h2>Market stress — measured abnormal conditions, thresholds provisional</h2>
+    <div id="sHead" class="sub" aria-live="polite">Loading…</div>
+  </div>
+  <div id="sInst" style="margin-top:12px"></div>
+  <div class="card"><h2>Stress events (append-only history)</h2><div id="sEvents" class="sub"></div></div>
+  <div class="card"><details id="sPolDet"><summary><b>Risk policy and calibration basis</b> — what stress may and may not do</summary><div id="sPolicy" style="margin-top:8px"></div></details></div>
+</section>
 <section id="indicatorsView" class="hidden">
   <div class="card">
     <h2>Indicators on <span id="iSym">BTCUSDT</span> — 15-minute candles, last closed candle <span id="iTime"></span></h2>
@@ -173,9 +265,16 @@
 
 <script src="vendor/lightweight-charts.standalone.production.js"></script>
 <script src="patterns.js"></script>
+<script src="monitor.js"></script>
+<script src="legacy.js"></script>
+<script src="news.js"></script>
+<script src="stress.js"></script>
 <script>
 "use strict";
-const SYMS = ["BTCUSDT", "ETHUSDT", "XRPUSDT"], IST_MS = 19800000, M15 = 900000, RR = 1.5, MIN_STOP_ATR = 0.5;
+/* Display timezone (all storage and logic is UTC). Fixed-offset zones only, so no daylight-saving ambiguity. */
+const TZS = { IST: { ms: 19800000, label: "IST", name: "Asia/Kolkata (UTC+05:30)" }, UTC: { ms: 0, label: "UTC", name: "UTC" } };
+let TZ = (function () { try { return TZS[localStorage.getItem("radar.tz")] || TZS.IST; } catch (e) { return TZS.IST; } })();
+const SYMS = ["BTCUSDT", "ETHUSDT", "XRPUSDT"], M15 = 900000, RR = 1.5, MIN_STOP_ATR = 0.5;
 const SHORT = { DOJI:"Doji", SPIN:"Spin", MARU_UP:"Maru", MARU_DN:"Maru", HAMMER:"Hammer", HANGING:"Hang", STAR_SHOOT:"Star",
   INV_HAMMER:"InvH", ENGULF_UP:"Engulf", ENGULF_DN:"Engulf", PIERCING:"Pierce", DARK_CLOUD:"DCloud", HARAMI_UP:"Harami",
   HARAMI_DN:"Harami", MORNING_STAR:"M-Star", EVENING_STAR:"E-Star", BO_UP:"BREAKOUT", BO_DN:"BREAKDOWN", BO_UP_WEAK:"breakout?",
@@ -198,10 +297,11 @@ const dp = p => p >= 1000 ? 1 : p >= 10 ? 2 : 4;
 const nf = (x, d) => (x === null || x === undefined || isNaN(x)) ? "—" : Number(x).toLocaleString("en-US", { maximumFractionDigits: d, minimumFractionDigits: d });
 const pc = (x, d = 0) => (x === null || x === undefined || isNaN(x)) ? "—" : (x * 100).toFixed(d) + "%";
 const usd = x => (x < 0 ? "−$" : "$") + Math.abs(x).toFixed(2);
-const istT = ms => new Date(ms + IST_MS).toISOString().slice(5, 16).replace("T", " ");
-const istHMS = ms => new Date(ms + IST_MS).toISOString().slice(11, 19);
-const fmtBoth = ms => new Date(ms).toISOString().slice(0, 16).replace("T", " ") + " UTC / " + new Date(ms + IST_MS).toISOString().slice(11, 16) + " IST";
+const istT = ms => new Date(ms + TZ.ms).toISOString().slice(5, 16).replace("T", " ");
+const istHMS = ms => new Date(ms + TZ.ms).toISOString().slice(11, 19);
+const fmtBoth = ms => new Date(ms).toISOString().slice(0, 16).replace("T", " ") + " UTC" + (TZ.ms ? " / " + new Date(ms + TZ.ms).toISOString().slice(11, 16) + " " + TZ.label : "");
 const esc = s => String(s).replace(/[&<>]/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[m]));
+const fundTxt = x => Number.isFinite(x) ? (x * 100).toFixed(4) + "%" : "unknown";   // missing funding is unknown, never 0
 const rr = x => (x === null || x === undefined) ? "—" : (x > 0 ? "+" : "") + x.toFixed(2) + "R";
 const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
                 set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
@@ -267,15 +367,15 @@ function tradePlan(s, pf) {
       P.why = P.kind === "trade" ? `${st.trigger.name}: price ${st.trigger.dir > 0 ? "fell below" : "rose above"} the day's first 4-hour range and a 5-minute candle just closed back inside it.` : P.why;
       P.extraLines = rangeLines; return P;
     }
-    if (st.phase === "forming") return { kind: "wait", why: `The day's range is still being set (05:30–09:30 IST). So far ${nf(lo, d)} – ${nf(hi, d)}.`, lines: rangeLines,
-      levels: `<tr><td colspan="2">Signals start at <b>09:30 IST</b>, when the first 4-hour candle of the day closes.</td></tr>` };
+    if (st.phase === "forming") return { kind: "wait", why: `The day's range is still being set (00:00–04:00 UTC = 05:30–09:30 IST). So far ${nf(lo, d)} – ${nf(hi, d)}.`, lines: rangeLines,
+      levels: `<tr><td colspan="2">Signals start at <b>04:00 UTC (09:30 IST)</b>, when the first 4-hour candle of the day closes.</td></tr>` };
     if (st.phase === "nodata") return { kind: "none", why: "Today's 4-hour range is incomplete (missing candles), so this profile skips the day." };
     const parts = [];
     if (!st.doneS) parts.push(st.upBroken ? `<b class="down">SELL</b> if a 5-minute candle closes back below <b>${nf(hi, d)}</b> (price broke above it; stop would be ${nf(st.upExt, d)})`
                                           : `<b class="down">SELL</b> if price closes above <b>${nf(hi, d)}</b> and then a 5-minute candle closes back below it`);
     if (!st.doneL) parts.push(st.dnBroken ? `<b class="up">BUY</b> if a 5-minute candle closes back above <b>${nf(lo, d)}</b> (price broke below it; stop would be ${nf(st.dnExt, d)})`
                                           : `<b class="up">BUY</b> if price closes below <b>${nf(lo, d)}</b> and then a 5-minute candle closes back above it`);
-    if (!parts.length) return { kind: "none", why: "Both of today's signals have been used. A new range forms tomorrow 05:30–09:30 IST.", lines: rangeLines };
+    if (!parts.length) return { kind: "none", why: "Both of today's signals have been used. A new range forms tomorrow 00:00–04:00 UTC (05:30–09:30 IST).", lines: rangeLines };
     return { kind: "wait", why: `Waiting for a false breakout of today's range ${nf(lo, d)} – ${nf(hi, d)}.`, lines: rangeLines,
       levels: parts.map(x => `<tr><td colspan="2">${x}</td></tr>`).join("") };
   }
@@ -313,19 +413,19 @@ function makeChart(el) {
     rightPriceScale: { borderColor: "#262b35" }, crosshair: { mode: 0 } });
   const cs = ch.addCandlestickSeries({ upColor: "#2fbf71", downColor: "#e5484d", borderVisible: false, wickUpColor: "#2fbf71", wickDownColor: "#e5484d" });
   const vw = ch.addLineSeries({ color: "#6ea8fe", lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
-  return { ch, cs, vw, lines: [], sym: null };
+  return { ch, cs, vw, lines: [], sym: null, el, rng: null };
 }
 const CH = {};
 function setChartData(key, s, keepRange, tf) {
   const five = tf === "5m", A = resTf(tf, s); if (!A) return;
   const vw = A.res.vwap;
-  const k = CH[key], d = dp(A.c[A.c.length - 1].c), tm = t => (t + IST_MS) / 1000;
+  const k = CH[key], d = dp(A.c[A.c.length - 1].c), tm = t => (t + TZ.ms) / 1000;
   const pf = { type: "price", precision: d, minMove: Math.pow(10, -d) };
   k.cs.applyOptions({ priceFormat: pf }); k.vw.applyOptions({ priceFormat: pf });
   k.cs.setData(A.c.map(x => ({ time: tm(x.t), open: x.o, high: x.h, low: x.l, close: x.c })));
   k.vw.setData(A.c.map((x, i) => ({ time: tm(x.t), value: vw[i] })));
   const sig = s + tf;
-  if (!keepRange || k.sig !== sig) k.ch.timeScale().setVisibleLogicalRange({ from: A.c.length - (five ? 200 : 120), to: A.c.length + 8 });
+  if (!keepRange || k.sig !== sig) { k.rng = { from: A.c.length - (five ? 200 : 120), to: A.c.length + 8 }; k.ch.timeScale().setVisibleLogicalRange(k.rng); }
   k.sym = s; k.tf = tf; k.sig = sig;
   if (key === "t") k.cs.setMarkers([]);
   drawForming(key);
@@ -334,7 +434,7 @@ function drawForming(key) {
   const k = CH[key]; if (!k || !k.sym) return;
   const f = (k.tf === "5m" ? forming5 : k.tf === "4H" ? forming4 : forming)[k.sym];
   const r = k.tf === "5m" ? ((live5[k.sym] && live5[k.sym].rows) || []) : k.tf === "4H" ? ((live4[k.sym] && live4[k.sym].rows) || []) : rowsOf(k.sym), lastT = r.length ? +r[r.length - 1][0] : 0;
-  if (f && f.t > lastT) k.cs.update({ time: (f.t + IST_MS) / 1000, open: f.o, high: f.h, low: f.l, close: f.c });
+  if (f && f.t > lastT) k.cs.update({ time: (f.t + TZ.ms) / 1000, open: f.o, high: f.h, low: f.l, close: f.c });
 }
 function setLines(key, list) {
   const k = CH[key]; k.lines.forEach(l => k.cs.removePriceLine(l)); k.lines = [];
@@ -370,7 +470,7 @@ function renderTrade() {
   const { mmr, taker } = contractOf(s);
   const margin = Math.max(1, +$("tMargin").value || 5), lev = +$("tLev").value || PR.lev, notional = margin * lev;
   $("tPrice").textContent = nf(px, d);
-  $("tTick").textContent = tick[s] ? `mark ${nf(tick[s].mark, d)} · funding ${(tick[s].funding * 100).toFixed(4)}% / 8h` : "";
+  $("tTick").textContent = tick[s] ? `mark ${nf(tick[s].mark, d)} · funding ${fundTxt(tick[s].funding)} / 8h` : "";
   $("tSignal").textContent = signalWord(P); $("tSignal").className = "signal " + signalCls(P);
   $("tWhy").textContent = P.why || "";
   let lines = (P.extraLines || []).concat(P.lines || []), levels = P.levels || "", money = "", warn = "";
@@ -447,7 +547,7 @@ function checkPos(s, price) {               // runs on every live tick for every
     if (d * (price - pos.liq) <= 0 && d * (pos.liq - pos.sl) > 0) return closePos(pf, s, pos.liq, "liquidated");
     if (d * (price - pos.sl) <= 0) return closePos(pf, s, pos.sl, "stop loss");
     if (d * (price - pos.tp) >= 0) return closePos(pf, s, pos.tp, "take profit");
-    if (pf === "aggressive" && Date.now() >= (Math.floor(pos.opened / 86400000) + 1) * 86400000) return closePos(pf, s, price, "day ended (05:30 IST)");
+    if (pf === "aggressive" && Date.now() >= (Math.floor(pos.opened / 86400000) + 1) * 86400000) return closePos(pf, s, price, "UTC day ended (05:30 IST)");
   });
 }
 function renderPos() {
@@ -458,7 +558,7 @@ function renderPos() {
   const k = profile + s + pos.opened;
   if (el.dataset.k !== k) {                   // build once per position; ticks only update numbers
     el.dataset.k = k;
-    el.innerHTML = `<div class="ok"><b>Open paper ${pos.dir > 0 ? "BUY" : "SELL"}</b> · ${pos.margin} USDT × ${pos.lev} · entry ${nf(pos.entry, d)} · since ${istT(pos.opened)} IST
+    el.innerHTML = `<div class="ok"><b>Open paper ${pos.dir > 0 ? "BUY" : "SELL"}</b> · ${pos.margin} USDT × ${pos.lev} · entry ${nf(pos.entry, d)} · since ${istT(pos.opened)} ${TZ.label}
       <div class="pnl" id="tPnl"></div>
       <div class="sub">Stop loss ${nf(pos.sl, d)} · take profit ${nf(pos.tp, d)}${pos.dir * (pos.liq - pos.sl) > 0 ? ` · <span class="warn">liquidation ${nf(pos.liq, d)} comes first</span>` : ""}</div>
       <button id="tClose" style="margin-top:8px">Close now</button></div>`;
@@ -473,7 +573,7 @@ function renderLog() {
   const tot = log.reduce((a, x) => a + x.pnl, 0), wins = log.filter(x => x.pnl > 0).length;
   const byPf = PROFS.map(pf => { const L = log.filter(x => x.pf === pf); return L.length ? `${Patterns.PROFILES[pf].name}: ${L.length} trades, ${usd(L.reduce((a, x) => a + x.pnl, 0))}` : null; }).filter(Boolean).join(" · ");
   $("tLog").innerHTML = `<div>${log.length} trades · ${wins} winners · total <b class="${tot >= 0 ? "up" : "down"}">${usd(tot)}</b> <span class="sub">${byPf}</span> <button id="tClear" style="margin-left:10px;padding:3px 10px">Clear log</button></div>
-    <table style="margin-top:6px"><tr><th>Closed (IST)</th><th>Profile</th><th>Coin</th><th>Side</th><th>Signal</th><th class="r">Entry</th><th class="r">Exit</th><th>Why</th><th class="r">Result</th></tr>` +
+    <table style="margin-top:6px"><tr><th>Closed (${TZ.label})</th><th>Profile</th><th>Coin</th><th>Side</th><th>Signal</th><th class="r">Entry</th><th class="r">Exit</th><th>Why</th><th class="r">Result</th></tr>` +
     log.slice(0, 30).map(x => `<tr><td>${istT(x.closed)}</td><td>${x.pf ? Patterns.PROFILES[x.pf].name : "—"}</td><td>${x.sym.replace("USDT", "")}</td><td class="${x.dir > 0 ? "up" : "down"}">${x.dir > 0 ? "BUY" : "SELL"}</td>
       <td class="sub">${esc(x.signal || "")}</td><td class="r">${nf(x.entry, dp(x.entry))}</td><td class="r">${nf(x.exit, dp(x.exit))}</td><td>${esc(x.reason)}</td>
       <td class="r ${x.pnl >= 0 ? "up" : "down"}">${usd(x.pnl)}</td></tr>`).join("") + `</table>`;
@@ -494,7 +594,7 @@ function renderPatterns(keepRange) {
   const showCandle = $("showCandle").checked, showNeutral = $("showNeutral").checked;
   const vis = e => e.kind === "structure" || (showCandle && (e.dir !== 0 || showNeutral));
   setChartData("p", s, keepRange, tf);
-  const tm = t => (t + IST_MS) / 1000;
+  const tm = t => (t + TZ.ms) / 1000;
   CH.p.cs.setMarkers(res.events.filter(vis).map(e => ({ time: tm(e.t), position: e.dir > 0 ? "belowBar" : "aboveBar",
     color: e.dir > 0 ? "#2fbf71" : e.dir < 0 ? "#e5484d" : "#8b93a3", shape: e.dir > 0 ? "arrowUp" : e.dir < 0 ? "arrowDown" : "circle",
     size: e.kind === "structure" ? 2 : 1, text: SHORT[e.code] || e.code })));
@@ -504,7 +604,7 @@ function renderPatterns(keepRange) {
 
   const cls = { "LONG SETUP": "s-buy", "SHORT SETUP": "s-sell", "WAIT": "s-wait", "NO TRADE": "s-none" }[st.verdict] || "s-none";
   $("verdict").textContent = st.verdict; $("verdict").className = "signal " + cls; $("verdict").style.fontSize = "26px";
-  $("verdictSub").textContent = `Last closed candle ${fmtBoth(st.time + M15)} · close ${nf(st.price, d)}`;
+  $("verdictSub").textContent = `Last closed candle ${fmtBoth(st.time + TF_MS[tf])} · close ${nf(st.price, d)}`;
   $("reasons").innerHTML = st.reasons.map(r => `<li>${esc(r)}</li>`).join("");
   $("plan").innerHTML = st.trigger ? `Signal: <b>${esc(st.trigger.name)}</b>. Switch to <b>Buy / Sell</b> for the entry, stop loss and take profit.`
     : st.verdict === "WAIT" ? `Waiting for a trigger in the trend direction.` : `Nothing to continue: the 1-hour trend and VWAP don't agree.`;
@@ -524,7 +624,7 @@ function renderPatterns(keepRange) {
   $("levels").innerHTML = `<tr><td>Change 4h / 24h</td><td class="r">${sg(ch(16))} / ${sg(ch(96))}</td></tr>` +
     (s !== "BTCUSDT" && bch(96) !== null && ch(96) !== null ? `<tr><td>Versus BTC over the same 24h</td><td class="r">${sg(ch(96) - bch(96))} (${ch(96) > bch(96) ? "stronger" : "weaker"})</td></tr>` : "") +
     `<tr><td>Today's VWAP</td><td class="r">${nf(st.vwap, d)}</td></tr><tr><td>20-bar (5h) high / low</td><td class="r">${nf(st.hi20, d)} / ${nf(st.lo20, d)}</td></tr>` +
-    `<tr><td>Today's high / low (since 05:30 IST)</td><td class="r">${nf(st.sessionHigh, d)} / ${nf(st.sessionLow, d)}</td></tr><tr><td>Typical 15-minute move</td><td class="r">${st.atrPct.toFixed(3)}%</td></tr>`;
+    `<tr><td>Today's high / low (since 00:00 UTC = 05:30 IST)</td><td class="r">${nf(st.sessionHigh, d)} / ${nf(st.sessionLow, d)}</td></tr><tr><td>Typical 15-minute move</td><td class="r">${st.atrPct.toFixed(3)}%</td></tr>`;
 
   const m = MARKET && MARKET.symbols[s] || {}, tk = m.ticker, ls = m.long_short_accounts || [], tb = m.taker_buy_sell || [];
   const share = k => { let b = 0, se = 0; tb.slice(-k).forEach(x => { b += x[1]; se += x[2]; }); return b + se > 0 ? b / (b + se) : null; };
@@ -545,9 +645,9 @@ function renderPatterns(keepRange) {
     (base ? `<div class="sub" style="margin-top:6px">History: a 100× long opened at a random time was liquidated within 4 hours ${pc(base.long_liq100)} of the time; a short, ${pc(base.short_liq100)}.</div>` : "");
 
   const evs = res.events.filter(vis).slice(-25).reverse();
-  $("events").innerHTML = `<tr><th>Time (IST)</th><th>Pattern</th><th>Says</th><th>What it means</th><th class="r">Cases</th><th class="r">Right side 4h</th><th class="r">After fees</th><th class="r">Later 30%</th><th></th></tr>` +
+  $("events").innerHTML = `<tr><th>Time (${TZ.label})</th><th>Pattern</th><th>Says</th><th>What it means</th><th class="r">Cases</th><th class="r">Right side 4h</th><th class="r">After fees</th><th class="r">Later 30%</th><th></th></tr>` +
     evs.map(e => { const al = e.dir !== 0 && e.trend === e.dir, hh = (al && hist(s, e.code + "|T")) || hist(s, e.code);
-      return `<tr><td style="white-space:nowrap">${istT(e.t + M15)}</td><td><b>${esc(e.name)}</b>${al ? ` <span class="pill">with 1h trend</span>` : ""}</td>
+      return `<tr><td style="white-space:nowrap">${istT(e.t + TF_MS[tf])}</td><td><b>${esc(e.name)}</b>${al ? ` <span class="pill">with 1h trend</span>` : ""}</td>
         <td class="${e.dir > 0 ? "up" : e.dir < 0 ? "down" : "muted"}">${e.dir > 0 ? "up" : e.dir < 0 ? "down" : "undecided"}</td>
         <td class="sub">${esc(Patterns.MEANING[e.code])}</td>${e.dir === 0 ? `<td colspan="5" class="muted">no direction to score</td>` : histCells(hh)}</tr>`; }).join("");
 
@@ -582,7 +682,7 @@ function renderModel() {
     P[t] = p;
     const lean = p === null ? "—" : p > 0.5 + M.band ? `<span class="up">UP</span>` : p < 0.5 - M.band ? `<span class="down">DOWN</span>` : `<span class="muted">no clear lean</span>`;
     return `<tr><td><b>${t === "4H" ? "4h" : t}</b> <span class="sub">next ${esc(M.ahead)}</span></td>
-      <td class="r"><b class="${p > 0.5 ? "up" : "down"}">${p === null ? "—" : pc(p, 1)}</b></td><td>${lean}</td>
+      <td class="r"><b class="${p > 0.5 ? "up" : "down"}">${p === null ? "—" : p.toFixed(3)}</b></td><td>${lean}</td>
       <td class="r">${pc(T.accuracy, 1)} <span class="sub">vs ${pc(T.coin_flip_best, 1)}</span>${Ts ? ` <span class="sub">(${sym.replace("USDT", "")} ${pc(Ts.accuracy, 1)})</span>` : ""}</td>
       <td class="r ${T.avg_net_bps > 0 ? "up" : "down"}">${T.avg_net_bps === null ? "—" : T.avg_net_bps + " bps"} <span class="sub">${T.trades} trades</span></td>
       <td><span class="pill ${beat > 0.02 && T.avg_net_bps > 0 ? "good" : "bad"}">${beat > 0.02 && T.avg_net_bps > 0 ? "held up in testing" : "no edge in testing"}</span></td></tr>`;
@@ -590,32 +690,55 @@ function renderModel() {
   const ok = ["5m", "15m", "4H"].every(t => P[t] !== null && P[t] !== undefined);
   const agreeNow = !ok ? "—" : ["5m", "15m", "4H"].every(t => P[t] > 0.5) ? `<b class="up">all three lean UP</b>` : ["5m", "15m", "4H"].every(t => P[t] < 0.5) ? `<b class="down">all three lean DOWN</b>` : `<span class="muted">they disagree, so no combined signal</span>`;
   const G = MODEL.agreement;
-  el.innerHTML = `<table><tr><th>Timeframe</th><th class="r">Chance higher</th><th>Lean</th><th class="r">Right on unseen data</th><th class="r">Trading its calls</th><th></th></tr>${rows}</table>
+  el.innerHTML = `<table><tr><th>Timeframe</th><th class="r" title="Raw logistic-model output between 0 and 1. It has not passed a calibration check, so it is NOT the chance that price rises.">Score (uncalibrated)</th><th>Lean</th><th class="r">Right on unseen data</th><th class="r">Trading its calls</th><th></th></tr>${rows}</table>
     <div style="margin-top:8px"><b>All three together:</b> ${agreeNow}.
       ${G && G.trades ? `<span class="sub">Tested on unseen data: they agreed ${pc(G.share_of_time)} of the time; trading only then won ${pc(G.win_rate)} of ${G.trades.toLocaleString()} trades and averaged <b class="${G.avg_net_bps > 0 ? "up" : "down"}">${G.avg_net_bps} bps</b> per trade after costs.</span>` : ""}</div>
+    <div class="sub" style="margin-top:6px"><b>Read this as a lean, not a probability.</b> A score of 0.60 does not mean a 60% chance: these outputs have not passed a calibration check.
+      The "unseen data" figures come from the model fitted on the first 70% of history; the live model is refit on all data, so the live model itself has no out-of-sample record yet.</div>
     <details><summary>How these models work</summary><div class="sub" style="margin-top:6px">${esc(MODEL.method.note)} "Right on unseen data" is compared with always guessing the more common direction in that test period.
       "Trading its calls" uses the confidence threshold picked on the training part only (shown as the UP/DOWN lean). bps = hundredths of a percent; 14 bps of costs are included. Retrained ${esc(MODEL.generated_at_utc)} UTC.</div></details>`;
 }
 function renderJournal() {
   const el = $("journal");
-  if (!JOURNAL || !JOURNAL.trades) { el.innerHTML = "Starts with the next 15-minute run on GitHub."; return; }
+  if (!JOURNAL || !JOURNAL.trades) { el.innerHTML = "No journal has been published yet. The scheduled job creates it at its next run."; return; }
   const S = JOURNAL.summary || {}, open = JOURNAL.trades.filter(t => t.status === "open");
-  const card = p => { const x = S[p] || {}; const PR = Patterns.PROFILES[p];
-    return `<div class="pf" style="cursor:default"><span class="nm">${PR.name}</span><span class="tf">$5 at ${PR.lev}× per trade</span>
-      <div class="sg ${x.usd > 0 ? "up" : x.usd < 0 ? "down" : "muted"}">${x.closed ? usd(x.usd) : "$0.00"}</div>
-      <div class="rec">${x.closed || 0} closed (${x.wins || 0} won) · ${x.open || 0} open · ${x.R >= 0 ? "+" : ""}${(x.R || 0).toFixed(2)}R before fees</div></div>`; };
+  const U = x => (x < 0 ? "−" : x > 0 ? "+" : "") + Math.abs(x).toFixed(2) + " USDT";
+  const lastMs = Date.parse(String(JOURNAL.updated_utc || "").replace(" ", "T") + "Z"), age = isFinite(lastMs) ? Date.now() - lastMs : null;
+  const ageTxt = age === null ? "unknown" : age < 90 * 60000 ? Math.round(age / 60000) + " min ago" : (age / 3600000).toFixed(1) + " h ago";
+  const card = p => { const x = S[p] || {}, PR = Patterns.PROFILES[p];
+    return `<div class="pf" style="cursor:default"><span class="nm">${PR.name}</span><span class="tf">$5 margin at ${PR.lev}× = $${5 * PR.lev} notional · hypothetical</span>
+      <div class="sg ${x.usd > 0 ? "up" : x.usd < 0 ? "down" : "muted"}" data-legacy="result-${p}">${x.closed ? U(x.usd) : "0.00 USDT"}</div>
+      <div class="rec">${x.closed || 0} closed (${x.wins || 0} won) · ${x.open || 0} open · result after fees and slippage, closed trades only · sum of R multiples before fees: ${x.R >= 0 ? "+" : ""}${(x.R || 0).toFixed(2)}R</div></div>`; };
   const rows = JOURNAL.trades.slice().reverse().slice(0, 15).map(t => {
     const d = dp(t.entry);
     return `<tr><td>${istT(t.entry_time)}</td><td>${Patterns.PROFILES[t.profile].name}</td><td>${t.sym.replace("USDT", "")}</td><td class="${t.dir > 0 ? "up" : "down"}">${t.dir > 0 ? "BUY" : "SELL"}</td>
       <td class="sub">${esc(t.signal)}</td><td class="r">${nf(t.entry, d)}</td><td class="r">${nf(t.sl, d)} / ${nf(t.tp, d)}</td>
-      <td>${t.status === "open" ? `<span class="warn">open</span>` : esc(t.how)}</td><td class="r ${t.usd > 0 ? "up" : t.usd < 0 ? "down" : ""}">${t.status === "open" ? "—" : usd(t.usd)}</td></tr>`; }).join("");
-  el.innerHTML = `<div>Started ${esc(JOURNAL.started_utc)} UTC · last run ${esc(JOURNAL.updated_utc || "—")} UTC. These are forward results: none of these trades existed when the rules were written.</div>
+      <td>${t.status === "open" ? `<span class="warn">open as of the last run</span>` : esc(t.how)}</td><td class="r ${t.usd > 0 ? "up" : t.usd < 0 ? "down" : ""}">${t.status === "open" ? "—" : U(t.usd)}</td></tr>`; }).join("");
+  // HYPOTHETICAL check of open trades against final candles this page holds (docs/legacy.js; the producer's own rule; recorded nowhere)
+  const openBlock = open.map(t => {
+    const st = t.tf === "5m" ? live5 : live, rowsT = (st[t.sym] && st[t.sym].rows) || [], f = (t.tf === "5m" ? forming5 : forming)[t.sym], last = f ? +f.c : rowsT.length ? +rowsT[rowsT.length - 1][4] : null;
+    const r = Legacy.replay(t, rowsT, Patterns, last), PR = Patterns.PROFILES[t.profile], head = `<b>${PR.name} · ${t.sym.replace("USDT", "")} ${t.dir > 0 ? "BUY" : "SELL"}</b> entered ${istT(t.entry_time)} ${TZ.label} at ${nf(t.entry, dp(t.entry))}, stop ${nf(t.sl, dp(t.entry))}, target ${nf(t.tp, dp(t.entry))}`;
+    let msg;
+    if (r.state === "STOP" || r.state === "TARGET" || r.state === "TIME_LIMIT")
+      msg = `<span class="warn"><b>Not yet recorded:</b> final ${t.tf} candles since the last producer run show that the ${esc(r.how)} was reached at ${istT(r.candle_ts)} ${TZ.label}. The next scheduled run will record it. Hypothetical result with the producer's own arithmetic: <b class="${r.usd > 0 ? "up" : r.usd < 0 ? "down" : ""}">${U(r.usd)}</b> (${r.R >= 0 ? "+" : "−"}${Math.abs(r.R).toFixed(2)}R) on $5 margin at ${PR.lev}× (notional $${r.notional}, quantity ${r.qty.toFixed(6)}, fees ${r.fees.toFixed(2)}).</span>`;
+    else if (r.state === "OPEN") msg = `Still open on the candles this page holds (${r.candles_checked} final candle(s) since the last check). ` + (r.mark ? `Hypothetical mark-to-market at ${nf(r.mark, dp(t.entry))}: gross <b class="${r.gross_usdt > 0 ? "up" : r.gross_usdt < 0 ? "down" : ""}">${U(r.gross_usdt)}</b> (${(r.gross_usdt / 5 * 100 >= 0 ? "+" : "") + (r.gross_usdt / 5 * 100).toFixed(1)}% of the $5 margin; notional $${r.notional}, quantity ${r.qty.toFixed(6)}), before fees. Not recorded anywhere.` : "no current price is available here.");
+    else msg = `<span class="muted">Cannot be checked here: ${esc(r.note || r.state)}.</span>`;
+    return `<div class="legacy-open" data-state="${esc(r.state)}" style="margin-top:6px">${head}<br>${msg}</div>`; }).join("");
+  el.innerHTML = `<div class="banner" style="display:block;border-color:var(--line);color:var(--text);background:#13161c"><b>LEGACY SCHEDULED SIMULATOR — hypothetical results, not the worker's paper accounts.</b>
+      <ul style="margin:4px 0 0;padding-left:18px">
+        <li><b>What "$5 at 50×" means:</b> every simulated trade assumes a fixed $5 (USDT) margin at the profile's default leverage (Aggressive 50× = $250 notional, Neutral 10× = $50, Careful 3× = $15). It is a fixed margin per trade, not a risk-based size and not an account balance.</li>
+        <li><b>What the figures are:</b> results simulated from closed candles (entry at the next candle's open, taker fee both ways and 1 bp slippage), not fills. Amounts are USDT-margined simulated results shown without any USD conversion. Only the producer's closed trades count; open trades have no result yet.</li>
+        <li><b>Which rules:</b> the legacy v0 profiles Aggressive, Neutral and Careful. They are different from the worker's Risk Taker, Balanced and Defensive v1 and are never combined with them.</li>
+      </ul></div>
+    <div style="margin-top:8px">Producer: started ${esc(JOURNAL.started_utc)} UTC · <span class="${age !== null && age > 3600000 ? "warn" : ""}" data-legacy="lastrun"><b>last successful run ${esc(JOURNAL.updated_utc || "—")} UTC (${ageTxt})</b></span>.
+      It is scheduled every 15 minutes, but GitHub throttles scheduled workflows: runs observed from 2026-11-14 to 2026-11-17 were roughly 4 to 9 hours apart (GitHub Actions run list, checked 2026-11-17; this may change). This display only changes when that job runs and publishes, never because this page is open. A late run does not change the result, because it works from closed candles.</div>
     <div class="profiles">${["aggressive", "neutral", "careful"].map(card).join("")}</div>
-    ${rows ? `<table style="margin-top:10px"><tr><th>Entry (IST)</th><th>Profile</th><th>Coin</th><th>Side</th><th>Signal</th><th class="r">Entry</th><th class="r">Stop / target</th><th>Result</th><th class="r">$</th></tr>${rows}</table>` : `<div style="margin-top:8px">No trades yet: waiting for the first signal.</div>`}`;
+    ${openBlock ? `<div style="margin-top:8px"><b>Open trades, checked against the final candles this page holds (hypothetical; recorded nowhere; never part of any account):</b>${openBlock}</div>` : ""}
+    ${rows ? `<table style="margin-top:10px"><tr><th>Entry (${TZ.label})</th><th>Profile</th><th>Coin</th><th>Side</th><th>Signal</th><th class="r">Entry</th><th class="r">Stop / target</th><th>Recorded result</th><th class="r">USDT (after fees)</th></tr>${rows}</table>` : `<div style="margin-top:8px">No trades yet: waiting for the first signal.</div>`}`;
 }
 const IND_INFO = {
   EMA: { name: "EMA 20 / 50 (moving averages)", what: "The average price of the last 20 and 50 candles, giving more weight to the newest ones. Price above the EMA, and the 20 above the 50, means the recent trend is up." },
-  VWAP: { name: "VWAP (volume-weighted average price)", what: "The average price everyone has paid today, weighted by how much was traded at each price. Resets at 05:30 IST. Above it, today's buyers are in profit; below it, they are not." },
+  VWAP: { name: "VWAP (volume-weighted average price)", what: "The average price everyone has paid today, weighted by how much was traded at each price. Resets at 00:00 UTC (05:30 IST). Above it, today's buyers are in profit; below it, they are not." },
   RSI: { name: "RSI 14 (relative strength index)", what: "Compares the size of recent up-moves with recent down-moves on a 0–100 scale. Above 70 = stretched up (\"overbought\"), below 30 = stretched down (\"oversold\"), 50 = balanced. In a strong trend it can stay stretched for a long time." },
   MACD: { name: "MACD 12, 26, 9", what: "The gap between a fast (12) and a slow (26) moving average, and a 9-candle average of that gap (the signal line). The histogram is the difference: above zero and growing means upward momentum is building." },
   Stochastic: { name: "Stochastic 14, 3", what: "Where the latest close sits inside the high–low range of the last 14 candles, 0–100. Above 80 = closing near the top of the range, below 20 = near the bottom. Faster and jumpier than RSI." },
@@ -628,7 +751,7 @@ function renderIndicators() {
   const s = sym, A = resTf(tf, s); $("iSym").textContent = s + " · " + TF_NAME[tf] + " candles";
   if (!A) return;
   const c = A.c, i = c.length - 1, ind = Patterns.indicators(c), px = c[i].c, d = dp(px), at = A.res.atr[i], vw = A.res.vwap[i];
-  $("iTime").textContent = istT(c[i].t + M15) + " IST";
+  $("iTime").textContent = istT(c[i].t + TF_MS[tf]) + " " + TZ.label;
   const f = (x, k = 1) => x === null || x === undefined ? "—" : x.toFixed(k);
   const obv16 = ind.obv[i] - ind.obv[i - 16];
   const now = {
@@ -659,6 +782,9 @@ function renderAll(keepRange) {
   if (tf === "4H") analyze4(sym);
   if (view === "trade") { setChartData("t", sym, keepRange, tf); renderTrade(); renderModel(); renderJournal(); }
   else if (view === "indicators") renderIndicators();
+  else if (view === "monitor") renderMonitor(true);
+  else if (view === "news") { newsRender(); if (WMODE) newsLoad(); }
+  else if (view === "stress") { stressRender(); if (WMODE) stressLoad(); }
   else renderPatterns(keepRange);
 }
 let lastLight = 0;
@@ -668,7 +794,7 @@ function lightUpdate() {                      // every tick: no re-analysis, jus
   if (view === "trade") {
     const px = livePrice(sym);
     $("tPrice").textContent = nf(px, dp(px));
-    if (tick[sym]) $("tTick").textContent = `mark ${nf(tick[sym].mark, dp(px))} · funding ${(tick[sym].funding * 100).toFixed(4)}% / 8h`;
+    if (tick[sym]) $("tTick").textContent = `mark ${nf(tick[sym].mark, dp(px))} · funding ${fundTxt(tick[sym].funding)} / 8h`;
     renderPos();
   }
   setMode();
@@ -677,6 +803,7 @@ function lightUpdate() {                      // every tick: no re-analysis, jus
 /* ================= data: REST history + live WebSocket ================= */
 async function fetchRest(s, gran) {
   gran = gran || "15m"; const step = TF_MS[gran];
+  if (WMODE) return fetchWorker(s, gran);
   try {
     const r = await fetch(`https://api.bitget.com/api/v2/mix/market/candles?symbol=${s}&productType=USDT-FUTURES&granularity=${gran}&limit=1000`);
     const j = await r.json();
@@ -701,13 +828,15 @@ function upsertClosed(s, r) {
   if (!last || r[0] > last[0]) { rows.push(r); if (rows.length > 1200) rows.shift(); return true; }
   return false;
 }
-let ws = null, lastMsg = 0, pingT = null, retryT = null, retries = 0;
+let ws = null, lastFrame = 0, pingT = null, retryT = null, retries = 0;
+const lastData = {};                          // per symbol: time of the last MARKET DATA message (pongs do not count)
+const DATA_STALE_MS = 10000;                  // ticker pushes several times a second; 10 s without data = stale
 function connectStream() {
   clearTimeout(retryT); clearInterval(pingT);
   if (ws) { ws.onclose = null; try { ws.close(); } catch (e) {} }
   try { ws = new WebSocket("wss://ws.bitget.com/v2/ws/public"); } catch (e) { scheduleRetry(); return; }
   ws.onopen = () => {
-    retries = 0;
+    retries = 0; setTimeout(setMode, 0);
     ws.send(JSON.stringify({ op: "subscribe", args: SYMS.flatMap(s => [
       { instType: "USDT-FUTURES", channel: "candle15m", instId: s }, { instType: "USDT-FUTURES", channel: "candle5m", instId: s },
       { instType: "USDT-FUTURES", channel: "ticker", instId: s }]) }));
@@ -717,11 +846,12 @@ function connectStream() {
     pingT = setInterval(() => { if (ws && ws.readyState === 1) ws.send("ping"); }, 25000);
   };
   ws.onmessage = ev => {
-    lastMsg = Date.now();
+    lastFrame = Date.now();
     if (ev.data === "pong") return;
     let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
     if (!m.arg || !m.data || !SYMS.includes(m.arg.instId)) return;
     const s = m.arg.instId;
+    lastData[s] = Date.now();
     if (m.arg.channel === "candle15m") {
       let closedNew = false;
       m.data.forEach(a => { const r = a.slice(0, 6).map(Number);
@@ -752,14 +882,29 @@ function connectStream() {
 }
 function scheduleRetry() { clearTimeout(retryT); retryT = setTimeout(connectStream, Math.min(30000, 2000 * Math.pow(2, retries++))); }
 function setMode() {
-  const age = lastMsg ? (Date.now() - lastMsg) / 1000 : null;
-  if (ws && ws.readyState === 1 && age !== null && age < 30) $("mode").innerHTML = `<span class="up">● LIVE</span> · last tick ${istHMS(lastMsg)} IST`;
-  else if (live[sym]) $("mode").innerHTML = `<span class="warn">○ reconnecting to the live stream…</span>`;
-  else $("mode").innerHTML = `<span class="muted">○ snapshot only (this browser could not reach Bitget)</span>`;
+  if (WORKER_LOST && !WMODE) {                // the page came from a worker that is now gone: only raw prices are live
+    const open = ws && ws.readyState === 1, t = lastData[sym], age = t ? Date.now() - t : null, fresh = open && age !== null && age < DATA_STALE_MS;
+    $("mode").innerHTML = `<span class="down">○ WORKER DISCONNECTED</span> · analysts, paper engine and ledger are <b>not</b> live · ` +
+      (fresh ? `market prices only, from this browser's own Bitget feed (${istHMS(t)} ${TZ.label})` : `market prices stale too`);
+    return;
+  }
+  if (WMODE) {                                // all market data comes from the local worker; this tab has no Bitget socket
+    const t = lastData[sym], age = t ? Date.now() - t : null, c = sym.replace("USDT", "");
+    if (age !== null && age < DATA_STALE_MS) $("mode").innerHTML = `<span class="up">● LIVE</span> · via local worker · last ${c} update received ${istHMS(t)} ${TZ.label} (${(age / 1000).toFixed(1)} s ago)`;
+    else if (t) $("mode").innerHTML = `<span class="warn">◐ STALE</span> · the local worker has no new ${c} data for ${Math.round(age / 1000)} s · prices below may be old`;
+    else $("mode").innerHTML = `<span class="warn">◐ RECOVERING</span> · waiting for the local worker's first ${c} data`;
+    return;
+  }
+  const open = ws && ws.readyState === 1, t = lastData[sym], age = t ? Date.now() - t : null;
+  if (open && age !== null && age < DATA_STALE_MS) $("mode").innerHTML = `<span class="up">● LIVE</span> · Bitget public data · last ${sym.replace("USDT", "")} update ${istHMS(t)} ${TZ.label} (${(age / 1000).toFixed(1)} s ago)`;
+  else if (open && t) $("mode").innerHTML = `<span class="warn">◐ STALE</span> · connected, but no ${sym.replace("USDT", "")} market data for ${Math.round(age / 1000)} s · prices below may be old`;
+  else if (open) $("mode").innerHTML = `<span class="warn">◐ RECOVERING</span> · connected, waiting for the first market data`;
+  else if (live[sym]) $("mode").innerHTML = `<span class="warn">○ DISCONNECTED</span> · reconnecting to the live stream… prices below are from the last update`;
+  else $("mode").innerHTML = `<span class="muted">○ SNAPSHOT ONLY</span> · this browser could not reach Bitget; showing the 15-minute snapshot`;
 }
 setInterval(() => {
   setMode();
-  if (ws && ws.readyState === 1 && lastMsg && Date.now() - lastMsg > 40000) connectStream();
+  if (!WMODE && ws && ws.readyState === 1 && ((lastFrame && Date.now() - lastFrame > 40000) || (lastData[sym] && Date.now() - lastData[sym] > 60000))) connectStream();
   const f = forming[sym];                     // a candle closed but the stream missed it: fetch it
   if (f && f.t + M15 + 8000 < Date.now()) { delete forming[sym]; fetchRest(sym).then(() => renderAll(true)); }
   const f5 = forming5[sym];
@@ -769,30 +914,157 @@ document.addEventListener("visibilitychange", async () => {
   if (document.visibilityState !== "visible") return;
   await Promise.all([fetchRest(sym), fetchRest(sym, "5m"), sym !== "BTCUSDT" ? fetchRest("BTCUSDT") : null]);
   renderAll(true);
-  if (!ws || ws.readyState !== 1 || Date.now() - lastMsg > 30000) connectStream();
+  if (!WMODE && (!ws || ws.readyState !== 1 || !lastData[sym] || Date.now() - lastData[sym] > 30000)) connectStream();
+  pollWorker();
 });
 
-async function loadSnapshot() {
-  try { MARKET = await (await fetch("data/market.json?" + Date.now(), { cache: "no-store" })).json(); } catch (e) { MARKET = null; }
-  try { STATS = await (await fetch("data/stats.json?" + Date.now(), { cache: "no-store" })).json(); } catch (e) { STATS = null; }
-  try { MODEL = await (await fetch("data/model.json?" + Date.now(), { cache: "no-store" })).json(); } catch (e) { MODEL = null; }
-  try { JOURNAL = await (await fetch("data/journal.json?" + Date.now(), { cache: "no-store" })).json(); } catch (e) { JOURNAL = null; }
+/* ===== Market data via the local worker (worker mode) =====
+ * When this page is served by server/main.js, it reads tickers and candles from the worker's API and opens NO
+ * connection to Bitget itself: one collector per machine, however many tabs are open. Candles marked final=1 by the
+ * worker are the closed bars; the newest final=0 bar is the forming one. */
+let WMODE = false, workerLoop = null, WORKER_LOST = false;
+const wid = s => "bitget:perp:" + s;
+async function apiJson(p) { const r = await fetch(p, { cache: "no-store" }); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }
+async function workerCandles(s, gran, limit) {
+  const j = await apiJson(`api/candles?instrument=${wid(s)}&interval=${gran}&limit=${limit}`), step = TF_MS[gran];
+  const rows = j.candles.filter(c => c.final === 1).map(c => [c.open_ts, +c.o, +c.h, +c.l, +c.c, +c.base_vol]);
+  const f = j.candles.filter(c => c.final === 0 && c.open_ts + step > Date.now()).pop();
+  return { rows, forming: f ? { t: f.open_ts, o: +f.o, h: +f.h, l: +f.l, c: +f.c } : null };
+}
+const storeOf = g => g === "5m" ? live5 : g === "4H" ? live4 : live, formingOf = g => g === "5m" ? forming5 : g === "4H" ? forming4 : forming;
+async function fetchWorker(s, gran) {
+  try {
+    const { rows, forming: f } = await workerCandles(s, gran, 1000);
+    if (rows.length < 200) return false;
+    storeOf(gran)[s] = { rows };
+    if (f) formingOf(gran)[s] = f;
+    return true;
+  } catch (e) { return false; }
+}
+let workerBusy = false;
+async function workerTick() {
+  if (!WMODE || workerBusy) return;
+  workerBusy = true;
+  try {
+    await Promise.all(SYMS.map(async s => {
+      try {
+        const t = (await apiJson(`api/ticker?instrument=${wid(s)}`)).ticker;
+        if (!t || (tick[s] && tick[s].at === t.recv_ts)) return;
+        tick[s] = { last: +t.last, mark: t.mark === null ? NaN : +t.mark, funding: t.funding_rate === null ? NaN : +t.funding_rate, at: t.recv_ts };
+        lastData[s] = t.recv_ts;
+        checkPos(s, tick[s].last);
+      } catch (e) { /* the status strip reports worker problems */ }
+    }));
+    let changed = false;
+    await Promise.all(SYMS.flatMap(s => ["15m", "5m", "4H"].map(async g => {
+      try {
+        const { rows, forming: f } = await workerCandles(s, g, 3), st = storeOf(g);
+        if (!st[s]) return;
+        let nw = false; rows.forEach(r => { nw = upsert5(s, r, st) || nw; });
+        if (f) formingOf(g)[s] = f;
+        if (nw && (s === sym || s === "BTCUSDT")) changed = true;
+      } catch (e) { /* idem */ }
+    })));
+    if (changed) renderAll(true);
+    lastLight = 0; lightUpdate();
+  } finally { workerBusy = false; }
+}
+/* v1 analysts from the worker's paper engine. Everything shown comes from /api/paper (ledger-backed). */
+const AN = { risk_taker: "Risk Taker", balanced: "Balanced Trader", defensive: "Defensive Trader" };
+const INTENT_TXT = { OPEN_LONG: ["OPEN LONG", "s-buy"], OPEN_SHORT: ["OPEN SHORT", "s-sell"], WAIT: ["WAIT", "s-wait"], NO_TRADE: ["NO TRADE", "s-none"] };
+let PAPER = null;
+async function loadPaper() { try { PAPER = await apiJson("api/paper"); } catch (e) { PAPER = null; } renderAnalysts(); }
+function renderAnalysts() {
+  const card = $("analystsCard"); card.classList.toggle("hidden", !WMODE);
+  if (!WMODE) return;
+  if (!PAPER || !PAPER.portfolios) { $("analystsBody").textContent = "The worker's paper engine is not available."; return; }
+  const id = wid(sym), d = dp(livePrice(sym) || 1);
+  const cards = PAPER.portfolios.map(pf => {
+    const dec = (PAPER.recent_decisions || []).find(x => x.analyst === pf.analyst && x.instrument_id === id);
+    const it = dec ? INTENT_TXT[dec.intent] || [dec.intent, "s-none"] : ["NOT YET", "s-none"];
+    const st = dec && dec.setup ? `<div class="sub">entry ≈ ${nf(dec.setup.entry_reference, d)} · stop ${nf(dec.setup.stop, d)} · target ${nf(dec.setup.target, d)} (${dec.setup.rr}R) · valid until ${istT(dec.setup.expires_ts)} ${TZ.label}</div>` : "";
+    const open = (PAPER.open_positions || []).filter(x => x.analyst === pf.analyst);
+    return `<div class="pf" style="cursor:default"><span class="nm">${esc(AN[pf.analyst] || pf.analyst)}</span><span class="tf">${esc(pf.policy)}${pf.kill_switch ? " · KILL SWITCH ON" : ""}</span>
+      <div class="sg ${it[1]}">${esc(it[0])}${dec && dec.intent.startsWith("OPEN") ? ` <span class="pill">paper</span>` : ""}</div>
+      <div class="sub">${dec ? `<b>${esc(dec.code)}</b> — ${esc(dec.why || "")} · bar closed ${istT(dec.bar_close_ts)} ${TZ.label}` : "No decision for this coin since the worker started (decisions happen at each 15-minute close)."}</div>${st}
+      <div class="rec">Paper equity ${nf(pf.equity + pf.unrealised, 2)} USDT (start 1,000) · open ${open.length} · closed ${pf.closed} (${pf.evaluable_closed} evaluable)
+        · <b>${pf.edge_status === "NO_DEMONSTRATED_EDGE" ? "No demonstrated edge" : esc(pf.edge_status)}</b></div></div>`;
+  }).join("");
+  $("analystsBody").innerHTML = `<div class="profiles" style="margin-top:0">${cards}</div>
+    <div class="sub" style="margin-top:8px">Agreement between these three is <b>not</b> independent confirmation: they read the same snapshot. No number here is a probability.
+      Every decision, risk check, fill and outcome is in the append-only ledger (<a href="api/ledger/verify">verify</a>). Accounting day: UTC.</div>`;
+}
+function startWorkerMode() {
+  WMODE = true; if (!workerLoop) workerLoop = setInterval(workerTick, 2000); workerTick();
+  loadPaper();
+  newsLoad(); stressStart(); stressLoad(); if (!startWorkerMode.timers) { startWorkerMode.timers = true; setInterval(() => { if (WMODE) loadPaper(); }, 10000); }
+  monitorStart();
+}
+function leaveWorkerMode() {
+  WMODE = false; WORKER_LOST = true; clearInterval(workerLoop); workerLoop = null; renderAnalysts(); newsRender(); stressRender(); monitorLost();
+  connectStream(); setMode();
 }
 
+/* Local worker (server/main.js) status. On GitHub Pages there is no /api, the probe fails once and the page
+ * says so; nothing else changes. When the worker serves this page, its per-feed health is shown here. */
+let WORKER = undefined, workerT = null;
+async function pollWorker() {
+  let h = null;
+  try { const r = await fetch("api/health", { cache: "no-store" }); if (r.ok) { h = await r.json(); if (!h || !h.data_mode) h = null; } } catch (e) { h = null; }
+  const first = WORKER === undefined; WORKER = h;
+  const el = $("worker");
+  if (!h && WMODE) { leaveWorkerMode(); el.innerHTML = `<span class="down">Local worker stopped responding</span> — switched to this browser's own Bitget stream.`; return; }
+  if (h && WORKER_LOST && !WMODE) {            // the worker is back: return to backend data and reconcile from a fresh snapshot
+    WORKER_LOST = false; if (ws) { ws.onclose = null; try { ws.close(); } catch (e) {} ws = null; } clearTimeout(retryT); clearInterval(pingT);
+    startWorkerMode();                           // monitorStart() inside reloads the backend snapshot ("worker recovered")
+  }
+  if (!h) {
+    el.innerHTML = first || !workerT ? `Execution: <b>analysis only</b> — no orders are ever sent to Bitget (paper trades below are simulated in this browser). No local worker on this page.`
+                                     : `<span class="down">Local worker not responding</span> — the page falls back to this browser's own stream.`;
+    return;
+  }
+  const id = "bitget:perp:" + sym, short = { ticker: "ticker", trade: "trades", books: "order book", candle1m: "1m candles", candle5m: "5m candles", candle15m: "15m candles", candle4H: "4h candles" };
+  const cls = st => st === "HEALTHY" ? "up" : st === "STALE" || st === "RECOVERING" ? "warn" : "down";
+  const feeds = h.feeds.filter(f => f.feed.startsWith(id + "|")).map(f => `${short[f.kind] || esc(f.kind)} <span class="${cls(f.state)}">${esc(f.state)}</span>`).join(" · ");
+  const bk = (h.books || []).find(b => b.instrument_id === id);
+  const off = h.clock && h.clock.offset_ms !== null ? `${h.clock.offset_ms > 0 ? "+" : ""}${h.clock.offset_ms} ms` : "unknown";
+  el.innerHTML = `Local worker · data <b>${esc(h.data_mode)}</b> · execution <b>${esc(h.execution_mode.replace("_", " "))}</b> (no order code exists) · ${sym.replace("USDT", "")} perp: ${feeds}` +
+    (WMODE ? ` · this tab gets all prices from the worker (no own connection to Bitget)` : "") + (bk ? ` · book check <span class="${bk.state === "VALID" ? "up" : "down"}">${esc(bk.state)}</span>` : "") + ` · exchange clock offset ${esc(off)} · reconnects ${Number(h.socket.reconnects) || 0}`;
+  if (!workerT) workerT = setInterval(pollWorker, 5000);
+}
+
+async function loadJson(name) {               // a missing file (any non-2xx) is "no data", never parsed as data
+  try { const r = await fetch("data/" + name + "?" + Date.now(), { cache: "no-store" }); return r.ok ? await r.json() : null; } catch (e) { return null; }
+}
+async function loadSnapshot() {
+  [MARKET, STATS, MODEL, JOURNAL] = await Promise.all(["market.json", "stats.json", "model.json", "journal.json"].map(loadJson));
+  if (MARKET && !MARKET.symbols) MARKET = null;
+}
+
+/* A chart that was drawn while its tab was hidden has a zero-width time axis, so the intended window (last 120 candles) is applied to
+ * nothing and the candles end up squeezed to one side with every pattern label on top of the next. Once the tab is laid out, apply the
+ * remembered range again. */
+function refitCharts() {
+  const go = () => { for (const k of Object.values(CH)) if (k.rng && k.el && k.el.clientWidth > 0) k.ch.timeScale().setVisibleLogicalRange(k.rng); };
+  requestAnimationFrame(() => requestAnimationFrame(go));
+}
 /* ================= wiring ================= */
 document.querySelectorAll("#coins span").forEach(t => t.onclick = async () => {
   document.querySelectorAll("#coins span").forEach(x => x.classList.remove("on")); t.classList.add("on");
   sym = t.dataset.sym;
-  renderAll(false);
+  renderAll(false); setMode(); if (WORKER) pollWorker(); if (WMODE) renderAnalysts();
   if (!live[sym] || !live5[sym] || !live4[sym]) { await Promise.all([fetchRest(sym), fetchRest(sym, "5m"), fetchRest(sym, "4H")]); renderAll(false); }
 });
 document.querySelectorAll("#views span").forEach(t => t.onclick = () => {
   document.querySelectorAll("#views span").forEach(x => x.classList.remove("on")); t.classList.add("on");
   view = t.dataset.view;
+  $("monitorView").classList.toggle("hidden", view !== "monitor");
+  $("newsView").classList.toggle("hidden", view !== "news");
+  $("stressView").classList.toggle("hidden", view !== "stress");
   $("tradeView").classList.toggle("hidden", view !== "trade");
   $("patternsView").classList.toggle("hidden", view !== "patterns");
   $("indicatorsView").classList.toggle("hidden", view !== "indicators");
-  renderAll(false);
+  renderAll(false); refitCharts();
 });
 function setTf(t) {
   tf = t;
@@ -800,19 +1072,28 @@ function setTf(t) {
   renderAll(false);
 }
 document.querySelectorAll("#tfs span").forEach(x => x.onclick = () => setTf(x.dataset.tf));
+document.querySelectorAll("#views span, #coins span, #tfs span").forEach(x => { if (!x.hasAttribute("tabindex")) x.tabIndex = 0;
+  x.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); x.click(); } }); });
 $("showCandle").onchange = $("showNeutral").onchange = () => renderAll(true);
 $("tMargin").oninput = $("tLev").onchange = () => renderTrade();
+$("tzSel").value = TZ.label;
+document.querySelectorAll(".tzl").forEach(e => e.textContent = TZ.label);
+$("tzSel").onchange = () => { TZ = TZS[$("tzSel").value] || TZS.IST; try { localStorage.setItem("radar.tz", TZ.label); } catch (e) {}
+  document.querySelectorAll(".tzl").forEach(e => e.textContent = TZ.label); renderAll(false); renderLog(); setMode(); if (WMODE) renderAnalysts(); newsRender(); };
 
 (async () => {
   CH.t = makeChart($("tChart")); CH.p = makeChart($("chart"));
   guide(); renderLog();
+  newsStart(); newsRender(); stressStart(); stressRender();
+  await pollWorker();
+  if (WORKER) WMODE = true;                   // decide the data path before any market data is loaded
   await loadSnapshot();
   renderAll(false);
   $("tLev").value = String(Patterns.PROFILES[profile].lev);
   tf = Patterns.PROFILES[profile].tf; document.querySelectorAll("#tfs span").forEach(x => x.classList.toggle("on", x.dataset.tf === tf));
   await Promise.all(SYMS.flatMap(x => [fetchRest(x), fetchRest(x, "5m"), fetchRest(x, "4H")]));
   renderAll(false);
-  connectStream();
+  if (WMODE) { startWorkerMode(); document.querySelector('#views span[data-view="monitor"]').click(); } else { connectStream(); renderMonitor(true); }
   setInterval(async () => { await loadSnapshot(); if (view === "trade") { renderModel(); renderJournal(); } }, 300000);
   setInterval(async () => { await Promise.all([fetchRest(sym), fetchRest(sym, "5m"), fetchRest(sym, "4H")]); renderAll(true); }, 300000);
 })();

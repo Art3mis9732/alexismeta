@@ -1,0 +1,32 @@
+# Tab inventory (third prompt §9) — audited 2026-11-16 at `7062ac1`
+
+"Owner" = where the numbers are computed. Worker mode = page served by `server/main.js`; static = GitHub Pages.
+
+| Tab / panel | Purpose | Data source | Calculation owner | Live / static | Freshness behaviour | Correctness | Accessibility | Defects / missing | Proposed change · acceptance test |
+|---|---|---|---|---|---|---|---|---|---|
+| **Paper monitor** (new) | What the paper engine is doing now | Worker REST snapshot + SSE | **Worker** (`monitor.js`, `accounting.js`); browser renders only | Live in worker mode; "not available" on static | Five status chips; frozen + timestamp when the worker is lost | 28 browser checks, 129 unit tests | Keyboard rows (Enter), text+symbol states, focus rings | No partial-exit display (engine has none); no "load older" for activity; no regime/date filters on history | Add history filters and CSV export · filter test |
+| Header status line | Platform state | Worker `/api/health`, or the browser's own Bitget socket | Browser | Both | LIVE needs data within 10 s; STALE / RECOVERING / DISCONNECTED; "WORKER DISCONNECTED" if a worker was lost | status e2e 23 checks | `aria-live` | – | – |
+| **Buy / Sell** (dashboard) | Legacy v0 profile signals, manual sandbox trade, chart | Worker API in worker mode; Bitget REST/WS from the browser on static | **Browser** (`patterns.js`) | Live | As header | Legacy rules unchanged; 23 engine tests | Buttons/selects native; coin/timeframe/view tabs now keyboard-operable | Shows "BUY/SELL" with up to 100× on $5: legacy, conflicts with the 2× paper rule (A-06/A-07); manual sandbox is a browser-only simulator (now labelled so) | Move legacy sandbox behind a "legacy" disclosure; show v1 setups from the ledger instead · e2e |
+| v1 analysts card | Latest ledger decision per analyst | Worker `/api/paper` | Worker | Worker mode only (hidden on static) | 10 s poll | e2e | Text labels | Duplicates part of the monitor's diagnostics | Fold into the monitor; keep a one-line summary here |
+| Model scores card | Legacy logistic score ×3 timeframes | `data/model.json` (daily cron) + browser features | Browser | Static file, refreshed daily | Shows training date | Labelled uncalibrated; not a probability | Table | Test metrics describe the 70% model, live model is refit (disclosed); no calibration | Phase 7 baselines + calibration gate before any % is shown |
+| **News** (replaces the Buy/Sell news card) | Official announcements, interpretation, source health | Worker `/api/news` (news-v2) | Worker (`news.js`, `news_interpret.js`, `news_reaction.js`); the browser renders only | Worker mode; the static page states it needs the worker | Fetch age and article age are separate columns; first-poll items are flagged backlog | 25 unit tests + e2e 31 | Keyboard, text+symbol statuses, `rel=noopener`, no horizontal scroll at 390 px | Only 7 sources; no CFTC/ECB/BLS/issuer/project channels; keyword rules are unevaluated | Add sources after host approval; evaluate interpretation by ablation before any decision use |
+| Automatic paper trader (legacy) | Legacy cron journal ($5 margin) | `data/journal.json` on gh-pages | GitHub Actions `paper_trader.js` | Static, every 15 min | Last-run time shown | Legacy; rewritten in place (A-04) | Table | Not ledgered; candle-based fills | Label "legacy v0"; retire once the worker ledger has a hosted home |
+| **Patterns** | Named candle/structure patterns on the chart + 180-day report card | Candles as above; `data/stats.json` | Browser (`patterns.js`); stats by cron | Live chart; daily stats | As header | 23 engine tests incl. no-look-ahead | Markers have text labels | **Fixed now:** "last closed candle" and event times added 15 min on 5m/4h charts. Detectors present: 16 candle patterns, breakout / weak breakout / retest / failed breakout, VWAP pullback, 4h-range false breakout. **Absent (not labelled as present):** triangles, flags, wedges, channels, ranges, liquidity sweeps, pivots/structure breaks | Record detection vs confirmation time per pattern; link patterns to the decisions that used them · fixture per detector |
+| **Indicators** | Indicator values + tested textbook signal | Candles; `model.json` | Browser | Live | As header | **Now** 6 closed-form reference fixtures (EMA, MACD, Bollinger, ATR, DI/ADX, stochastic, RSI, VWAP, OBV) | Table | **Fixed now:** candle-close time on 5m/4h. OI, funding history, CVD and book imbalance are **not** indicators here (OI/funding are snapshot values on Patterns; CVD/imbalance not built) | Add funding/OI panels from worker data with units · reference fixtures |
+| Charts | Candles, VWAP, levels | As above | Browser (TradingView Lightweight Charts, attribution in footer) | Live | Forming candle drawn separately | – | Canvas (no text alternative) | No volume pane, no depth view, no setup markers from the ledger | Ledger setup markers; volume · visual check |
+| Settings | – | – | – | – | – | – | – | There is no settings page. Timezone is a header select (IST/UTC) | Not needed yet |
+| "Fable Advisor" | – | – | – | – | – | – | – | Not a site feature: the user confirmed (2026-11-16) it is the Claude Code development reviewer. The three analysts are deterministic rule sets and are labelled DETERMINISTIC in the registry | – |
+
+Visual verification: desktop 1440 px and phone 390 px screenshots of the monitor (no horizontal page scroll; wide tables
+scroll inside their cards). Contrast was not measured with a tool; screen-reader behaviour not tested.
+
+## Session 5 note (2026-11-17)
+The page has exactly five tabs: Paper monitor, News, Buy / Sell, Patterns, Indicators. There is **no** Dashboard, Settings, "Fable
+Advisor" or Model Lab tab; an external prompt listed them and they were not invented. (The coding advisor and the three analysts are
+different things; the analysts appear in Paper monitor and Buy / Sell.) All five were screenshot-reviewed at desktop and phone width
+(V-029). The trained logistic-regression scores are shown in Buy / Sell as "Model scores (uncalibrated, not probabilities)".
+
+## Session 6 note (2026-11-17)
+A sixth tab, **Market stress**, was added (after News) together with a summary strip visible on every tab. Tabs are now: Paper monitor, News, Market stress,
+Buy / Sell, Patterns, Indicators. Still no Dashboard, Settings, Fable Advisor or Model Lab tab. Phone width: the tab bar wraps to two rows of three.
+

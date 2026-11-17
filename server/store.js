@@ -175,11 +175,22 @@ const MIGRATIONS = [
    CREATE TRIGGER IF NOT EXISTS stress_samples_no_synth_forward BEFORE INSERT ON stress_samples
      WHEN NEW.origin = 'SYNTHETIC_FIXTURE' AND (SELECT value FROM meta WHERE key = 'environment') = 'FORWARD'
      BEGIN SELECT RAISE(ABORT, 'synthetic stress rows are refused in a FORWARD database'); END;`
+  ,
+  // v10: recorded valuation samples (live-accounting milestone). ADDITIVE ONLY, outside the ledger and outside every decision transaction.
+  //   paper_valuation_samples  one row per OPEN position per minute: mark, gross P&L, estimated close, net if closed, margin, primary ROI, input freshness
+  //   paper_equity_samples     one row per account per minute: cash, mark equity, closeout equity, and a RUNNING PEAK / drawdown computed from the samples themselves
+  // They are a record of what the monitor saw, from the day recording started. They are never back-filled, never feed a decision, and are pruned after 30 days.
+  `CREATE TABLE IF NOT EXISTS paper_valuation_samples (
+     position_id TEXT NOT NULL, ts INTEGER NOT NULL, mark REAL, gross_unrealized REAL, est_close REAL, net_if_closed REAL, margin_allocated REAL, roi_primary_pct REAL,
+     mark_status TEXT, book_status TEXT, PRIMARY KEY (position_id, ts)) WITHOUT ROWID;
+   CREATE TABLE IF NOT EXISTS paper_equity_samples (
+     analyst TEXT NOT NULL, ts INTEGER NOT NULL, cash REAL, mark_equity REAL, closeout_equity REAL, open_positions INTEGER, pricing TEXT, peak REAL, drawdown_pct REAL,
+     PRIMARY KEY (analyst, ts)) WITHOUT ROWID;`
 ];
 
 const DEFAULT_RETENTION_MS = {
   trades: 3 * 86400000, book_tops: 2 * 86400000, tickers: 7 * 86400000,
-  candles_1m: 90 * 86400000, quarantine: 7 * 86400000, feed_events: 30 * 86400000, news_fetch_log: 30 * 86400000, stress_samples: 30 * 86400000
+  candles_1m: 90 * 86400000, quarantine: 7 * 86400000, feed_events: 30 * 86400000, news_fetch_log: 30 * 86400000, stress_samples: 30 * 86400000, paper_samples: 30 * 86400000
 };
 
 class Store {
@@ -367,6 +378,8 @@ class Store {
     del("feed_events", "DELETE FROM feed_events WHERE ts < ?", now - R.feed_events);
     del("news_fetch_log", "DELETE FROM news_fetch_log WHERE ts < ?", now - R.news_fetch_log);
     del("stress_samples", "DELETE FROM stress_samples WHERE ts < ?", now - (R.stress_samples || DEFAULT_RETENTION_MS.stress_samples));   // transitions are never pruned
+    del("paper_valuation_samples", "DELETE FROM paper_valuation_samples WHERE ts < ?", now - (R.paper_samples || DEFAULT_RETENTION_MS.paper_samples));
+    del("paper_equity_samples", "DELETE FROM paper_equity_samples WHERE ts < ?", now - (R.paper_samples || DEFAULT_RETENTION_MS.paper_samples));
     return out;
   }
 

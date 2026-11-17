@@ -139,6 +139,8 @@ function renderMonitorAccounts() {
       row("Realised net", '<span class="' + mCls(a.realized_net) + '">' + mSigned(a.realized_net, 4) + "</span>") +
       row("Account return", mSigned(a.account_return ? a.account_return.value_pct : a.portfolio_return_pct_of_starting_capital, 3) + "%", a.account_return ? a.account_return.definition + " · denominator " + mNum(a.account_return.denominator_usdt, 2) + " USDT · " + a.account_return.capital_flow_assumption : "") +
       row("Drawdown from peak mark equity", mNum(a.drawdown_pct, 3) + "%") +
+      row("Max drawdown (recorded)", a.drawdown_recorded && a.drawdown_recorded.max_pct !== null ? mSigned(a.drawdown_recorded.max_pct, 3) + "%" : '<span class="muted">N/A</span>', a.drawdown_recorded ? a.drawdown_recorded.basis : "") +
+      row("Drawdown coverage", a.drawdown_recorded && a.drawdown_recorded.samples ? a.drawdown_recorded.samples + " samples since " + istT(a.drawdown_recorded.first_ts) + (a.drawdown_recorded.largest_gap_ms > 150000 ? " · largest gap " + mDur(a.drawdown_recorded.largest_gap_ms) : "") : "none recorded yet", "recorded once a minute while the worker runs; not back-filled") +
       row("Positions open / closed", a.counts.open + " / " + a.counts.closed) +
       row("Uncertain (data gap)", (a.counts.open_gap_affected + unc) + " trades" + (a.counts.closed ? " · " + Math.round(a.counts.uncertain_share * 100) + "% of closed" : "") + " · exposure " + mNum(a.unresolved_exposure_usdt, 2), "kept in the account; excluded only from evaluable metrics") +
       row("Net result: all closed / evaluable only", mSigned(a.results.net_all_closed, 4) + " / " + mSigned(a.results.net_evaluable, 4)) +
@@ -280,7 +282,22 @@ async function monitorOpenDetail(pid) {
   MON.lines.forEach(function (l) { MON.series.removePriceLine(l); }); MON.lines = [];
   [[p.entry_fill_price, "#e7e9ee", "entry fill"], [p.stop, "#e5484d", "stop"], [p.target, "#2fbf71", "target"]].forEach(function (x) { MON.lines.push(MON.series.createPriceLine({ price: x[0], color: x[1], lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: x[2] })); });
   MON.chart.timeScale().fitContent();
+  monitorTimeline(D);
   $("mDetailCard").scrollIntoView({ block: "nearest" });
+}
+/* P&L / ROI timeline: only what the monitor RECORDED once a minute while the position was open. Gaps are left empty, never interpolated or reconstructed. */
+function monitorTimeline(D) {
+  var T = D.timeline, p = D.position, el = $("mTimeline"), note = $("mTimelineNote"); if (!el) return;
+  if (!T || !T.samples.length) { el.classList.add("hidden"); note.innerHTML = "<b>Valuation timeline:</b> " + esc(T && T.note ? T.note : "not available") + " Nothing is reconstructed for earlier times."; return; }
+  el.classList.remove("hidden");
+  if (!MON.tl) { MON.tl = LightweightCharts.createChart(el, { autoSize: true, layout: { background: { color: "#171a21" }, textColor: "#8b93a3" }, grid: { vertLines: { color: "#1f232c" }, horzLines: { color: "#1f232c" } }, timeScale: { timeVisible: true, secondsVisible: false, borderColor: "#262b35" }, rightPriceScale: { borderColor: "#262b35" } });
+    MON.tlG = MON.tl.addLineSeries({ color: "#6ea8fe", lineWidth: 2, title: "gross P&L" }); MON.tlN = MON.tl.addLineSeries({ color: "#f5a524", lineWidth: 2, title: "net if closed (est.)" }); }
+  var tm = function (t) { return (t + TZ.ms) / 1000; }, g = [], n = [], prev = null;
+  T.samples.forEach(function (r) { if (prev !== null && r.ts - prev > 150000) { g.push({ time: tm(prev + 60000) }); n.push({ time: tm(prev + 60000) }); }        // a gap stays EMPTY
+    if (r.gross_unrealized !== null) g.push({ time: tm(r.ts), value: r.gross_unrealized }); if (r.net_if_closed !== null) n.push({ time: tm(r.ts), value: r.net_if_closed }); prev = r.ts; });
+  MON.tlG.setData(g); MON.tlN.setData(n); MON.tl.timeScale().fitContent();
+  var c = T.coverage; note.innerHTML = "<b>Valuation timeline (recorded, not reconstructed):</b> " + c.count + " one-minute samples from " + istT(c.first_ts) + " to " + istT(c.last_ts) + " " + TZ.label + " · " + (c.gaps.length ? c.gaps.length + " gap(s) left empty (" + c.gaps.map(function (x) { return mDur(x.ms); }).join(", ") + ")" : "no gaps") +
+    " · blue: gross P&L at mark, amber: estimated net if closed at that time · recording on this worker began " + istT(T.recording_since_ts) + (p.closed ? " · final booked net " + mSigned(p.closed.net_usdt, 4) + " USDT at exit" : "") + ".";
 }
 document.addEventListener("DOMContentLoaded", function () {
   $("mDetailClose").onclick = function () { MON.detailId = null; $("mDetailCard").classList.add("hidden"); };

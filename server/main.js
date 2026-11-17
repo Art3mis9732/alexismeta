@@ -20,6 +20,7 @@ const { withReaction } = require("./news_reaction");
 const { appliesTo, INTERPRETERS } = require("./news_interpret");
 const { Monitor, MONITOR_SCHEMA } = require("./monitor");
 const { StressMonitor } = require("./stress_monitor");
+const { ValuationRecorder } = require("./valuation_recorder");
 const stressFixture = require("./stress_fixture");
 const Stress = require("./stress");
 const { API_SCHEMA_VERSION, buildInfo } = require("./runtime");
@@ -194,6 +195,7 @@ async function main() {
     catch (e) { log("engine: " + e.message); if (e.constructor && e.constructor.name === "EngineLocked") { runtime.engine_error = e.message; engineRef.current = null; } }
   }, 5000));
   timers.push(setInterval(() => { try { if (engineRef.current) engineRef.current.reconcile(); } catch (e) { log("reconcile: " + e.message); } }, 60000));
+  { const rec = new ValuationRecorder({ store, monitor, log }); timers.push(setInterval(() => { if (engineRef.current) rec.tick(); }, 15000)); }   // at most one sample per minute; read-only on trading state
   if (a.fixture && engineRef.current) runtime.fixture = require("./fixture").start({ engine: engineRef.current, collector, store, health, log, identity, timers });
   news.poll().catch(e => log("news: " + e.message));
   timers.push(setInterval(() => { news.poll().catch(e => log("news: " + e.message)); }, 60000));   // each source polls every 10 min

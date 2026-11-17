@@ -12,6 +12,7 @@
  * frames are skipped for a client whose socket is backed up, and a client that stays backed up is disconnected. */
 
 const acct = require("./accounting");
+const { coverageOf } = require("./valuation_recorder");
 const risk = require("./risk");
 const { ANALYSTS, RULES, explain, registry } = require("./policies");
 const { BAR, EVIDENCE_VERSION } = require("./evidence");
@@ -51,6 +52,17 @@ class Monitor {
     if (!b) return null;
     const top = b.top(400);
     return { state: b.state, ts: b.recvTs, bids: top.bids, asks: top.asks };
+  }
+  invalidateDrawdown() { this._dd = {}; }                                       // called by the recorder after it writes, so the shown maximum never lags a new sample
+  /** Maximum drawdown over the RECORDED mark-equity samples (peak-to-trough). Unknown before recording started and between samples; coverage is part of the answer. Cached 30 s. */
+  drawdownRecorded(analyst) {
+    this._dd = this._dd || {}; const t = this.now(), c = this._dd[analyst];
+    if (c && t - c.at < 30000) return c.v;
+    const a = this.db.prepare("SELECT MIN(drawdown_pct) AS m, COUNT(*) AS n, MIN(ts) AS a, MAX(ts) AS b FROM paper_equity_samples WHERE analyst=?").get(analyst);
+    const g = a.n > 1 ? this.db.prepare("SELECT MAX(ts - prev) AS g FROM (SELECT ts, LAG(ts) OVER (ORDER BY ts) AS prev FROM paper_equity_samples WHERE analyst=?)").get(analyst).g : null;
+    const v = { max_pct: a.n ? Math.min(0, a.m) : null, samples: a.n, first_ts: a.a, last_ts: a.b, largest_gap_ms: g,
+      basis: a.n ? "peak-to-trough over mark-equity samples recorded once a minute since the first sample; time before recording and between samples is unknown, so intra-gap peaks and troughs are not included" : "no equity samples recorded yet" };
+    this._dd[analyst] = { at: t, v }; return v;
   }
   /** Entry sizing recorded in the ledger risk status at the moment the position was approved (immutable, so memoised). Null if not found. */
   recordedSizing(decisionId) {
@@ -112,7 +124,7 @@ class Monitor {
         unresolved_exposure_usdt: open.filter(v => v.data_state !== "COMPLETE").reduce((s, v) => s + v.remaining_entry_notional, 0),
         results: { net_all_closed: sum(closed), net_evaluable: sum(ev), net_uncertain: sum(unc), wins_evaluable: ev.filter(v => v.closed.net_usdt > 0).length,
           basis: "cash/equity cover EVERY position; win counts use the evaluable subset; uncertain trades are shown, never dropped" },
-        edge_status: "NO_DEMONSTRATED_EDGE" });
+        drawdown_recorded: this.drawdownRecorded(a), edge_status: "NO_DEMONSTRATED_EDGE" });
     }
     return { accounts: out, structure: `${out.length} independent paper portfolios of ${this.config.equity0} USDT each (total starting capital ${out.length * this.config.equity0} USDT). They are compared side by side and never summed into one account; there is no shared allocator.` };
   }
@@ -135,7 +147,11 @@ class Monitor {
     const end = p.exit_ts || this.now(), from = p.opened_ts - 30 * 60000;
     const candles = this.db.prepare("SELECT open_ts, o, h, l, c, base_vol, final FROM candles WHERE instrument_id=? AND interval='1m' AND open_ts >= ? AND open_ts <= ? ORDER BY open_ts").all(p.instrument_id, from, end);
     const missing = []; for (let i = 1; i < candles.length; i++) if (candles[i].open_ts - candles[i - 1].open_ts !== 60000) missing.push({ after: candles[i - 1].open_ts, before: candles[i].open_ts });
-    return { position: this.positionView(p),
+    const tl = this.db.prepare("SELECT ts, mark, gross_unrealized, est_close, net_if_closed, margin_allocated, roi_primary_pct, mark_status, book_status FROM paper_valuation_samples WHERE position_id=? ORDER BY ts").all(positionId);
+    const since = this.db.prepare("SELECT MIN(ts) AS t FROM paper_valuation_samples").get().t;
+    const timeline = { samples: tl, coverage: coverageOf(tl), recording_since_ts: since, basis: "valuations recorded by the monitor once a minute while the position was open; never reconstructed from prices; gaps stay empty",
+      note: tl.length ? null : since === null ? "no valuation has been recorded yet by this worker" : "recording began after this position opened, or the position closed before recording began" };
+    return { position: this.positionView(p), timeline,
       decision: dec ? { entry_id: dec.entry_id, created_ts: dec.created_ts, data_cutoff_ts: dec.data_cutoff_ts, code_rev: dec.code_rev, versions: JSON.parse(dec.versions), hash: dec.hash, ...payload } : null,
       evidence: snapRow ? JSON.parse(snapRow.json) : null,
       predicates: snapRow ? explain(p.analyst, JSON.parse(snapRow.json)) : null,

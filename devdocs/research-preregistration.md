@@ -41,3 +41,12 @@ Reported beside it, not gating: log loss and Brier score against the base rate, 
 
 ## 7. Non-goals
 No live or exchange trading, no private endpoints, no real money, no change to policies, risk limits or the forward ledger, no automatic promotion, no paid services, no new network hosts. Research artifacts live in files (gitignored data, committed small manifests and registries); no forward-database writes and no schema change.
+
+## Amendment 1 (2026-11-17, still before any model has been fitted on the real dataset)
+Made while building the pipeline; each item is stricter or more specific, none loosens the gate. The pipeline is tested on synthetic data only so far (noise is rejected, a planted signal is found).
+1. **Legacy LR comparator (M1)** uses the legacy model's *family* (returns over 1/4/16/96 bars, ATR %, volume ratio, hour of day; no triggers, trend or VWAP), because the legacy feature code lives in browser JavaScript and is not part of this dataset. It is an approximation of that model, labelled as such in the trial log.
+2. **Trial accounting:** 21 configurations (1 constant, 3 legacy LR, 5 LR, 12 boosting) plus the 11-point threshold grid for the one selected configuration = at most 32 logged trials, under the cap of 40. The log refuses to append beyond 40.
+3. **Selection:** a configuration is considered only if it beats the training base rate's log loss on VALIDATION by at least 0.0005; the best by validation log loss is chosen; its threshold is the grid value with the highest mean R per trade on VALIDATION with at least 100 trades. **If no configuration clears that margin, or the best threshold's validation mean R is not positive, the result is REJECTED_ON_VALIDATION and FINAL is never read.**
+4. FINAL scoring refits the chosen configuration on TRAIN only, writes a lock file, and refuses a second run. A label-shuffled control is logged next to the validation trials.
+5. The dataset also stores `costR` (fees and slippage in R) so the "+25% costs" check can be computed exactly.
+6. Selection on FINAL and the random baseline use R per trade with fixed size, as in section 5; random baselines use 200 seeds.

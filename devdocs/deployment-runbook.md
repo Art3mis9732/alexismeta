@@ -126,3 +126,14 @@ Windows evidence.
 * **Do not use `--stress-mode enforce` on the forward environment without the user's explicit approval** (D-024): it blocks new paper entries and changes forward behaviour; the effective time is recorded and shown.
 * Rollback: stop the worker, start the previous commit's code with the pre-migration backup ONLY if no newer forward history exists. Otherwise keep the v9 file and run the new code with `--no-stress`: the stress tables are additive and nothing else reads them. Never replace a newer forward database with an older one.
 * The cloud container's workers stop when a session turn ends. A worker on your own PC runs until you stop it; the stress monitor records any gap as UNOBSERVED rather than as a recovery.
+
+## Viewing the live accounting locally (Windows, PowerShell) — instructions; not run by me on Windows
+The cloud container's `127.0.0.1` is not your PC. After the branch is pushed (needs your approval) and pulled (steps in "Updating your Windows checkout"; this build migrates your database to schema v10, so **back up first with `node server\admin.js backup ...` and stop the worker**):
+```powershell
+cd $HOME\path\to\alexismeta
+git fetch origin; git checkout claude/friendly-dirac-ouvgn4; git pull --ff-only origin claude/friendly-dirac-ouvgn4
+npm test                                  # expect 208 passing
+npm start                                 # forward worker on http://127.0.0.1:8787
+node server\main.js --port 8791 --env test --fixture      # optional: TEST worker with fixture positions on live prices, to see the panel with positions open
+```
+Open **http://127.0.0.1:8787/** (Ctrl+F5). **Paper monitor** is the first tab: the **Open positions** panel is at the top (empty state when nothing is open; click a card for the detail with the recorded timeline), then the account cards (closeout equity, exposure, pricing, account return, recorded max drawdown), then history with filters. **Buy / Sell** shows the legacy scheduled simulator panel (it renders the `journal.json` in your checkout; the public site has the newer one). `http://127.0.0.1:8787/api/runtime` shows build, environment and the stress block; `/api/paper/snapshot` is the raw valuation including each position's `live` block. The recorded timeline and drawdown start when your worker first records (one sample per minute); nothing is back-filled.

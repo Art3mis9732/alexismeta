@@ -159,3 +159,15 @@ The forward worker holds two open natural positions (flagged by a real websocket
 
 ## D-028 (2026-11-17) — event closure after an unobserved gap is UNOBSERVED, not RECOVERED
 When the monitor was not running for more than 5 minutes, an active event is closed at the last evaluation time with reason UNOBSERVED. A disconnect or restart is never recorded as a recovery.
+
+## D-029 (2026-11-17) — a dead forward worker was started with positions open
+D-022 protects against self-inflicted restarts. Here the worker died with the session while three natural positions were open; the gap existed already and delay only adds unobserved time. Started on the new build after a fresh backup; the downtime is recorded as a gap, stops filled at first observed prices, trades flagged uncertain (D-016). This also applied schema v9/v10 and started the stress monitor (SHADOW) on forward, earlier than D-027 planned; the migrations were validated on copies first.
+
+## D-030 (2026-11-17) — margin basis and primary ROI
+Margin is the simulator's reservation (entry-fill notional / 2x setting), the same convention the account uses; the ledger's recorded margin (pre-slippage reference price) is shown separately as `recorded_at_entry`. Primary ROI = gross P&L / initial margin (denominator stays the full entry margin through partial exits); every ROI prints its USDT denominator; P&L is also given as a share of the recorded risk budget. No existing key or formula was changed (additive only).
+
+## D-031 (2026-11-17) — legacy simulator: relabel and replay only
+The producer, its workflow and journal are untouched. The page now says what the numbers are, shows the producer's last run and observed cadence, and replays open trades on final candles with the producer's own rule (hypothetical, recorded nowhere, never in `/api/paper` or any account). Legacy trades are not migrated into the forward ledger.
+
+## D-032 (2026-11-17) — ordering and tombstones in the browser
+Valuation frames older than the one on screen are dropped; a position known closed (snapshot `recent_closed` or a POSITION_CLOSED event) is removed from every later frame. Position ids are unique and never reopen, so the set is safe for the page's lifetime; authoritative resnapshots reset it.

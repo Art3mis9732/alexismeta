@@ -32,3 +32,9 @@ Classes: VERIFIED · IMPLEMENTED_UNVERIFIED · PARTIAL · BROKEN · MISSING · E
 | 26 | Stress detector reacts to moves rather than anticipating them; XRP shows no lift; severity levels not monotonic; liquidity families uncalibrated | LIMITATION (documented, not a bug) | provisional; shadow-only | stress-calibration.md |
 | 27 | Cloud workers die when a turn ends (observed twice at 08:56 UTC and between sessions); every session starts as a restart after a gap | LIMITATION | monitor treats the gap as UNOBSERVED; no continuous-monitoring claim is made; a Windows worker would run continuously | resume.md |
 
+
+| 28 | Legacy panel claimed "runs every 15 minutes ... even when this page is closed"; actual runs are 4-9 h apart; open trade shown as open although its stop was reached | BROKEN (claim) | relabelled, cadence and last run shown, open trades replayed on final candles | V-032 |
+| 29 | Legacy amounts shown with "$" as if USD | MISLEADING | shown as USDT, hypothetical | live-accounting-milestone.md |
+| 30 | Browser applied valuation frames with no ordering check (old frame could roll back or resurrect a closed position) | BROKEN (robustness) | old-frame rejection and tombstones, tested | V-033 |
+| 31 | Open-positions table below the fold, clipped, no per-position mark/freshness | BROKEN (UX) | new panel above accounts | V-033 |
+| 32 | Cloud worker death left 3 natural positions unmanaged and uncertain | LIMITATION (environment) | recorded; gap policy applied; continuous monitoring not claimed | live-accounting-milestone.md |

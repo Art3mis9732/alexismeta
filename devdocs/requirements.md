@@ -167,3 +167,11 @@ Evidence references point to `verification.md` entries (V-xxx).
 | P6-07 | Stress UI + news context, all states | C | DONE, browser-verified on TEST synthetic + real-data TEST; NOT on the forward worker | V-031 |
 | P6-08 | Forward activation of the stress monitor | C | BLOCKED: waits for the next restart with no open position (D-027) | resume.md |
 | P6-09 | Historical strategy evaluation (analysts, stress-gated vs ungated) | D | NOT_STARTED | roadmap |
+| P7-01 | Screenshot source traced; $5/leverage meaning; pictured trade status | A | DONE (legacy scheduled simulator; trade stopped per replay) | V-032 |
+| P7-02 | Authoritative accounting contract / field dictionary | A | DONE | accounting-contract.md |
+| P7-03 | Live open-position valuation with labelled ROI, margin, exposure, net-if-closed | B | DONE (additive); verified on TEST + hand-checked forward natural trades | V-033 |
+| P7-04 | Open Positions interface above the accounts; staleness, signs, phone | C | DONE, browser-verified | V-033 |
+| P7-05 | Account dashboards: closeout equity, exposure, pricing, account return, recorded max drawdown | D | DONE; drawdown limited to recorded samples | accounting-contract.md |
+| P7-06 | History filters and ROI basis; legacy integration | E | DONE; legacy relabelled, hypothetical replay | live-accounting-milestone.md |
+| P7-07 | Recorded valuation timeline (no reconstruction) | C/D | DONE from 2026-11-17 11:11 UTC on forward | V-033 |
+| P7-08 | Real-time claim measured | B | MEASURED on loopback (cloud); Windows/network NOT measured | accounting-contract.md |

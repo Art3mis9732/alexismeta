@@ -51,3 +51,11 @@ re-run the training here; these are the published numbers.
 4. A model registry and bounded job runner outside the ingestion process, with real state (queued/running/succeeded/failed).
 5. Forward shadow evaluation of a candidate, with promotion only by explicit approval, and rollback that never rewrites the ledger.
 6. Only then: evaluate GA (parameter search), ensembles, sequence models, RL. Each needs a trial budget and an untouched final period.
+
+## Update 2026-11-17 (research Slices 1-2): what now exists, and what it found
+Items 1-4 above are built, locally, as research tooling (nothing in the live trading path changed):
+1. Point-in-time historical evaluation of the three analysts on 180 days: `hist-evaluation-report.md` (no edge after costs; indistinguishable from random entries; break-even before costs). Validated against recorded forward evidence (48 snapshots, 126 decisions, 10 positions).
+2. Dataset manifests and chronological splits with embargo and purge: `research/dataset.js` (rule-based split, sha256 manifest, label window purge). Pre-registration `research-preregistration.md` (+ Amendment 1) was committed before any fit.
+3. Baseline fits: `modellab/` (constant, legacy-style LR, L2 LR, shallow boosting), trial log with a 40-trial cap, validation selection, one-time FINAL scoring with a five-part gate (R per trade CI, random-entry baseline, stability, +25% costs). Tested on synthetic data: noise is rejected, a planted signal is found.
+4. Registry and runner: `research/registry/` (trials, validation result, final result, loop state), read-only Model Lab view in the monitor, bounded local loop `research/lab_loop.js` (refuses during HIGH/CRITICAL stress, cannot score FINAL or promote).
+Still open: item 5 (forward shadow evaluation of a candidate; only meaningful if a candidate exists) and item 6 (GA, sequence models, RL: not justified until a simple model shows after-cost skill). Results of the first real fit are in `research-model-results.md` once run.

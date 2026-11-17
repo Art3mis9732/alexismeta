@@ -30,3 +30,5 @@
 | 2026-11-16 (s3) | First natural forward entries (12:30 UTC) observed; tainted by an operator restart | OBSERVED, flagged | V-027 |
 | – | Milestones C-stress, D (historical evaluation), E–G | NOT_STARTED | requirements.md |
 | 2026-11-17 (s5) | Rendered-page review of all five tabs: 4 layout defects fixed (news order, clipped accounts, hidden-tab chart range, phone tabs); training audit; stale docs fixed | VERIFIED (unit 151, e2e 42 + 23) | V-029, training-audit.md |
+| 2026-11-17 (s7) | Research Slice 1: historical evaluation harness, parity validation, analyst report (no edge after costs) | VERIFIED (local, unpushed) | V-034, hist-evaluation-report.md, D-033 |
+| 2026-11-17 (s7) | Pre-registration research-prereg-v1 (+ Amendment 1) committed before any fit; dataset builder, Model Lab pipeline, read-only lab view, bounded loop | VERIFIED on synthetic data; real fit pending download | research-preregistration.md |

@@ -97,12 +97,12 @@ test("storage is bounded: three hours of ticks write at most one row per positio
   assert.equal(r.ledger.verify().ok, true, "pruning samples never touches the ledger");
 });
 
-test("migration v8 -> v10 is additive: existing rows are kept, only the two sample tables are added", () => {
+test("migration v8 -> latest is additive: existing rows are kept; sample, stress and news-shadow tables are added", () => {
   const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "mig-")), "v8.db"), d = new DatabaseSync(f);
   for (let i = 0; i < 8; i++) d.exec(MIGRATIONS[i]); d.exec("PRAGMA user_version=8");
   d.prepare("INSERT INTO meta (key, value) VALUES ('environment','FORWARD')").run(); d.prepare("INSERT INTO feed_events (ts, feed, event, detail) VALUES (1,'x','y','z')").run(); d.close();
-  const s = new Store(f); assert.equal(s.db.prepare("PRAGMA user_version").get().user_version, MIGRATIONS.length); assert.equal(MIGRATIONS.length, 10);
+  const s = new Store(f); assert.equal(s.db.prepare("PRAGMA user_version").get().user_version, MIGRATIONS.length); assert.equal(MIGRATIONS.length, 11);
   assert.equal(s.db.prepare("SELECT COUNT(*) n FROM feed_events").get().n >= 1, true);
-  for (const t of ["paper_valuation_samples", "paper_equity_samples", "stress_transitions"]) assert.ok(s.db.prepare("SELECT name FROM sqlite_master WHERE name=?").get(t), t);
+  for (const t of ["paper_valuation_samples", "paper_equity_samples", "stress_transitions", "news_shadow"]) assert.ok(s.db.prepare("SELECT name FROM sqlite_master WHERE name=?").get(t), t);
   assert.equal(s.db.prepare("SELECT value FROM meta WHERE key='environment'").get().value, "FORWARD"); s.close();
 });

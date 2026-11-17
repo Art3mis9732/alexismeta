@@ -1,0 +1,160 @@
+{
+ "db": "data/backups/market-pre-research-20261117-125116.db",
+ "closed_positions": 10,
+ "evaluable": {
+  "checked": 0,
+  "same_reason": 0,
+  "exit_time_within_1m": 0,
+  "price_diffs_bps": [],
+  "mismatches": []
+ },
+ "uncertain": {
+  "checked": 10,
+  "same_reason": 10,
+  "details": [
+   {
+    "position": "pos:decision:balanced-v1:bitget:perp:ETHUSDT:1794832200000",
+    "recorded": [
+     "stop",
+     "2026-11-16T12:34:13.827Z",
+     1794.798888
+    ],
+    "replay": [
+     "stop",
+     "2026-11-16T12:34:00.000Z",
+     1794.4108042610503
+    ],
+    "note": "trade-feed gap while open: exit may differ from reality"
+   },
+   {
+    "position": "pos:decision:risk_taker-v1:bitget:perp:ETHUSDT:1794832200000",
+    "recorded": [
+     "stop",
+     "2026-11-16T12:34:13.827Z",
+     1794.798888
+    ],
+    "replay": [
+     "stop",
+     "2026-11-16T12:34:00.000Z",
+     1794.4108042610503
+    ],
+    "note": "trade-feed gap while open: exit may differ from reality"
+   },
+   {
+    "position": "pos:decision:risk_taker-v1:bitget:perp:BTCUSDT:1794832200000",
+    "recorded": [
+     "stop",
+     "2026-11-16T12:43:21.853Z",
+     64216.940819999996
+    ],
+    "replay": [
+     "stop",
+     "2026-11-16T12:43:00.000Z",
+     64203.550041818904
+    ],
+    "note": "trade-feed gap while open: exit may differ from reality"
+   },
+   {
+    "position": "pos:decision:balanced-v1:bitget:perp:BTCUSDT:1794832200000",
+    "recorded": [
+     "stop",
+     "2026-11-16T12:43:21.853Z",
+     64216.940819999996
+    ],
+    "replay": [
+     "stop",
+     "2026-11-16T12:43:00.000Z",
+     64203.550041818904
+    ],
+    "note": "trade-feed gap while open: exit may differ from reality"
+   },
+   {
+    "position": "pos:decision:defensive-v1:bitget:perp:BTCUSDT:1794832200000",
+    "recorded": [
+     "stop",
+     "2026-11-16T12:43:21.853Z",
+     64216.940819999996
+    ],
+    "replay": [
+     "stop",
+     "2026-11-16T12:43:00.000Z",
+     64203.550041818904
+    ],
+    "note": "trade-feed gap while open: exit may differ from reality"
+   },
+   {
+    "position": "pos:decision:risk_taker-v1:bitget:perp:ETHUSDT:1794909600000",
+    "recorded": [
+     "target",
+     "2026-11-17T10:13:33.765Z",
+     1795.3435697807747
+    ],
+    "replay": [
+     "target",
+     "2026-11-17T10:13:00.000Z",
+     1794.9845728662015
+    ],
+    "note": "trade-feed gap while open: exit may differ from reality"
+   },
+   {
+    "position": "pos:decision:balanced-v1:bitget:perp:ETHUSDT:1794909600000",
+    "recorded": [
+     "target",
+     "2026-11-17T10:07:19.368Z",
+     1799.258209335581
+    ],
+    "replay": [
+     "target",
+     "2026-11-17T10:07:00.000Z",
+     1798.898429649651
+    ],
+    "note": "trade-feed gap while open: exit may differ from reality"
+   },
+   {
+    "position": "pos:decision:risk_taker-v1:bitget:perp:BTCUSDT:1794913200000",
+    "recorded": [
+     "stop",
+     "2026-11-17T11:11:05.973Z",
+     64241.845799999996
+    ],
+    "replay": [
+     "stop",
+     "2026-11-17T11:09:00.000Z",
+     64219.968391090006
+    ],
+    "note": "trade-feed gap while open: exit may differ from reality"
+   },
+   {
+    "position": "pos:decision:balanced-v1:bitget:perp:BTCUSDT:1794913200000",
+    "recorded": [
+     "stop",
+     "2026-11-17T11:11:05.973Z",
+     64241.845799999996
+    ],
+    "replay": [
+     "stop",
+     "2026-11-17T11:09:00.000Z",
+     64219.968391090006
+    ],
+    "note": "trade-feed gap while open: exit may differ from reality"
+   },
+   {
+    "position": "pos:decision:risk_taker-v1:bitget:perp:ETHUSDT:1794913200000",
+    "recorded": [
+     "stop",
+     "2026-11-17T11:11:05.893Z",
+     1794.398808
+    ],
+    "replay": [
+     "stop",
+     "2026-11-17T11:07:00.000Z",
+     1792.8272606608707
+    ],
+    "note": "trade-feed gap while open: exit may differ from reality"
+   }
+  ]
+ },
+ "not_covered": 0,
+ "verdict": "NO_EVALUABLE_SAMPLE (every closed forward position had a trade-feed gap: the replay can be compared, not validated)",
+ "pass": null
+}

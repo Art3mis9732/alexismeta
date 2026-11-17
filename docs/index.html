@@ -19,6 +19,7 @@
   .seg span { padding:7px 16px; cursor:pointer; background:var(--card); border-right:1px solid var(--line); user-select:none; }
   .seg span:last-child { border-right:0; }
   .seg span.on { background:#1f2a3d; color:var(--accent); font-weight:600; }
+  @media (max-width:600px) { #views { display:flex; flex-wrap:wrap; } #views span { flex:1 1 30%; text-align:center; border-bottom:1px solid var(--line); } }   /* all five tabs visible on a phone, none clipped */
   button { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 14px; cursor:pointer; font:inherit; }
   button:disabled { opacity:.45; cursor:not-allowed; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; margin-top:12px; overflow-x:auto; }
@@ -50,7 +51,8 @@
   select, input[type=number] { background:#0b0d11; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:5px 8px; font:inherit; width:90px; }
   .pnl { font-size:24px; font-weight:700; font-variant-numeric:tabular-nums; }
   .hidden { display:none !important; }
-  .profiles { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:12px; }
+  .profiles { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:12px; }
+  .profiles > * { min-width:0; overflow-x:auto; }   /* a wide table scrolls inside its own card instead of pushing the next account out of view */
   @media (max-width:860px) { .profiles { grid-template-columns:1fr; } }
   .pf { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; cursor:pointer; }
   .pf.on { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
@@ -119,8 +121,8 @@
       <label class="sub"><input type="checkbox" id="nAll"> include items not related to BTC/ETH/XRP</label>
     </div>
   </div>
-  <div class="card"><h2>Source health — freshness of retrieval, not age of articles</h2><div id="nSources" class="sub"></div></div>
   <div class="card"><h2>Items (newest first)</h2><div id="nItems" class="sub">Loading…</div></div>
+  <div class="card"><details id="nSrcBox"><summary id="nSrcSum"><b>Source health</b> — freshness of retrieval, not age of articles</summary><div id="nSources" class="sub" style="margin-top:8px"></div></details></div>
 </section>
 
 <!-- ======================= BUY / SELL VIEW ======================= -->
@@ -376,7 +378,7 @@ function makeChart(el) {
     rightPriceScale: { borderColor: "#262b35" }, crosshair: { mode: 0 } });
   const cs = ch.addCandlestickSeries({ upColor: "#2fbf71", downColor: "#e5484d", borderVisible: false, wickUpColor: "#2fbf71", wickDownColor: "#e5484d" });
   const vw = ch.addLineSeries({ color: "#6ea8fe", lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
-  return { ch, cs, vw, lines: [], sym: null };
+  return { ch, cs, vw, lines: [], sym: null, el, rng: null };
 }
 const CH = {};
 function setChartData(key, s, keepRange, tf) {
@@ -388,7 +390,7 @@ function setChartData(key, s, keepRange, tf) {
   k.cs.setData(A.c.map(x => ({ time: tm(x.t), open: x.o, high: x.h, low: x.l, close: x.c })));
   k.vw.setData(A.c.map((x, i) => ({ time: tm(x.t), value: vw[i] })));
   const sig = s + tf;
-  if (!keepRange || k.sig !== sig) k.ch.timeScale().setVisibleLogicalRange({ from: A.c.length - (five ? 200 : 120), to: A.c.length + 8 });
+  if (!keepRange || k.sig !== sig) { k.rng = { from: A.c.length - (five ? 200 : 120), to: A.c.length + 8 }; k.ch.timeScale().setVisibleLogicalRange(k.rng); }
   k.sym = s; k.tf = tf; k.sig = sig;
   if (key === "t") k.cs.setMarkers([]);
   drawForming(key);
@@ -982,6 +984,13 @@ async function loadSnapshot() {
   if (MARKET && !MARKET.symbols) MARKET = null;
 }
 
+/* A chart that was drawn while its tab was hidden has a zero-width time axis, so the intended window (last 120 candles) is applied to
+ * nothing and the candles end up squeezed to one side with every pattern label on top of the next. Once the tab is laid out, apply the
+ * remembered range again. */
+function refitCharts() {
+  const go = () => { for (const k of Object.values(CH)) if (k.rng && k.el && k.el.clientWidth > 0) k.ch.timeScale().setVisibleLogicalRange(k.rng); };
+  requestAnimationFrame(() => requestAnimationFrame(go));
+}
 /* ================= wiring ================= */
 document.querySelectorAll("#coins span").forEach(t => t.onclick = async () => {
   document.querySelectorAll("#coins span").forEach(x => x.classList.remove("on")); t.classList.add("on");
@@ -997,7 +1006,7 @@ document.querySelectorAll("#views span").forEach(t => t.onclick = () => {
   $("tradeView").classList.toggle("hidden", view !== "trade");
   $("patternsView").classList.toggle("hidden", view !== "patterns");
   $("indicatorsView").classList.toggle("hidden", view !== "indicators");
-  renderAll(false);
+  renderAll(false); refitCharts();
 });
 function setTf(t) {
   tf = t;

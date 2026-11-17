@@ -44,6 +44,11 @@ function newsRender() {
         '<td><b class="' + st[1] + '">' + st[0] + "</b>" + (s.backoff_until ? '<br><span class="sub">next try after ' + nTime(s.backoff_until) + "</span>" : "") + '</td><td class="num">' + nAge(s.fetch_age_ms) + " ago</td><td class=\"sub\">" + esc(s.cadence) + '</td><td class="num">' + nAge(s.newest_item_age_ms) + '</td><td class="num">' + (s.median_discovery_lag_ms === null ? "n/a" : nAge(s.median_discovery_lag_ms)) +
         '</td><td class="sub">' + (s.last_error ? '<span class="warn">' + esc(s.last_error) + "</span> · " : "") + esc(s.items_stored + " items stored") + "</td></tr>"; }).join("") + "</table>" +
     '<div class="sub" style="margin-top:6px">' + esc(d.coverage) + " “Fetched” is source freshness; “Newest item” is article age: they are different clocks. These are polled feeds, not instant streams.</div>";
+  // Source health is secondary to the articles, so it is collapsed; it opens itself (once per problem) when a source is not OK.
+  var bad = S.filter(function (s) { return s.status !== "OK"; }), sig = bad.map(function (s) { return s.source + ":" + s.status; }).join(","), box = $("nSrcBox");
+  $("nSrcSum").innerHTML = "<b>Source health</b> — " + (bad.length ? '<b class="warn">' + bad.length + " of " + S.length + " sources need attention: " + esc(bad.map(function (s) { return s.source + " " + (N_STATUS[s.status] || [s.status])[0]; }).join(", ")) + "</b>" : '<b class="up">all ' + S.length + " sources OK</b>") + " · freshness of retrieval, not age of articles · click to expand";
+  if (bad.length && NEWS.badSig !== sig) box.open = true;
+  NEWS.badSig = sig;
   var items = d.items || [];
   if (!items.length) { $("nItems").innerHTML = newsEmptyReason(d, S, C); return; }
   $("nItems").innerHTML = '<div class="sub" style="margin-bottom:6px">' + esc(d.note) + "</div>" + items.map(newsItem).join("");

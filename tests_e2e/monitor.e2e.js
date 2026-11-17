@@ -146,6 +146,7 @@ async function main() {
     check("4b. the News tab is in the header and reachable from the default (Paper monitor) load", await pn.locator('#views span[data-view="news"]').count() === 1, "");
     await pn.locator('#views span[data-view="news"]').focus(); await pn.keyboard.press("Enter");
     await pn.waitForFunction(() => /sources healthy/.test(document.getElementById("nSummary").innerText) && document.querySelectorAll("#nSources tr").length > 1, null, { timeout: 30000 }).catch(() => {});
+    await pn.locator("#nSrcSum").click();   // the source table is collapsed by default (articles come first); expand it as a user would
     const apiNews = await getJson(newsUrl + "api/news?limit=80"), summary = await pn.locator("#nSummary").innerText(), rows = await pn.locator("#nSources table tr").count();
     check("4b. source health table has one row per source, with text status and separate fetch vs newest-item clocks", rows === apiNews.sources.length + 1 && /Fetched/.test(await pn.locator("#nSources").innerText()) && /Newest item/.test(await pn.locator("#nSources").innerText()) && /sources healthy/.test(summary), summary.slice(0, 160));
     check("4b. the summary counts agree with the API (relevant vs hidden), not a hard-coded list", summary.includes(String(apiNews.counts.total) + " items stored") && summary.includes(String(apiNews.counts.hidden_not_relevant) + " not related"), `${apiNews.counts.total} total / ${apiNews.counts.relevant} relevant`);
@@ -161,6 +162,29 @@ async function main() {
     await pn.screenshot({ path: shots ? path.join(shots, "news-tab.png") : undefined, fullPage: false }).catch(() => {});
     await pn.context().close();
 
+    // ---------- 4c. layout defects that only a rendered page shows (found by looking at screenshots, session 5)
+    const c4 = await browser.newContext({ viewport: { width: 1440, height: 1000 } }), p4 = await c4.newPage(), e4 = [];
+    p4.on("pageerror", e => e4.push(e.message));
+    await p4.goto(testUrl, { waitUntil: "domcontentloaded" });
+    await p4.waitForFunction(() => MON.snap && MON.conn === "STREAMING", null, { timeout: 30000 }).catch(() => {});
+    const acc = await p4.evaluate(() => { const box = document.querySelector("#mAccounts").getBoundingClientRect(), cards = [...document.querySelectorAll("#mAccounts .profiles > *")].map(c => c.getBoundingClientRect());
+      return { n: cards.length, inside: cards.every(r => r.left >= box.left - 1 && r.right <= box.right + 1), widths: cards.map(r => Math.round(r.width)) }; });
+    check("4c. desktop: all three paper accounts fit inside their card (none clipped off to the right), TEST page with open positions", acc.n === 3 && acc.inside, JSON.stringify(acc));
+    // The original defect appeared on the forward page (no open positions), where a long unbreakable row stretched one column; check there too.
+    await p4.goto(forwardUrl, { waitUntil: "domcontentloaded" });
+    await p4.waitForFunction(() => MON.snap && MON.conn === "STREAMING", null, { timeout: 30000 }).catch(() => {});
+    const accF = await p4.evaluate(() => { const box = document.querySelector("#mAccounts").getBoundingClientRect(), cards = [...document.querySelectorAll("#mAccounts .profiles > *")].map(c => c.getBoundingClientRect());
+      return { n: cards.length, inside: cards.every(r => r.left >= box.left - 1 && r.right <= box.right + 1), widths: cards.map(r => Math.round(r.width)) }; });
+    check("4c. desktop: all three paper accounts fit inside their card, forward page", accF.n === 3 && accF.inside, JSON.stringify(accF));
+    await p4.click('#views span[data-view="news"]'); await p4.waitForTimeout(1500);
+    const order = await p4.evaluate(() => ({ items: document.querySelector("#nItems").getBoundingClientRect().top, health: document.querySelector("#nSrcBox").getBoundingClientRect().top, openHealth: document.querySelector("#nSrcBox").open, sum: document.querySelector("#nSrcSum").innerText }));
+    check("4c. News: the articles come before the source-health table, which is collapsed with a one-line verdict", order.items < order.health && /sources? (OK|need attention)/.test(order.sum), `items at ${Math.round(order.items)}px, health at ${Math.round(order.health)}px; ${order.sum.slice(0, 80)}`);
+    await p4.click('#views span[data-view="patterns"]'); await p4.waitForTimeout(1500);
+    const rng = await p4.evaluate(() => { const r = CH.p.ch.timeScale().getVisibleLogicalRange(); return { span: r ? r.to - r.from : null, w: document.querySelector("#chart").clientWidth }; });
+    check("4c. Patterns: the chart shows the intended ~128-candle window after the tab is opened (not hundreds squeezed to one side)", rng.span !== null && rng.span > 100 && rng.span < 150 && rng.w > 300, JSON.stringify(rng));
+    check("4c. no page errors while visiting every tab", e4.length === 0, e4.join("|"));
+    await c4.close();
+
     // ---------- 5. mobile width + static page
     const c3 = await browser.newContext({ viewport: { width: 390, height: 844 } }), p3 = await c3.newPage(), e3 = [];
     p3.on("pageerror", e => e3.push(e.message));
@@ -168,6 +192,8 @@ async function main() {
     await p3.waitForFunction(() => MON.snap && MON.conn === "STREAMING", null, { timeout: 30000 }).catch(() => {});
     const overflow = await p3.evaluate(() => ({ sw: document.scrollingElement.scrollWidth, iw: window.innerWidth }));
     check("5. phone width: no horizontal page scroll (wide tables scroll inside their cards)", overflow.sw <= overflow.iw + 1 && e3.length === 0, `scrollWidth ${overflow.sw} vs ${overflow.iw}`);
+    const tabs = await p3.evaluate(() => { const bar = document.querySelector("#views"), iw = window.innerWidth; return [...bar.querySelectorAll("span")].map(sp => { const r = sp.getBoundingClientRect(); return { t: sp.textContent, ok: r.left >= 0 && r.right <= iw + 1 }; }); });
+    check("5. phone width: all five tabs are fully visible (none clipped by the right edge)", tabs.length === 5 && tabs.every(t => t.ok), tabs.filter(t => !t.ok).map(t => t.t).join(","));
     if (shots) await p3.screenshot({ path: path.join(shots, "monitor-test-mobile.png"), fullPage: false });
     await c3.close();
     if (staticUrl) {

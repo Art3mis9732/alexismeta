@@ -33,8 +33,8 @@ class EngineLocked extends Error {}
 
 class PaperEngine {
   constructor({ store, ledger, collector, health, now = Date.now, log = () => {}, config = risk.RISK_DEFAULTS, buildSnapshot = null, decide = decidePolicy,
-                instruments = null, instanceId = crypto.randomUUID(), environment = "FORWARD" }) {
-    Object.assign(this, { store, ledger, collector, health, now, log, config, decide, instanceId });
+                instruments = null, instanceId = crypto.randomUUID(), environment = "FORWARD", stress = null }) {
+    Object.assign(this, { store, ledger, collector, health, now, log, config, decide, instanceId, stress });
     this.buildSnapshot = buildSnapshot || ((id, close, dec) => buildLive({ store, collector, health, instrumentId: id, barCloseTs: close, decisionTs: dec }));
     this.instrumentIds = instruments || (() => Object.values(collector.idOf));
     this.db = store.db; this.lastDecided = {}; this.stats = { last_tick_ts: null, last_decision_ts: null, last_bar_close_ts: null, decisions: 0, last_decision_lag_ms: null };
@@ -174,9 +174,10 @@ class PaperEngine {
       payload: { intent: d.intent, code: d.code, why: d.why, setup: d.setup, bar_close_ts: close, evidence_hash: snap.hash, policy: d.version } });
     if (!isOpen) return { analyst, decisionId, intent: d.intent, code: d.code };
     const instrument = this.store.instrument(id);
-    const g = risk.evaluate({ analyst, setup: { intent: d.intent, stop: d.setup.stop }, snapshot: snap, portfolio: this.portfolio(analyst), instrument, config: this.config });
-    this.ledger.append({ entry_id: `risk:${decisionId}`, kind: "status", ref_id: decisionId, versions,
-      payload: { state: g.approved ? "RISK_APPROVED" : "RISK_REJECTED", reasons: g.reasons, size: g.size } });
+    const sg = this.stress ? this.stress.gate(id, this.now()) : null;                      // read at the final authorisation point, never cached from an earlier signal
+    const g = risk.evaluate({ analyst, setup: { intent: d.intent, stop: d.setup.stop }, snapshot: snap, portfolio: this.portfolio(analyst), instrument, config: this.config, stress: sg });
+    this.ledger.append({ entry_id: `risk:${decisionId}`, kind: "status", ref_id: decisionId, versions: sg ? { ...versions, stress: `${sg.policy}/${sg.mode}` } : versions,
+      payload: { state: g.approved ? "RISK_APPROVED" : "RISK_REJECTED", reasons: g.reasons, size: g.size, ...(sg ? { stress: sg } : {}) } });
     this.event({ key: `risk:${decisionId}`, type: g.approved ? "RISK_APPROVED" : "RISK_REJECTED", ...base, payload: { reasons: g.reasons, checks: g.checks, size: g.size } });
     if (!g.approved) return { analyst, decisionId, intent: d.intent, code: "RISK_REJECTED", reasons: g.reasons };
 

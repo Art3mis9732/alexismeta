@@ -41,6 +41,7 @@ function createServer({ api, staticDir, port }) {
       if (u.pathname.startsWith("/api/")) {
         const p = u.pathname;
         if (p === "/api/runtime") return send(res, 200, api.runtime ? api.runtime() : { error: "runtime identity unavailable" });
+        if (p === "/api/stress") return send(res, 200, api.stress ? api.stress() : { schema: "stress-api-v1", unavailable: "stress API not configured", instruments: [], events: [] });
         const M = api.monitor;
         if (M && (p.startsWith("/api/paper/") || p === "/api/registry" || p === "/api/jobs" || p === "/api/stream")) {
           const cur = k => { const v = intParam(q(k), null, 0, 9e15); return v; };

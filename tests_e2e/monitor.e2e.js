@@ -24,7 +24,7 @@ const getJson = url => new Promise((res, rej) => http.get(url, r => { let s = ""
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 function startTestWorker(db) {
-  const p = spawn(process.execPath, ["--disable-warning=ExperimentalWarning", path.join(ROOT, "server", "main.js"), "--port", String(TEST_PORT), "--env", "test", "--fixture", "--db", db], { cwd: ROOT, env: process.env, stdio: "ignore" });
+  const p = spawn(process.execPath, ["--disable-warning=ExperimentalWarning", path.join(ROOT, "server", "main.js"), "--port", String(TEST_PORT), "--env", "test", "--fixture", "--stress-fixture", "--db", db], { cwd: ROOT, env: process.env, stdio: "ignore" });
   return p;
 }
 async function waitFor(fn, ms, step = 500) { const end = Date.now() + ms; for (;;) { try { const v = await fn(); if (v) return v; } catch (e) { /* not yet */ } if (Date.now() > end) return null; await sleep(step); } }
@@ -102,6 +102,8 @@ async function main() {
     const lostChips = await page.locator("#mStatus").innerText(), mode = await page.locator("#mode").innerText();
     check("3. worker stopped: engine chips say DISCONNECTED and valuation says FROZEN with its last timestamp", /Paper engine\s*○ DISCONNECTED/i.test(lostChips.replace(/\n/g, " ")) && /FROZEN/.test(lostChips) && /not updated since/.test(lostChips), lostChips.replace(/\n/g, " ").slice(0, 200));
     check("3. the page header does not claim the platform is live", /WORKER DISCONNECTED/.test(mode) && /not live/.test(mode) && !/● LIVE/.test(mode), mode);
+    const sb = (await page.locator("#stressBar").innerText()).replace(/\n/g, " ");
+    check("3. worker stopped: the market-stress strip says WORKER DISCONNECTED and not updating (it does not keep claiming a live state)", /WORKER DISCONNECTED: not updating/.test(sb) && /MARKET STRESS/.test(sb), sb.slice(0, 160));
     const f1 = await page.locator("#mAccounts").innerText(); await sleep(4000); const f2 = await page.locator("#mAccounts").innerText();
     check("3. account figures stay frozen: fallback browser prices do not revalue positions or accounts", f1 === f2 && await page.locator("#mAccounts .frozen").count() > 0, "");
     if (shots) await page.screenshot({ path: path.join(shots, "monitor-worker-lost.png"), fullPage: false });
@@ -185,6 +187,47 @@ async function main() {
     check("4c. no page errors while visiting every tab", e4.length === 0, e4.join("|"));
     await c4.close();
 
+    // ---------- 4d. market stress (SYNTHETIC scripted BTC scenario on the TEST worker; ETH/XRP are real): every state is looked at in the browser
+    {
+      const c5 = await browser.newContext({ viewport: { width: 1440, height: 1000 } }), p5 = await c5.newPage(), e5 = [];
+      p5.on("pageerror", e => e5.push(e.message)); p5.on("console", m => { if (m.type() === "error") e5.push("console " + m.text()); }); p5.on("response", r => { if (r.status() >= 400) e5.push(r.status() + " " + r.url()); });
+      await p5.goto(testUrl, { waitUntil: "domcontentloaded" });
+      await p5.waitForFunction(() => window.STRESS && STRESS.data, null, { timeout: 30000 }).catch(() => {});
+      const apiS = () => getJson(testUrl + "api/stress"), btc = d => d.instruments.find(i => i.symbol === "BTC");
+      for (const v of ["monitor", "news", "trade", "patterns", "indicators", "stress"]) { await p5.click(`#views span[data-view="${v}"]`); await sleep(300);
+        const vis = await p5.locator("#stressBar").isVisible(), txt = await p5.locator("#stressBar").innerText();
+        check(`4d. the market-stress summary is visible on the ${v} tab`, vis && /MARKET STRESS/.test(txt) && /BTC/.test(txt) && /ETH/.test(txt) && /XRP/.test(txt), txt.replace(/\n/g, " ").slice(0, 90)); }
+      const word = { CRITICAL: "CRITICAL", HIGH_STRESS: "HIGH STRESS", ELEVATED: "ELEVATED", NORMAL: "NORMAL" };
+      const agree = async () => { for (let k = 0; k < 6; k++) { const a = await apiS(), t = await p5.locator("#stressBar").innerText(), a2 = await apiS(); if (JSON.stringify(a.instruments.map(i => [i.severity, i.quality])) !== JSON.stringify(a2.instruments.map(i => [i.severity, i.quality]))) { await sleep(1200); continue; }
+        await sleep(5600); const t2 = await p5.locator("#stressBar").innerText(), b = await apiS();
+        if (JSON.stringify(a2.instruments.map(i => [i.severity, i.quality])) !== JSON.stringify(b.instruments.map(i => [i.severity, i.quality]))) continue;
+        return b.instruments.every(i => { const chip = new RegExp(i.symbol + "\\s+" + (i.quality === "UNRELIABLE" ? "○ DATA UNRELIABLE" : !i.severity_known ? "○ UNKNOWN" : "[^\\s]+ " + word[i.severity])); return chip.test(t2.replace(/\n/g, " ")); }); } return false; };
+      check("4d. the strip agrees with /api/stress for every asset (severity and data quality)", await agree(), "");
+      await p5.click('#views span[data-view="stress"]');
+      const waitS = async (pred, ms) => waitFor(async () => { const d = await apiS(); return pred(btc(d)) ? d : null; }, ms, 1000);
+      const dCrit = await waitS(i => i.severity === "CRITICAL" && i.quality === "VALID" && i.event, 280000);
+      await sleep(5600);                                                          // the page polls every 5 s
+      let card = await p5.locator("#sInst").innerText();
+      check("4d. ACTIVE EVENT: BTC shows CRITICAL, the event id and onset, the measurements with their thresholds, and the risk verdict", !!dCrit && /BTC\s*■ CRITICAL/.test(card.replace(/\n/g, " ")) && /stress:bitget:perp:BTCUSDT:\d+/.test(card) && /Largest move vs normal noise/.test(card) && /≥ 8\.6 \/ ≥ 13\.9 \/ ≥ 19\.3/.test(card) && /would block new entries \(SHADOW: nothing is blocked\)/.test(card) && /stress-policy-v1/.test(card), card.slice(0, 90).replace(/\n/g, " "));
+      check("4d. the page says SYNTHETIC, thresholds PROVISIONAL/fixture, and keeps observed / possible explanation / unverified hypotheses apart", /SYNTHETIC TEST SCENARIO/.test(await p5.locator("#sHead").innerText()) && /Observed \(measured/.test(card) && /Possible explanation \(news that coincides in time\)/.test(card) && /Unverified hypotheses/.test(card) && /None is asserted/.test(card), "");
+      check("4d. the risk response says new entries only: open positions keep their stops, targets and accounting", /Stress can only block NEW entries\. Open positions keep their stops, targets and accounting\./.test(card) && /Risk Taker: would not be allowed to open new positions in BTC \(shadow\)/.test(card), "");
+      const dUnr = await waitS(i => i.quality === "UNRELIABLE" && i.severity === "CRITICAL", 200000);
+      await sleep(5600); card = await p5.locator("#sInst").innerText(); const strip = (await p5.locator("#stressBar").innerText()).replace(/\n/g, " ");
+      check("4d. DATA UNRELIABLE during the event: shown as DATA UNRELIABLE, the last valid CRITICAL reading is retained with its time, no trend is claimed, measurements are marked possibly stale", !!dUnr && /BTC\s*○ DATA UNRELIABLE/.test(strip) && /last valid: CRITICAL at/.test(card) && !/IMPROVING|WORSENING/.test(card.split("ETH")[0]) && /Data unreliable: the figures below are the latest computed values and may be stale/.test(card), strip.slice(0, 120));
+      const dOk = await waitS(i => i.severity === "NORMAL" && i.quality === "VALID" && !i.event, 280000);
+      await sleep(5600); const ev = await p5.locator("#sEvents").innerText();
+      check("4d. RECOVERY: after the dwell the event is closed as RECOVERED in the event history (and the earlier outage did not close it)", !!dOk && /RECOVERED/.test(ev) && !/UNOBSERVED/.test(ev.split("\n").slice(0, 8).join(" ")), ev.slice(0, 100).replace(/\n/g, " "));
+      const apiEv = (await apiS()).events; check("4d. the API's event list and the page's event table have the same events", apiEv.length > 0 && (ev.match(/stress:bitget:perp:BTCUSDT:\d+/g) || []).length === apiEv.length, `${apiEv.length} events`);
+      await p5.click('#views span[data-view="stress"]'); await p5.locator("#sPolDet summary").click(); const pol = await p5.locator("#sPolicy").innerText();
+      check("4d. the policy table states what stops and what never stops, and the calibration is labelled", /never closes, reduces or re-prices an open position/.test(pol) && /Not implemented in v1: exposure reduction/.test(pol) && /Calibration basis/.test(pol), "");
+      check("4d. no page errors, console errors or failed requests while visiting the stress tab through every state", e5.length === 0, e5.join(" | ").slice(0, 200));
+      await c5.close();
+      const c6 = await browser.newContext({ viewport: { width: 390, height: 844 } }), p6 = await c6.newPage(); await p6.goto(testUrl, { waitUntil: "domcontentloaded" });
+      await p6.waitForFunction(() => window.STRESS && STRESS.data, null, { timeout: 30000 }).catch(() => {}); await p6.click('#views span[data-view="stress"]'); await sleep(1500);
+      const ov = await p6.evaluate(() => ({ sw: document.scrollingElement.scrollWidth, iw: innerWidth, cards: document.querySelectorAll("#sInst .scard").length }));
+      check("4d. phone width: the stress tab has three asset cards and no horizontal page scroll", ov.cards === 3 && ov.sw <= ov.iw + 1, JSON.stringify(ov)); await c6.close();
+    }
+
     // ---------- 5. mobile width + static page
     const c3 = await browser.newContext({ viewport: { width: 390, height: 844 } }), p3 = await c3.newPage(), e3 = [];
     p3.on("pageerror", e => e3.push(e.message));
@@ -193,7 +236,7 @@ async function main() {
     const overflow = await p3.evaluate(() => ({ sw: document.scrollingElement.scrollWidth, iw: window.innerWidth }));
     check("5. phone width: no horizontal page scroll (wide tables scroll inside their cards)", overflow.sw <= overflow.iw + 1 && e3.length === 0, `scrollWidth ${overflow.sw} vs ${overflow.iw}`);
     const tabs = await p3.evaluate(() => { const bar = document.querySelector("#views"), iw = window.innerWidth; return [...bar.querySelectorAll("span")].map(sp => { const r = sp.getBoundingClientRect(); return { t: sp.textContent, ok: r.left >= 0 && r.right <= iw + 1 }; }); });
-    check("5. phone width: all five tabs are fully visible (none clipped by the right edge)", tabs.length === 5 && tabs.every(t => t.ok), tabs.filter(t => !t.ok).map(t => t.t).join(","));
+    check("5. phone width: all six tabs are fully visible (none clipped by the right edge)", tabs.length === 6 && tabs.every(t => t.ok), tabs.filter(t => !t.ok).map(t => t.t).join(","));
     if (shots) await p3.screenshot({ path: path.join(shots, "monitor-test-mobile.png"), fullPage: false });
     await c3.close();
     if (staticUrl) {
@@ -204,6 +247,9 @@ async function main() {
       const t = await p4.locator("#monitorView").innerText();
       await p4.locator('#views span[data-view="news"]').click();
       check("5. static page: the News tab says it needs the worker and why, with no invented items", /No local worker on this page/.test(await p4.locator("#nItems").innerText()) && (await p4.locator("#nItems .pf").count()) === 0, "");
+      await p4.locator('#views span[data-view="stress"]').click(); await sleep(300);
+      const sbs = (await p4.locator("#stressBar").innerText()).replace(/\n/g, " ");
+      check("5. static page: the stress tab and strip say a worker is needed and show nothing simulated", /No local worker on this page/.test(await p4.locator("#sInst").innerText()) && /needs the local worker/.test(sbs) && (await p4.locator("#sInst .scard").count()) === 0, sbs.slice(0, 120));
       check("5. static page (no worker, like the public site): the monitor says so and shows nothing simulated", /not served by the local worker/.test(t) && /nothing is simulated in its place/.test(t) && (await p4.locator("#mPositions .mrow").count()) === 0 && e4.length === 0, e4.join("|"));
       await c4.close();
     }

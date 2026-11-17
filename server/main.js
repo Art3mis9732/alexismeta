@@ -19,6 +19,9 @@ const { NewsIngester, SOURCES: NEWS_SOURCES, PARSER_VERSION } = require("./news"
 const { withReaction } = require("./news_reaction");
 const { appliesTo, INTERPRETERS } = require("./news_interpret");
 const { Monitor, MONITOR_SCHEMA } = require("./monitor");
+const { StressMonitor } = require("./stress_monitor");
+const stressFixture = require("./stress_fixture");
+const Stress = require("./stress");
 const { API_SCHEMA_VERSION, buildInfo } = require("./runtime");
 const { ENGINE_VERSION } = require("./engine");
 const { RULES } = require("./policies");
@@ -29,7 +32,7 @@ const ROOT = path.resolve(__dirname, "..");
 const VERSION = "worker-0.2.0";
 
 function args(argv) {
-  const a = { port: 8787, db: null, symbols: ["BTCUSDT", "ETHUSDT", "XRPUSDT"], smoke: null, env: "FORWARD", fixture: false };
+  const a = { port: 8787, db: null, symbols: ["BTCUSDT", "ETHUSDT", "XRPUSDT"], smoke: null, env: "FORWARD", fixture: false, stress: true, stressMode: "SHADOW", stressFixture: false };
   for (let i = 2; i < argv.length; i++) {
     const k = argv[i], v = argv[i + 1];
     if (k === "--port") { a.port = Number(v); i++; }
@@ -38,16 +41,21 @@ function args(argv) {
     else if (k === "--smoke") { a.smoke = Number(v) || 30; i++; }
     else if (k === "--env") { a.env = String(v).toUpperCase(); i++; }
     else if (k === "--fixture") a.fixture = true;
+    else if (k === "--no-stress") a.stress = false;
+    else if (k === "--stress-mode") { a.stressMode = String(v).toUpperCase(); i++; }
+    else if (k === "--stress-fixture") a.stressFixture = true;
     else throw new Error("unknown option " + k);
   }
   if (!a.symbols.every(s => /^[A-Z0-9]{2,20}$/.test(s))) throw new Error("bad --symbols");
   if (a.env !== "FORWARD" && a.env !== "TEST") throw new Error("--env must be forward or test");
+  if (!["SHADOW", "ENFORCE"].includes(a.stressMode)) throw new Error("--stress-mode must be shadow or enforce");
+  if (a.stressFixture && a.env !== "TEST") throw new Error("--stress-fixture is only allowed with --env test (synthetic stress never touches the forward database)");
   if (a.fixture && a.env !== "TEST") throw new Error("--fixture is only allowed with --env test (fixtures never touch the forward ledger)");
   if (!a.db) a.db = path.join(ROOT, "data", "worker", a.env === "TEST" ? "test-fixture.db" : "market.db");   // separate database per environment
   return a;
 }
 
-function buildApi({ store, health, collector, startedAt, ledger, getEngine = () => null, news = null, monitor = null, runtime = null }) {
+function buildApi({ store, health, collector, startedAt, ledger, getEngine = () => null, news = null, monitor = null, runtime = null, getStress = () => null }) {
   const num = v => v === null || v === undefined ? null : Number(v);
   let counts = null, countsAt = 0;                      // COUNT(*) over millions of rows is slow: refresh at most once a minute
   const rowCounts = () => { if (!counts || Date.now() - countsAt > 60000) { countsAt = Date.now();
@@ -89,7 +97,20 @@ function buildApi({ store, health, collector, startedAt, ledger, getEngine = () 
       engine_version: ENGINE_VERSION, engine: monitor ? monitor.engineState() : null, collector: monitor ? monitor.feedSummary() : null,
       news: news ? news.status().map(s => ({ source: s.source, ok: !!s.last_ok_ts && !s.last_error, last_ok_ts: s.last_ok_ts })) : [],
       stream: monitor ? { clients: monitor.clients.size, ...monitor.streamStats } : null, fixture: runtime.fixture || null,
+      stress: getStress() ? (() => { const x = getStress(); return { version: x.cfg.version, policy: Stress.POLICY_VERSION, mode: x.mode, mode_effective_ts: x.effective_ts, calibration: x.cfg.calibration.status, origin: x.origin, monitor_age_ms: x.last_tick_ts === null ? null : Date.now() - x.last_tick_ts }; })() : null,
       execution: "PAPER / SIMULATED. No order-placement code exists in this application." } : null,
+    stress: (o = {}) => {
+      const x = getStress(); if (!x) return { schema: "stress-api-v1", unavailable: "the stress monitor is not running in this instance", instruments: [], events: [] };
+      const now = Date.now(), snap = x.snapshot(now);
+      for (const i of snap.instruments) {                                                                   // relevant news is CONTEXT for the asset, never a cause: relevance is applied before the limit; time = the publication time when the source states one, else the discovery time
+        const since = i.event ? Math.min(i.event.onset_ts, now) - 2 * 3600000 : now - 6 * 3600000;
+        const items = news ? news.itemsAsOf(now, { limit: 40, asset: i.symbol }).filter(n => (n.published_ts || n.discovered_ts) >= since && !n.backlog).slice(0, 5) : [];
+        i.news_context = { window: i.event ? "since 2 h before the event onset" : "last 6 hours", note: "Possible explanation only: timing coincidence is not causation, and interpretation is rule-based and unevaluated.",
+          items: items.map(n => ({ item_id: n.item_id, title: n.title, source: n.source, publisher: n.publisher, url: n.url, published_ts: n.published_ts, discovered_ts: n.discovered_ts, ts_certainty: n.ts_certainty, scope: n.scope,
+            stance: (n.interpretations || []).filter(q => q.asset === i.symbol).map(q => q.stance)[0] || null })) };
+      }
+      return snap;
+    },
     news: (o = {}) => {
       if (!news) return { schema_version: "news-v2", items: [], sources: [], counts: null, unavailable: "news ingestion is not running" };
       const now = Date.now(), items = withReaction(store.db, news.itemsAsOf(now, o), now, appliesTo), counts = news.counts(now), sources = news.sourceHealth();
@@ -124,7 +145,8 @@ async function main() {
   const engineRef = { current: null };    // the paper engine starts once instruments are loaded
   const news = new NewsIngester({ store, log });
   const monitor = new Monitor({ store, collector, health, getEngine: () => engineRef.current, runtime });
-  const api = buildApi({ store, health, collector, startedAt, ledger, getEngine: () => engineRef.current, news, monitor, runtime });
+  const stressRef = { current: null };
+  const api = buildApi({ store, health, collector, startedAt, ledger, getEngine: () => engineRef.current, news, monitor, runtime, getStress: () => stressRef.current });
   const server = createServer({ api, staticDir: path.join(ROOT, "docs"), port: a.port });
 
   const timers = [
@@ -138,7 +160,7 @@ async function main() {
     if (stopping) return; stopping = true;
     log("shutting down");
     timers.forEach(clearInterval);
-    collector.stop(); monitor.stop();
+    collector.stop(); monitor.stop(); try { if (stressRef.current) stressRef.current.stop(); } catch (e) { log("stress stop: " + e.message); }
     try { if (engineRef.current) engineRef.current.releaseLock(); } catch (e) { /* closing anyway */ }
     server.close();
     try { store.feedEvent("worker", "shutdown", null); store.close(); } catch (e) { log("close: " + e.message); }
@@ -154,8 +176,17 @@ async function main() {
   store.feedEvent("worker", "start", VERSION);
   await collector.start({ unclean, prevStopTs: prev && prev.event === "shutdown" ? prev.ts : null });
   log(`collecting ${a.symbols.join(", ")} from Bitget public v2`);
+  if (a.stress) {
+    try {
+      const cfg = a.stressFixture ? stressFixture.config(Stress.CONFIG) : Stress.CONFIG;
+      stressRef.current = new StressMonitor({ store, collector, health, log, config: cfg, mode: a.stressMode, environment: a.env, synthetic: a.stressFixture ? stressFixture.scenario(cfg, "BTCUSDT") : null });
+      stressRef.current.start();
+      store.feedEvent("stress", "monitor_start", `${cfg.version} policy=${Stress.POLICY_VERSION} mode=${a.stressMode} calibration=${cfg.calibration.status}${a.stressFixture ? " SYNTHETIC_FIXTURE" : ""}`);
+      log(`stress monitor running: ${cfg.version}, policy ${Stress.POLICY_VERSION}, mode ${a.stressMode}, calibration ${cfg.calibration.status}`);
+    } catch (e) { runtime.stress_error = e.message; stressRef.current = null; log("stress monitor NOT started: " + e.message); }
+  }
   try {
-    engineRef.current = new PaperEngine({ store, ledger, collector, health, log, instanceId: runtime.instance_id, environment: a.env });
+    engineRef.current = new PaperEngine({ store, ledger, collector, health, log, instanceId: runtime.instance_id, environment: a.env, stress: stressRef.current });
     log(`paper engine running (${a.env}): decisions at each 15m bar close; execution mode PAPER`);
   } catch (e) { runtime.engine_error = e.message; log("paper engine NOT started: " + e.message + " (this instance serves data read-only)"); }
   timers.push(setInterval(() => {

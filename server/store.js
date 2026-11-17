@@ -150,11 +150,36 @@ const MIGRATIONS = [
    CREATE TRIGGER IF NOT EXISTS news_run_no_delete BEFORE DELETE ON news_interpretation_runs BEGIN SELECT RAISE(ABORT, 'interpretation runs are append-only'); END;
    INSERT OR IGNORE INTO news_interpretation_runs (item_id, content_hash, interpreter, created_ts, n_assets)
      SELECT item_id, content_hash, interpreter, MIN(created_ts), COUNT(*) FROM news_interpretations GROUP BY item_id, content_hash, interpreter;`
+  ,
+  // v9: market-stress detector (stress-v1). ADDITIVE ONLY: three new tables, nothing existing is altered.
+  //   stress_transitions  append-only history of every severity / quality / event change (the source of truth for events)
+  //   stress_state        the monitor's current state per instrument (operational, mutable: restored after a restart)
+  //   stress_samples      one summary row per instrument per minute (spread, depth, OI, funding...): baseline for the liquidity family
+  // A FORWARD database refuses synthetic-fixture rows at the database level, in addition to the code guard.
+  `CREATE TABLE IF NOT EXISTS stress_transitions (
+     id INTEGER PRIMARY KEY, instrument_id TEXT NOT NULL, ts INTEGER NOT NULL, recorded_ts INTEGER NOT NULL, event_id TEXT, kind TEXT NOT NULL,
+     from_severity TEXT, to_severity TEXT, from_quality TEXT, to_quality TEXT, onset_ts INTEGER, reason TEXT, measures TEXT, reasons TEXT,
+     config_version TEXT NOT NULL, policy_version TEXT NOT NULL, mode TEXT NOT NULL, calibration TEXT NOT NULL,
+     origin TEXT NOT NULL CHECK (origin IN ('LIVE','SYNTHETIC_FIXTURE')));
+   CREATE INDEX IF NOT EXISTS stress_tr_by_inst ON stress_transitions (instrument_id, ts);
+   CREATE INDEX IF NOT EXISTS stress_tr_by_event ON stress_transitions (event_id, ts);
+   CREATE TRIGGER IF NOT EXISTS stress_tr_no_update BEFORE UPDATE ON stress_transitions BEGIN SELECT RAISE(ABORT, 'stress transitions are append-only'); END;
+   CREATE TRIGGER IF NOT EXISTS stress_tr_no_delete BEFORE DELETE ON stress_transitions BEGIN SELECT RAISE(ABORT, 'stress transitions are append-only'); END;
+   CREATE TRIGGER IF NOT EXISTS stress_tr_no_synth_forward BEFORE INSERT ON stress_transitions
+     WHEN NEW.origin = 'SYNTHETIC_FIXTURE' AND (SELECT value FROM meta WHERE key = 'environment') = 'FORWARD'
+     BEGIN SELECT RAISE(ABORT, 'synthetic stress rows are refused in a FORWARD database'); END;
+   CREATE TABLE IF NOT EXISTS stress_state (instrument_id TEXT PRIMARY KEY, state TEXT NOT NULL, updated_ts INTEGER NOT NULL, origin TEXT NOT NULL);
+   CREATE TABLE IF NOT EXISTS stress_samples (
+     instrument_id TEXT NOT NULL, ts INTEGER NOT NULL, spread_bps REAL, depth_bid REAL, depth_ask REAL, depth_min REAL, last REAL, oi REAL, funding REAL, imbalance REAL,
+     origin TEXT NOT NULL CHECK (origin IN ('LIVE','SYNTHETIC_FIXTURE')), PRIMARY KEY (instrument_id, ts)) WITHOUT ROWID;
+   CREATE TRIGGER IF NOT EXISTS stress_samples_no_synth_forward BEFORE INSERT ON stress_samples
+     WHEN NEW.origin = 'SYNTHETIC_FIXTURE' AND (SELECT value FROM meta WHERE key = 'environment') = 'FORWARD'
+     BEGIN SELECT RAISE(ABORT, 'synthetic stress rows are refused in a FORWARD database'); END;`
 ];
 
 const DEFAULT_RETENTION_MS = {
   trades: 3 * 86400000, book_tops: 2 * 86400000, tickers: 7 * 86400000,
-  candles_1m: 90 * 86400000, quarantine: 7 * 86400000, feed_events: 30 * 86400000, news_fetch_log: 30 * 86400000
+  candles_1m: 90 * 86400000, quarantine: 7 * 86400000, feed_events: 30 * 86400000, news_fetch_log: 30 * 86400000, stress_samples: 30 * 86400000
 };
 
 class Store {
@@ -341,6 +366,7 @@ class Store {
     del("quarantine", "DELETE FROM quarantine WHERE recv_ts < ?", now - R.quarantine);
     del("feed_events", "DELETE FROM feed_events WHERE ts < ?", now - R.feed_events);
     del("news_fetch_log", "DELETE FROM news_fetch_log WHERE ts < ?", now - R.news_fetch_log);
+    del("stress_samples", "DELETE FROM stress_samples WHERE ts < ?", now - (R.stress_samples || DEFAULT_RETENTION_MS.stress_samples));   // transitions are never pruned
     return out;
   }
 

@@ -40,7 +40,7 @@ test("read-only admin commands leave the database file byte-for-byte unchanged a
 test("a database that is behind (or ahead of) the code is refused, not migrated, by every tool", () => {
   const dir = tmp(), f = oldDb(dir, 6), before = sha(f);
   const ro = A.openReadOnly(f); assert.equal(ro.version, 6); assert.equal(ro.current, false);
-  assert.throws(() => A.requireCurrent(ro, "status"), /schema v6 but this code expects v8.*Back it up, then start the worker/); ro.db.close();
+  assert.throws(() => A.requireCurrent(ro, "status"), new RegExp(`schema v6 but this code expects v${MIGRATIONS.length}.*Back it up, then start the worker`)); ro.db.close();
   assert.throws(() => new Store(f, { requireCurrent: true }), /does not match this code/);
   assert.throws(() => A.main(["node", "admin", "kill-switch", "on", "all", "--db", f]), /does not match this code/);
   assert.throws(() => A.main(["node", "admin", "verify-ledger", "--db", f]), /schema v6/);

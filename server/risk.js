@@ -62,11 +62,15 @@ function unrealised(portfolio) { return portfolio.positions.reduce((a, p) => a +
  * Decide whether a proposed OPEN_* setup may become a paper position.
  * @returns {approved:boolean, reasons:[code...], size:object|null, checks:{...}}
  */
-function evaluate({ analyst, setup, snapshot, portfolio, instrument, config = RISK_DEFAULTS }) {
+function evaluate({ analyst, setup, snapshot, portfolio, instrument, config = RISK_DEFAULTS, stress = null }) {
   const reasons = [], checks = {};
   const fail = (code, detail) => { reasons.push(code); checks[code] = detail === undefined ? true : detail; };
   if (!setup || (setup.intent !== "OPEN_LONG" && setup.intent !== "OPEN_SHORT")) return { approved: false, reasons: ["NOT_AN_OPEN_INTENT"], size: null, checks };
   if (portfolio.kill_switch) fail("KILL_SWITCH");
+  // market-stress entry gate (stress-policy-v1). Evaluated HERE, at the final authorisation point, from the monitor's state at this instant, so a setup generated
+  // earlier cannot bypass a newer restriction. SHADOW mode records the verdict in `checks.stress` but does not add a reason; ENFORCE blocks the NEW entry only.
+  // Open positions are never consulted here or anywhere in the stress module. With no `stress` argument this function behaves exactly as before.
+  if (stress) { checks.stress = stress; if (stress.enforced && stress.would_block) fail(stress.code, stress.detail); }
   // mandatory data integrity: identical for every analyst
   const h = snapshot.health || {};
   for (const k of ["ticker", "books", "trade"]) if (h[k] !== "HEALTHY") fail("DATA_STALE", `${k} ${h[k] || "UNKNOWN"}`);

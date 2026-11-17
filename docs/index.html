@@ -19,6 +19,13 @@
   .seg span { padding:7px 16px; cursor:pointer; background:var(--card); border-right:1px solid var(--line); user-select:none; }
   .seg span:last-child { border-right:0; }
   .seg span.on { background:#1f2a3d; color:var(--accent); font-weight:600; }
+  .stressbar { border:1px solid var(--line); border-radius:8px; padding:8px 12px; margin-top:8px; background:var(--card); display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center; }
+  .stressbar.hot { border-color:var(--down); background:#2a1315; }
+  .schip { text-decoration:none; color:var(--text); border:1px solid var(--line); border-radius:14px; padding:2px 10px; white-space:nowrap; }
+  .schip:hover, .schip:focus-visible { border-color:var(--accent); }
+  .crit { font-weight:800; }
+  .scard { margin-top:12px; } .scols { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:6px 22px; } .scols h4 { margin:12px 0 4px; }
+  @media (max-width:1000px) { .scols { grid-template-columns:minmax(0,1fr); } }
   @media (max-width:600px) { #views { display:flex; flex-wrap:wrap; } #views span { flex:1 1 30%; text-align:center; border-bottom:1px solid var(--line); } }   /* all five tabs visible on a phone, none clipped */
   button { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 14px; cursor:pointer; font:inherit; }
   button:disabled { opacity:.45; cursor:not-allowed; }
@@ -79,11 +86,12 @@
   <div class="bar2">
     <div class="seg" id="coins"><span class="on" data-sym="BTCUSDT">BTC</span><span data-sym="ETHUSDT">ETH</span><span data-sym="XRPUSDT">XRP</span></div>
     <div class="seg" id="tfs" title="Chart timeframe"><span data-tf="5m">5m</span><span class="on" data-tf="15m">15m</span><span data-tf="4H">4h</span></div>
-    <div class="seg" id="views" role="tablist" aria-label="Views"><span data-view="monitor" tabindex="0" role="tab">Paper monitor</span><span data-view="news" tabindex="0" role="tab">News</span><span class="on" data-view="trade" tabindex="0" role="tab">Buy / Sell</span><span data-view="patterns" tabindex="0" role="tab">Patterns</span><span data-view="indicators" tabindex="0" role="tab">Indicators</span></div>
-    <label class="sub" for="tzSel">Times</label> <select id="tzSel" aria-label="Display timezone" style="width:auto"><option value="IST">Asia/Kolkata (IST)</option><option value="UTC">UTC</option></select>
+    <div class="seg" id="views" role="tablist" aria-label="Views"><span data-view="monitor" tabindex="0" role="tab">Paper monitor</span><span data-view="news" tabindex="0" role="tab">News</span><span data-view="stress" tabindex="0" role="tab">Market stress</span><span class="on" data-view="trade" tabindex="0" role="tab">Buy / Sell</span><span data-view="patterns" tabindex="0" role="tab">Patterns</span><span data-view="indicators" tabindex="0" role="tab">Indicators</span></div>
+    <span style="white-space:nowrap"><label class="sub" for="tzSel">Times</label> <select id="tzSel" aria-label="Display timezone" style="width:auto"><option value="IST">Asia/Kolkata (IST)</option><option value="UTC">UTC</option></select></span>
     <span class="sub" id="mode">connecting…</span>
   </div>
   <div class="sub" id="worker" style="margin-top:6px" aria-live="polite"></div>
+  <div class="stressbar" id="stressBar" aria-live="polite" role="status"></div>
   <div class="banner" id="banner"></div>
 </header>
 
@@ -170,6 +178,16 @@
 </section>
 
 <!-- ======================= INDICATORS VIEW ======================= -->
+<!-- ======================= MARKET STRESS (worker-backed; render only) ======================= -->
+<section id="stressView" class="hidden" aria-label="Market stress">
+  <div class="card">
+    <h2>Market stress — measured abnormal conditions, thresholds provisional</h2>
+    <div id="sHead" class="sub" aria-live="polite">Loading…</div>
+  </div>
+  <div id="sInst" style="margin-top:12px"></div>
+  <div class="card"><h2>Stress events (append-only history)</h2><div id="sEvents" class="sub"></div></div>
+  <div class="card"><details id="sPolDet"><summary><b>Risk policy and calibration basis</b> — what stress may and may not do</summary><div id="sPolicy" style="margin-top:8px"></div></details></div>
+</section>
 <section id="indicatorsView" class="hidden">
   <div class="card">
     <h2>Indicators on <span id="iSym">BTCUSDT</span> — 15-minute candles, last closed candle <span id="iTime"></span></h2>
@@ -234,6 +252,7 @@
 <script src="patterns.js"></script>
 <script src="monitor.js"></script>
 <script src="news.js"></script>
+<script src="stress.js"></script>
 <script>
 "use strict";
 /* Display timezone (all storage and logic is UTC). Fixed-offset zones only, so no daylight-saving ambiguity. */
@@ -728,6 +747,7 @@ function renderAll(keepRange) {
   else if (view === "indicators") renderIndicators();
   else if (view === "monitor") renderMonitor(true);
   else if (view === "news") { newsRender(); if (WMODE) newsLoad(); }
+  else if (view === "stress") { stressRender(); if (WMODE) stressLoad(); }
   else renderPatterns(keepRange);
 }
 let lastLight = 0;
@@ -940,11 +960,11 @@ function renderAnalysts() {
 function startWorkerMode() {
   WMODE = true; if (!workerLoop) workerLoop = setInterval(workerTick, 2000); workerTick();
   loadPaper();
-  newsLoad(); if (!startWorkerMode.timers) { startWorkerMode.timers = true; setInterval(() => { if (WMODE) loadPaper(); }, 10000); }
+  newsLoad(); stressStart(); stressLoad(); if (!startWorkerMode.timers) { startWorkerMode.timers = true; setInterval(() => { if (WMODE) loadPaper(); }, 10000); }
   monitorStart();
 }
 function leaveWorkerMode() {
-  WMODE = false; WORKER_LOST = true; clearInterval(workerLoop); workerLoop = null; renderAnalysts(); newsRender(); monitorLost();
+  WMODE = false; WORKER_LOST = true; clearInterval(workerLoop); workerLoop = null; renderAnalysts(); newsRender(); stressRender(); monitorLost();
   connectStream(); setMode();
 }
 
@@ -1003,6 +1023,7 @@ document.querySelectorAll("#views span").forEach(t => t.onclick = () => {
   view = t.dataset.view;
   $("monitorView").classList.toggle("hidden", view !== "monitor");
   $("newsView").classList.toggle("hidden", view !== "news");
+  $("stressView").classList.toggle("hidden", view !== "stress");
   $("tradeView").classList.toggle("hidden", view !== "trade");
   $("patternsView").classList.toggle("hidden", view !== "patterns");
   $("indicatorsView").classList.toggle("hidden", view !== "indicators");
@@ -1026,7 +1047,7 @@ $("tzSel").onchange = () => { TZ = TZS[$("tzSel").value] || TZS.IST; try { local
 (async () => {
   CH.t = makeChart($("tChart")); CH.p = makeChart($("chart"));
   guide(); renderLog();
-  newsStart(); newsRender();
+  newsStart(); newsRender(); stressStart(); stressRender();
   await pollWorker();
   if (WORKER) WMODE = true;                   // decide the data path before any market data is loaded
   await loadSnapshot();

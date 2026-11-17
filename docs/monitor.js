@@ -77,8 +77,8 @@ function monitorTick() {
 function monitorLost() { MON.lost = true; MON.conn = "DISCONNECTED"; if (view === "monitor") renderMonitor(false); }
 async function monitorSlow() {
   if (!WMODE) return;
-  try { var r = await Promise.all([apiJson("api/paper/diagnostics"), apiJson("api/paper/closed?limit=50"), MON.registry ? null : apiJson("api/registry"), MON.jobs ? null : apiJson("api/jobs")]);
-    MON.diag = r[0]; MON.closed = r[1].closed; if (r[2]) MON.registry = r[2]; if (r[3]) MON.jobs = r[3];
+  try { var r = await Promise.all([apiJson("api/paper/diagnostics"), apiJson("api/paper/closed?limit=300"), MON.registry ? null : apiJson("api/registry"), MON.jobs ? null : apiJson("api/jobs")]);
+    MON.diag = r[0]; MON.closed = r[1].closed; MON.closedTotal = r[1].closed_total; if (r[2]) MON.registry = r[2]; if (r[3]) MON.jobs = r[3];
     if (view === "monitor") { renderMonitorDiag(); renderMonitorClosed(); renderMonitorRegistry(); }
   } catch (e) { /* status chips report connection problems */ }
 }
@@ -233,15 +233,36 @@ function renderMonitorDiag() {
     " · all decisions in this ledger: " + esc((D.decisions_by_outcome || []).map(function (x) { return x.intent + "/" + x.code + " ×" + x.n; }).join(", ") || "none") +
     ". Waiting is the normal result on most bars; criteria are never loosened to produce a trade.</div>";
 }
+/* Closed-position history with filters. RENDER ONLY: gross, fees, funding, net, margin basis and the ROI with its named denominator come from the backend (position.closed).
+ * Filters apply to the rows loaded from /api/paper/closed (newest 300); the footer says how many are shown, loaded and in total. ROI is shown per trade; it is never averaged. */
+MON.cf = MON.cf || { analyst: "", coin: "", dir: "", reason: "", data: "", from: "", to: "" };
+function mHist(ms) { return mDur(ms); }
 function renderMonitorClosed() {
-  if (!$("mClosed")) return; var C = MON.closed || [];
+  if (!$("mClosed")) return; var C = MON.closed || [], F = MON.cf;
   if (!C.length) { $("mClosed").textContent = "No closed paper positions in this ledger."; return; }
-  $("mClosed").innerHTML = "<table><tr><th>Closed (" + TZ.label + ")</th><th>Analyst</th><th>Coin</th><th>Side</th><th class=\"r\">Entry → exit</th><th>Exit</th><th class=\"r\">Gross</th><th class=\"r\">Fees</th><th class=\"r\">Funding</th><th class=\"r\">Net</th><th>Metric eligibility</th></tr>" + C.map(function (p) {
-    var d = mDp(p.entry_fill_price), c = p.closed;
-    return '<tr class="mrow" tabindex="0" data-pid="' + esc(p.position_id) + '"><td>' + istT(c.exit_ts) + "</td><td>" + esc(M_AN[p.analyst] || p.analyst) + "</td><td>" + esc(p.symbol) + '</td><td class="' + (p.side > 0 ? "up" : "down") + '">' + esc(p.direction) + '</td><td class="num">' + mNum(p.entry_fill_price, d) + " → " + mNum(c.exit_price, d) +
-      "</td><td>" + esc(c.reason) + '</td><td class="num">' + mSigned(p.realized_gross, 4) + '</td><td class="num">−' + mNum(p.fees_paid, 4) + '</td><td class="num">' + mSigned(p.funding_settled, 4) + '</td><td class="num"><b class="' + mCls(c.net_usdt) + '">' + mSigned(c.net_usdt, 4) + "</b></td><td>" +
+  var reasons = Array.from(new Set(C.map(function (p) { return p.closed.reason; }))).sort();
+  var sel = function (id, label, opts, cur) { return '<label class="sub" for="' + id + '">' + label + '</label> <select id="' + id + '" style="width:auto"><option value="">all</option>' + opts.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === cur ? " selected" : "") + ">" + esc(o[1]) + "</option>"; }).join("") + "</select> "; };
+  var fromMs = F.from ? Date.parse(F.from + "T00:00:00Z") - TZ.ms : null, toMs = F.to ? Date.parse(F.to + "T23:59:59Z") - TZ.ms : null;
+  var L = C.filter(function (p) { var c = p.closed; return (!F.analyst || p.analyst === F.analyst) && (!F.coin || p.symbol === F.coin) && (!F.dir || p.direction === F.dir) && (!F.reason || c.reason === F.reason) && (!F.data || (F.data === "uncertain" ? !c.evaluable : c.evaluable)) && (fromMs === null || c.exit_ts >= fromMs) && (toMs === null || c.exit_ts <= toMs); });
+  var env = (MON.val || MON.snap || {}).environment || "";
+  var bar = '<div id="mClosedFilters" class="bar2" style="margin-bottom:8px"><span class="pill">' + esc(env || "this worker") + " ledger only</span> " +
+    sel("hfAnalyst", "Account", Object.keys(M_AN).map(function (k) { return [k, M_AN[k]]; }), F.analyst) + sel("hfCoin", "Asset", Array.from(new Set(C.map(function (p) { return p.symbol; }))).sort().map(function (x) { return [x, x]; }), F.coin) +
+    sel("hfDir", "Direction", [["LONG", "LONG"], ["SHORT", "SHORT"]], F.dir) + sel("hfReason", "Exit", reasons.map(function (x) { return [x, x]; }), F.reason) + sel("hfData", "Data", [["evaluable", "evaluable"], ["uncertain", "uncertain (data gap)"]], F.data) +
+    '<label class="sub" for="hfFrom">From</label> <input type="date" id="hfFrom" value="' + esc(F.from) + '" style="width:auto"> <label class="sub" for="hfTo">to</label> <input type="date" id="hfTo" value="' + esc(F.to) + '" style="width:auto"> <button id="hfClear" style="padding:2px 10px">Clear filters</button></div>';
+  var net = L.reduce(function (a, p) { return a + p.closed.net_usdt; }, 0), gross = L.reduce(function (a, p) { return a + p.closed.gross_usdt; }, 0), fees = L.reduce(function (a, p) { return a + p.fees_paid; }, 0), fund = L.reduce(function (a, p) { return a + p.funding_settled; }, 0);
+  var rows = L.map(function (p) {
+    var d = mDp(p.entry_fill_price), c = p.closed, sg = c.signal;
+    return '<tr class="mrow" tabindex="0" data-pid="' + esc(p.position_id) + '"><td>' + istT(c.exit_ts) + '<br><span class="sub">held ' + mHist(c.holding_ms) + "</span></td><td><b>" + esc(M_AN[p.analyst] || p.analyst) + '</b><br><span class="sub">' + esc(p.strategy_version || "") + "</span></td><td>" + esc(p.symbol) + '</td><td class="' + (p.side > 0 ? "up" : "down") + '">' + esc(p.direction) + "</td>" +
+      '<td class="num">' + (c.initial_margin === null ? "N/A" : mNum(c.initial_margin, 2)) + '<br><span class="sub">' + esc(String(c.margin_setting_leverage)) + "× setting</span></td>" +
+      '<td class="num">' + mNum(p.entry_fill_price, d) + " → " + mNum(c.exit_price, d) + '</td><td class="sub">' + esc(sg ? sg.code : "") + "</td><td>" + esc(c.reason) + '</td><td class="num">' + mSigned(c.gross_usdt, 4) + '</td><td class="num">−' + mNum(p.fees_paid, 4) + '</td><td class="num">' + mSigned(p.funding_settled, 4) +
+      '</td><td class="num"><b class="' + mCls(c.net_usdt) + '">' + mSigned(c.net_usdt, 4) + '</b></td><td class="num" title="' + esc(c.roi_basis) + '">' + (c.net_return_on_initial_margin_pct === null ? "N/A" : mSigned(c.net_return_on_initial_margin_pct, 2) + "%") + '<br><span class="sub">net ÷ initial margin</span></td><td>' +
       (c.evaluable ? "evaluable" : '<span class="warn">UNCERTAIN (data gap): in the account, excluded from win/expectancy metrics</span>') + "</td></tr>";
-  }).join("") + "</table>";
+  }).join("");
+  $("mClosed").innerHTML = bar + (L.length ? '<table id="mClosedTable"><tr><th>Closed (' + TZ.label + ')</th><th>Account · strategy</th><th>Asset</th><th>Side</th><th class="r">Initial margin (USDT)</th><th class="r">Entry → exit</th><th>Signal</th><th>Exit</th><th class="r">Gross</th><th class="r">Fees</th><th class="r">Funding</th><th class="r">Net</th><th class="r">ROI (per trade)</th><th>Metric eligibility</th></tr>' + rows + "</table>" : "<div>No closed position matches these filters.</div>") +
+    '<div class="sub" style="margin-top:6px" id="mClosedFoot">Showing ' + L.length + " of " + C.length + " loaded closed positions" + (MON.closedTotal !== undefined ? " (" + MON.closedTotal + " closed in this ledger)" : "") + ". Selection totals (sums, not averages): gross " + mSigned(gross, 4) + " · fees −" + mNum(fees, 4) + " · funding " + mSigned(fund, 4) + " · net " + mSigned(net, 4) + " USDT. ROI is per trade and is never averaged into an account return. Amounts are USDT-margined simulated results, not exact USD.</div>";
+  var bind = function (id, key) { var e = $(id); if (e) e.onchange = function () { MON.cf[key] = e.value; renderMonitorClosed(); }; };
+  bind("hfAnalyst", "analyst"); bind("hfCoin", "coin"); bind("hfDir", "dir"); bind("hfReason", "reason"); bind("hfData", "data"); bind("hfFrom", "from"); bind("hfTo", "to");
+  var clr = $("hfClear"); if (clr) clr.onclick = function () { MON.cf = { analyst: "", coin: "", dir: "", reason: "", data: "", from: "", to: "" }; renderMonitorClosed(); };
   $("mClosed").querySelectorAll(".mrow").forEach(function (r) { r.onclick = function () { monitorOpenDetail(r.dataset.pid); }; r.onkeydown = function (e) { if (e.key === "Enter") monitorOpenDetail(r.dataset.pid); }; });
 }
 function renderMonitorRegistry() {

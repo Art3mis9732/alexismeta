@@ -64,6 +64,13 @@ class Monitor {
       basis: a.n ? "peak-to-trough over mark-equity samples recorded once a minute since the first sample; time before recording and between samples is unknown, so intra-gap peaks and troughs are not included" : "no equity samples recorded yet" };
     this._dd[analyst] = { at: t, v }; return v;
   }
+  /** The decision that produced a position (immutable ledger row, memoised): signal code and reason for the history view. */
+  decisionOf(decisionId) {
+    this._dec = this._dec || new Map(); if (this._dec.has(decisionId)) return this._dec.get(decisionId);
+    const r = this.db.prepare("SELECT payload FROM ledger_entries WHERE entry_id=?").get(decisionId); let out = null;
+    if (r) { try { const z = JSON.parse(r.payload); out = { intent: z.intent, code: z.code, why: z.why, bar_close_ts: z.bar_close_ts }; } catch (e) { out = null; } }
+    if (out || this._dec.size < 5000) this._dec.set(decisionId, out); return out;
+  }
   /** Entry sizing recorded in the ledger risk status at the moment the position was approved (immutable, so memoised). Null if not found. */
   recordedSizing(decisionId) {
     this._rec = this._rec || new Map();
@@ -96,7 +103,10 @@ class Monitor {
       open_risk_usdt: p.state === "OPEN" ? stopDist * pos.remaining_qty + notional * (2 * this.config.taker + this.config.slipFrac) : 0,
       distance_to_invalidation_pct: v && v.mark.price ? p.side * (v.mark.price - p.stop) / v.mark.price * 100 : null,
       quotes: q, valuation: v, live, evidence_hash: p.evidence_hash || null, fills: fills.length,
-      closed: p.state === "CLOSED" ? { exit_price: p.exit_price, exit_ts: p.exit_ts, reason: p.exit_reason, net_usdt: p.pnl, evaluable: p.evaluable === 1 } : null
+      closed: p.state === "CLOSED" ? { exit_price: p.exit_price, exit_ts: p.exit_ts, reason: p.exit_reason, net_usdt: p.pnl, evaluable: p.evaluable === 1,
+        gross_usdt: pos.realized_gross, initial_margin: lev > 0 ? pos.entry_qty * (pos.avg_entry || 0) / lev : null, margin_setting_leverage: lev, holding_ms: p.exit_ts - p.opened_ts,
+        net_return_on_initial_margin_pct: lev > 0 && pos.entry_qty * (pos.avg_entry || 0) > 0 ? p.pnl / (pos.entry_qty * pos.avg_entry / lev) * 100 : null,
+        roi_basis: "booked net result (after all fees and settled funding) / initial margin = entry fill notional / margin setting", signal: this.decisionOf(p.decision_id) } : null
     };
   }
   positions() { return this.db.prepare("SELECT * FROM paper_positions WHERE state='OPEN' ORDER BY opened_ts").all().map(p => this.positionView(p)); }

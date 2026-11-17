@@ -50,7 +50,7 @@ function createServer({ api, staticDir, port }) {
           if (p === "/api/paper/snapshot") return send(res, 200, M.snapshot());
           if (p === "/api/paper/accounts") return send(res, 200, M.env(M.accounts()));
           if (p === "/api/paper/positions") return send(res, 200, M.env({ positions: M.positions() }));
-          if (p === "/api/paper/closed") { const n = intParam(q("limit"), 50, 1, 500); return Number.isNaN(n) ? err(res, 400, "bad limit") : send(res, 200, M.env({ closed: M.closed(n) })); }
+          if (p === "/api/paper/closed") { const n = intParam(q("limit"), 50, 1, 500); return Number.isNaN(n) ? err(res, 400, "bad limit") : send(res, 200, M.env({ closed_total: M.db.prepare("SELECT COUNT(*) AS n FROM paper_positions WHERE state='CLOSED'").get().n, closed: M.closed(n) })); }
           if (p === "/api/paper/diagnostics") return send(res, 200, M.env(M.diagnostics()));
           if (p === "/api/registry") return send(res, 200, M.env(M.registry()));
           if (p === "/api/jobs") return send(res, 200, M.env(M.jobs()));

@@ -33,8 +33,8 @@ class EngineLocked extends Error {}
 
 class PaperEngine {
   constructor({ store, ledger, collector, health, now = Date.now, log = () => {}, config = risk.RISK_DEFAULTS, buildSnapshot = null, decide = decidePolicy,
-                instruments = null, instanceId = crypto.randomUUID(), environment = "FORWARD", stress = null }) {
-    Object.assign(this, { store, ledger, collector, health, now, log, config, decide, instanceId, stress });
+                instruments = null, instanceId = crypto.randomUUID(), environment = "FORWARD", stress = null, newsShadow = null }) {
+    Object.assign(this, { store, ledger, collector, health, now, log, config, decide, instanceId, stress, newsShadow });
     this.buildSnapshot = buildSnapshot || ((id, close, dec) => buildLive({ store, collector, health, instrumentId: id, barCloseTs: close, decisionTs: dec }));
     this.instrumentIds = instruments || (() => Object.values(collector.idOf));
     this.db = store.db; this.lastDecided = {}; this.stats = { last_tick_ts: null, last_decision_ts: null, last_bar_close_ts: null, decisions: 0, last_decision_lag_ms: null };
@@ -151,6 +151,10 @@ class PaperEngine {
     for (const a of ANALYSTS) {
       try { results.push(this.store.tx(() => this.decideOne(a, id, close, snap))); }
       catch (e) { this.store.feedEvent(`paper:${a}`, "decision_failed", e.message); this.log(`decision ${a} ${id}: ${e.message}`); results.push({ analyst: a, error: e.message }); }
+    }
+    if (this.newsShadow) for (const r of results) {                                       // SHADOW news assessment: after the decision transactions, never able to change them
+      if (r.error || r.duplicate) continue;
+      try { this.newsShadow.record({ analyst: r.analyst, instrument_id: id, decisionId: r.decisionId, intent: r.intent, code: r.code, decisionTs }); } catch (e) { this.log(`news shadow ${r.analyst} ${id}: ${e.message}`); }
     }
     return { snapshot: snap, results };
   }

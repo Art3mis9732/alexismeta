@@ -90,6 +90,14 @@ async function main() {
     const reg = await page.locator("#mRegistry").innerText();
     check("1. registry labels analysts DETERMINISTIC / training NOT APPLICABLE / edge NOT DEMONSTRATED; Model Lab shows a REJECTED research run read-only, nothing promoted", (reg.match(/DETERMINISTIC/g) || []).length >= 3 && /NOT APPLICABLE/.test(reg) && /NOT DEMONSTRATED/.test(reg) && /Model Lab/i.test(reg) && /REJECTED ON VALIDATION/.test(reg) && /Logged trials: 3 of 40/.test(reg) && /SKIPPED_STRESS/.test(reg) && /places a trade or changes a policy/.test(reg) && !/promoted: true/.test(reg), "");
 
+    // ---------- 1b. news SHADOW overlay: recorded for candidate entries, never an input to a decision, visible on the News tab
+    const shadowApi = await getJson(testUrl + "api/news/shadow?limit=20");
+    check("1b. news shadow API: mode SHADOW, effect on decisions NONE, one record per candidate entry with a verdict", shadowApi.mode === "SHADOW" && shadowApi.effect_on_decisions === "NONE" && shadowApi.rows.length >= 1 && shadowApi.rows.every(r => r.verdict && r.assessment.effect_on_decision === "NONE (shadow only)"), `${shadowApi.rows.length} rows`);
+    await page.click('#views span[data-view="news"]'); await page.waitForTimeout(1500);
+    const shTxt = await page.locator("#nShadow").innerText();
+    check("1b. News tab shows the shadow card: SHADOW, effect NONE, each candidate with analyst, verdict and the gate/paper result", /SHADOW/i.test(shTxt) && /NONE/.test(shTxt) && /risk taker|balanced|defensive/i.test(shTxt) && /LONG|SHORT/.test(shTxt), shTxt.slice(0, 120));
+    await page.click('#views span[data-view="monitor"]'); await page.waitForTimeout(500);
+
     // ---------- 2. refresh and stream reconnect never create or duplicate anything
     const before = await getJson(testUrl + "api/paper/snapshot");
     await page.reload({ waitUntil: "domcontentloaded" });

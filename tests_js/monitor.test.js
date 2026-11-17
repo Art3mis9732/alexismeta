@@ -199,3 +199,17 @@ test("news API: validated filters, source health, counts and no private paths; r
     const item = a.items[0]; assert.ok(Array.isArray(item.reaction) && item.reaction.every(x => x.horizons.every(h => h.status !== "OK")), "no candles stored -> reactions are N/A or pending, never invented");
   } finally { server.close(); r.monitor.stop(); r.store.close(); }
 });
+
+test("news shadow: the engine's decisions, ledger and positions are identical with a recording shadow, with a throwing shadow, and without one; candidates are recorded", () => {
+  const { NewsShadow } = require("../server/news_shadow"), plain = rig(), rec = rig(), bad = rig();
+  const news = { itemsAsOf: () => [] };
+  rec.engine.newsShadow = new NewsShadow({ db: rec.store.db, news, now: rec.now });
+  bad.engine.newsShadow = { record() { throw new Error("shadow exploded"); } };
+  const strip = r => ({ ledger: r.store.db.prepare("SELECT entry_id, kind, payload FROM ledger_entries ORDER BY seq").all().map(x => [x.entry_id, x.kind, x.payload]),
+    pos: r.store.db.prepare("SELECT position_id, qty, entry, stop, target FROM paper_positions ORDER BY position_id").all() });
+  for (const r of [plain, rec, bad]) r.engine.onBarClose(ID, CLOSE, CLOSE + 3000);
+  assert.deepEqual(strip(rec), strip(plain)); assert.deepEqual(strip(bad), strip(plain)); assert.ok(strip(plain).pos.length >= 1);
+  const rows = rec.store.db.prepare("SELECT analyst, verdict, intent, risk_outcome FROM news_shadow").all();
+  assert.equal(rows.length, 3); assert.ok(rows.every(x => x.verdict === "NO_RELEVANT_NEWS" && x.intent === "OPEN_LONG" && x.risk_outcome === "OPENED"));
+  assert.equal(plain.store.db.prepare("SELECT COUNT(*) n FROM news_shadow").get().n, 0);
+});

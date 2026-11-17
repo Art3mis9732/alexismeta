@@ -19,3 +19,12 @@ Classes: VERIFIED · IMPLEMENTED_UNVERIFIED · PARTIAL · BROKEN · MISSING · E
 | 14 | News back-off was in memory only | PARTIAL | fixed: restored from the fetch log after a restart, tested | V-028 |
 | 15 | Windows restore instructions ignored a leftover `-wal`/`-shm` file | BROKEN (docs) | fixed in the runbook; no restore drill has been run | runbook |
 | 11 | Stress detection, historical evaluation, jobs/model lab, GA/RL | MISSING | still MISSING (milestones C-stress, D–G) | requirements.md |
+| 16 | News tab: articles sat below a full-screen source-health table (first screen showed no news) | BROKEN (UX) | fixed: items first, collapsible health with verdict, browser-checked | V-029 |
+| 17 | Paper monitor: third account column clipped at 1440 px | BROKEN (layout) | fixed (`minmax(0,1fr)`), forward-page check, mutation-verified | V-029 |
+| 18 | Patterns chart drawn while hidden: candles squeezed to one side, labels unreadable (visible range 2083 bars) | BROKEN | fixed (`refitCharts()` after tab switch), check mutation-verified | V-029 |
+| 19 | Phone: tab bar clipped "Indicators" | BROKEN (layout) | fixed, checked | V-029 |
+| 20 | Legacy Patterns chart: pattern labels still overlap in dense regions | PARTIAL | open (cosmetic; markers are legacy) | V-029 |
+| 21 | Earlier summaries and an external analysis said the project has no trained model; a logistic regression per timeframe is trained daily (display-only, no edge) | DOC ERROR | corrected in `training-audit.md` | training-audit.md |
+| 22 | External prompt listed tabs "Dashboard, Settings, Fable Advisor, Model Lab"; the page has only five tabs (Paper monitor, News, Buy/Sell, Patterns, Indicators) | NOT A DEFECT (nonexistent) | recorded; nothing invented | tab-inventory.md |
+| 23 | `deployment-runbook.md` said the news milestone was not pushed | DOC STALE | fixed | runbook |
+

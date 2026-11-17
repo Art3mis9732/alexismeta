@@ -19,3 +19,9 @@
 
 Visual verification: desktop 1440 px and phone 390 px screenshots of the monitor (no horizontal page scroll; wide tables
 scroll inside their cards). Contrast was not measured with a tool; screen-reader behaviour not tested.
+
+## Session 5 note (2026-11-17)
+The page has exactly five tabs: Paper monitor, News, Buy / Sell, Patterns, Indicators. There is **no** Dashboard, Settings, "Fable
+Advisor" or Model Lab tab; an external prompt listed them and they were not invented. (The coding advisor and the three analysts are
+different things; the analysts appear in Paper monitor and Buy / Sell.) All five were screenshot-reviewed at desktop and phone width
+(V-029). The trained logistic-regression scores are shown in Buy / Sell as "Model scores (uncalibrated, not probabilities)".

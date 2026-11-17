@@ -89,8 +89,9 @@ Before any release: prepare the artifact and config, run both e2e suites against
 ## Updating your Windows checkout to this work (PowerShell) — read before the first start
 The cloud session works in its own checkout and its own database. **Nothing in the cloud updates your Windows folder, and the
 cloud ledger is a different database from yours**: your decisions, positions and news history live only in your
-`data\worker\market.db`. Only a pushed branch can reach you; the latest push approved so far is `ae70a94` and the news milestone
-described in `news-diagnosis.md` is NOT pushed yet (a push needs the user's approval for that specific commit range).
+`data\worker\market.db`. Only a pushed branch can reach you. The news milestone (`news-diagnosis.md`) is on the remote branch
+`claude/friendly-dirac-ouvgn4` (pushed with approval up to `8102e31`, the head of pull request #1); the session-5 UI fixes are local
+commits until pushed. Nothing is on `main`, so the public site is unchanged. Each further push needs its own approval.
 ```powershell
 cd $HOME\path\to\alexismeta
 node --version; npm --version                                   # you reported v26.13.0 / 12.2.2; the tested build is Linux Node 22.23.4

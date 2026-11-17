@@ -138,3 +138,9 @@ Every restart is a data gap; under D-016 it flags each open position as unresolv
 metrics. Demonstrated live (V-027). Code changes are verified on the TEST worker and on COPIES of the forward database; the
 forward worker is restarted only when no position is open, or when the user accepts the gap. The browser suite skips and reports
 forward-only checks when the forward build differs from the tree instead of forcing a restart.
+
+## D-023 (2026-11-17) — a UI task is not done until the rendered page has been looked at
+Four layout defects (V-029) passed every API and DOM-text test because those tests never measured geometry. Rule: UI changes are verified
+by reading rendered screenshots (desktop and phone) and each repaired layout defect gets a browser assertion on geometry or computed
+range that is **mutation-verified** (the fix is reverted and the check must fail). A check that passes without its fix is a weak check
+and is rewritten (it happened once: the clipped-accounts check ran on a page where the defect did not reproduce).

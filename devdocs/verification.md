@@ -363,3 +363,23 @@ Each entry records: revision · command/procedure · when (UTC) · expected · o
 * `npm test` **151/151**; pytest 22/22; `monitor.e2e.js` **36/36** (forward worker `0e5ecd4`, TEST worker, static server);
   `status.e2e.js` 23/23 on the previous tree.
 * Not verified: Windows, Node 26, any restore drill, behaviour after hours of continuous news polling.
+
+## V-029 (2026-11-17, session 5) — rendered-page review of every tab; four layout defects found and fixed
+* Environment: cloud container (Linux, Node 22.23.4), NOT the user's Windows machine. Forward worker 8787 and TEST worker 8791 restarted
+  at 08:37 UTC after a container restart (the forward ledger DB survived: schema v8, 83 entries, chain OK, 0 open positions, ~17 h
+  downtime recorded as a gap). Later restarted again at 08:48 UTC onto the committed build `955a4a5` (no open position, just after the
+  08:45 bar was decided). Runtime identity: build clean, distinct db ids, FORWARD vs TEST.
+* Method: Playwright screenshots of all five tabs (Paper monitor, News, Buy/Sell, Patterns, Indicators) at 1440×900 and 390×844, console,
+  page and HTTP>=400 errors collected (none), then the images were read. API-level tests had all passed before this review.
+* Found by looking, fixed, and covered by new browser checks (each check was mutation-verified: the fix was reverted and the check failed):
+  1. News: articles were below a full-screen source-health table → items first, source health collapsed with a one-line verdict that opens
+     itself when any source is not OK.
+  2. Paper monitor: third account column clipped at 1440 px (`repeat(3,1fr)` cannot shrink below content) → `minmax(0,1fr)` + per-card scroll.
+  3. Patterns: chart drawn while its tab was hidden had a zero-width time axis, so ~2,000 candles were squeezed to one side with every
+     pattern label printed over the next (visible range measured 2083 bars) → range re-applied after the tab is laid out (now 128).
+  4. Phone: tab bar clipped "Indicators" → tabs wrap, all five visible.
+* Results after the fixes: `npm test` 151/151; pytest 22/22; `monitor.e2e.js` **42/42** (forward-only checks ran: forward worker served the
+  committed build) ; `status.e2e.js` 23/23.
+* Still imperfect: pattern labels in the legacy chart still overlap in dense regions. Indicators tab and the Buy/Sell legacy panels
+  were only screenshot-reviewed, not given new assertions.
+* Not verified: the public GitHub Pages site (not opened), Windows, Chrome/Edge integration, Claude Code Desktop preview.

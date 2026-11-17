@@ -29,3 +29,4 @@
 | 2026-11-16 (s3) | Milestone A/B: reconciliation, news diagnosis, News tab, 7 sources, canonical dedupe, interpretation, reaction | VERIFIED (unit 148, e2e 31 + 23) | V-025, V-026, news-diagnosis.md |
 | 2026-11-16 (s3) | First natural forward entries (12:30 UTC) observed; tainted by an operator restart | OBSERVED, flagged | V-027 |
 | – | Milestones C-stress, D (historical evaluation), E–G | NOT_STARTED | requirements.md |
+| 2026-11-17 (s5) | Rendered-page review of all five tabs: 4 layout defects fixed (news order, clipped accounts, hidden-tab chart range, phone tabs); training audit; stale docs fixed | VERIFIED (unit 151, e2e 42 + 23) | V-029, training-audit.md |

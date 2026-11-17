@@ -32,7 +32,7 @@ function rig({ snap = snapOf(), environment = "FORWARD" } = {}) {
   const engine = new PaperEngine({ store, ledger, collector, health, now, buildSnapshot: () => current, environment });
   engine.feedHealthy = () => true;
   const runtime = { build: buildInfo(), instance_id: engine.instanceId, started_at: t, database: store.identity(environment), engine_error: null };
-  const monitor = new Monitor({ store, collector, health, getEngine: () => engine, runtime, now });
+  const monitor = new Monitor({ store, collector, health, getEngine: () => engine, runtime, now, labDir: "/nonexistent-lab-dir" });
   return { store, ledger, engine, monitor, collector, health, runtime, now, at: v => { t = v; book.recvTs = v; collector.latestTicker[ID].recv_ts = v; }, setSnap: s => { current = s; } };
 }
 const near = (a, b, m) => assert.ok(Math.abs(a - b) < 1e-6, `${m || ""} got ${a}, expected ${b}`);

@@ -14,14 +14,14 @@
 const acct = require("./accounting");
 const { coverageOf } = require("./valuation_recorder");
 const risk = require("./risk");
-const { ANALYSTS, RULES, explain, registry } = require("./policies");
+const { ANALYSTS, RULES, explain, registry } = require("./policies"), { readLab } = require("./modellab_registry");
 const { BAR, EVIDENCE_VERSION } = require("./evidence");
 
 const MONITOR_SCHEMA = "monitor-v1", MAX_CLIENTS = 20, BACKLOG_SKIP = 64 * 1024, BACKLOG_DROP = 1024 * 1024;
 
 class Monitor {
-  constructor({ store, collector, health, getEngine, runtime, config = risk.RISK_DEFAULTS, now = Date.now }) {
-    Object.assign(this, { store, collector, health, getEngine, runtime, config, now });
+  constructor({ store, collector, health, getEngine, runtime, config = risk.RISK_DEFAULTS, now = Date.now, labDir }) {
+    Object.assign(this, { store, collector, health, getEngine, runtime, config, now, labDir });
     this.db = store.db; this.clients = new Set(); this.timer = null; this.streamStats = { clients_total: 0, dropped_slow: 0, valuation_frames_skipped: 0 };
   }
 
@@ -194,11 +194,17 @@ class Monitor {
   }
 
   registry() {
-    return { strategies: registry(), models: [], model_note: "No statistical or machine-learning model is registered. The three analysts are deterministic rule sets.",
+    const lab = readLab(this.labDir);
+    return { strategies: registry(), models: lab.models, research: lab, model_note: lab.models.length ? "A research model appears below with its state; none is promoted and none places a trade. The three analysts remain deterministic rule sets." : "No statistical or machine-learning model is registered. The three analysts are deterministic rule sets.",
       legacy: [{ id: "legacy-logistic-score", type: "STATISTICAL (logistic regression, legacy cron job)", state: "DISPLAY_ONLY", calibration: "NOT_CALIBRATED", note: "shown on the Buy/Sell tab as an uncalibrated score; not used by any analyst" }],
       evidence_version: EVIDENCE_VERSION, valuation_version: acct.VALUATION_VERSION };
   }
-  jobs() { return { training_backend: "UNAVAILABLE", jobs: [], note: "No training or experiment job runner exists yet. Nothing is queued, running or completed; no progress or metrics are shown because none exist." }; }
+  jobs() {
+    const lab = readLab(this.labDir);
+    if (!lab.trials.count && !lab.loop) return { training_backend: "UNAVAILABLE", jobs: [], note: "No training or experiment job has been run. Nothing is queued, running or completed; no progress or metrics are shown because none exist." };
+    return { training_backend: "LOCAL_BATCH", jobs: lab.loop ? [{ id: "lab-loop", state: lab.loop.state || "UNKNOWN", last_tick_utc: lab.loop.last_tick_utc || null, last_outcome: lab.loop.last_outcome || null, detail: lab.loop.detail || null }] : [],
+      note: `Research runs are manual or scheduled batches on a local machine (${lab.trials.count} of ${lab.trials.cap} logged trials). There is no live training and nothing here changes a trading policy.` };
+  }
 
   snapshot() { return this.env({ engine: this.engineState(), ...this.accounts(), positions: this.positions(), recent_closed: this.closed(20), recent_activity: this.activity({ limit: 60 }) }); }
 

@@ -23,8 +23,13 @@ const check = (name, ok, detail) => { results.push({ name, ok: !!ok }); console.
 const getJson = url => new Promise((res, rej) => http.get(url, r => { let s = ""; r.on("data", d => s += d); r.on("end", () => { try { res(JSON.parse(s)); } catch (e) { rej(e); } }); }).on("error", rej));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// the TEST worker reads its research registry from a fixture directory (a rejected research run), never from the repository's real one
+const LAB_DIR = fs.mkdtempSync(path.join(require("node:os").tmpdir(), "e2e-lab-"));
+fs.writeFileSync(path.join(LAB_DIR, "trials.jsonl"), [1, 2, 3].map(i => JSON.stringify({ trial_id: i, kind: "config", family: i === 1 ? "constant" : "lr" })).join("\n") + "\n");
+fs.writeFileSync(path.join(LAB_DIR, "validation_result.json"), JSON.stringify({ val_base_logloss: 0.6543, selected: null, reason: "REJECTED_ON_VALIDATION: no configuration beat the base rate", n_config_trials: 3 }));
+fs.writeFileSync(path.join(LAB_DIR, "loop_state.json"), JSON.stringify({ state: "IDLE", last_tick_utc: "2026-11-17T00:00:00Z", last_outcome: "SKIPPED_STRESS" }));
 function startTestWorker(db) {
-  const p = spawn(process.execPath, ["--disable-warning=ExperimentalWarning", path.join(ROOT, "server", "main.js"), "--port", String(TEST_PORT), "--env", "test", "--fixture", "--stress-fixture", "--db", db], { cwd: ROOT, env: process.env, stdio: "ignore" });
+  const p = spawn(process.execPath, ["--disable-warning=ExperimentalWarning", path.join(ROOT, "server", "main.js"), "--port", String(TEST_PORT), "--env", "test", "--fixture", "--stress-fixture", "--db", db], { cwd: ROOT, env: { ...process.env, ALEXIS_LAB_DIR: LAB_DIR }, stdio: "ignore" });
   return p;
 }
 async function waitFor(fn, ms, step = 500) { const end = Date.now() + ms; for (;;) { try { const v = await fn(); if (v) return v; } catch (e) { /* not yet */ } if (Date.now() > end) return null; await sleep(step); } }
@@ -83,7 +88,7 @@ async function main() {
     check("1. activity timeline lists durable events and filters by type", types.length > 0 && types.every(t => t === "FILL"), `${types.length} FILL rows`);
     await page.selectOption("#mFType", "");
     const reg = await page.locator("#mRegistry").innerText();
-    check("1. registry labels analysts DETERMINISTIC / training NOT APPLICABLE / edge NOT DEMONSTRATED; no fake training", (reg.match(/DETERMINISTIC/g) || []).length >= 3 && /NOT APPLICABLE/.test(reg) && /NOT DEMONSTRATED/.test(reg) && /Training backend unavailable/.test(reg), "");
+    check("1. registry labels analysts DETERMINISTIC / training NOT APPLICABLE / edge NOT DEMONSTRATED; Model Lab shows a REJECTED research run read-only, nothing promoted", (reg.match(/DETERMINISTIC/g) || []).length >= 3 && /NOT APPLICABLE/.test(reg) && /NOT DEMONSTRATED/.test(reg) && /Model Lab/i.test(reg) && /REJECTED ON VALIDATION/.test(reg) && /Logged trials: 3 of 40/.test(reg) && /SKIPPED_STRESS/.test(reg) && /places a trade or changes a policy/.test(reg) && !/promoted: true/.test(reg), "");
 
     // ---------- 2. refresh and stream reconnect never create or duplicate anything
     const before = await getJson(testUrl + "api/paper/snapshot");

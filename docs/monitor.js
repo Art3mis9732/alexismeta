@@ -270,7 +270,18 @@ function renderMonitorRegistry() {
   $("mRegistry").innerHTML = "<table><tr><th>ID · version</th><th>Type</th><th>Training</th><th>Validation evidence</th><th>Edge</th><th>State</th><th>Known weaknesses</th></tr>" + R.strategies.map(function (s) {
     return "<tr><td><b>" + esc(s.name) + "</b><br><span class=\"sub\">" + esc(s.version) + " · features " + esc(s.feature_schema) + "</span></td><td>" + esc(s.type) + "</td><td>" + esc(s.training.replace(/_/g, " ")) + "</td><td class=\"sub\">" + esc(s.validation) + "</td><td><b>" + esc(s.edge.replace(/_/g, " ")) + "</b></td><td>" + esc(s.deployment_state.replace(/_/g, " ")) + '</td><td class="sub">' + esc(s.known_weaknesses.join("; ")) + "</td></tr>";
   }).join("") + "</table>" + '<div style="margin-top:8px">' + esc(R.model_note) + " Legacy: " + esc(R.legacy.map(function (l) { return l.id + " (" + l.state + ", " + l.calibration + ")"; }).join("; ")) + ".</div>" +
-    '<div style="margin-top:6px"><b>Research / training jobs:</b> ' + esc(J.training_backend === "UNAVAILABLE" ? "Training backend unavailable." : String(J.training_backend || "unknown")) + " " + esc(J.note || "") + "</div>";
+    '<div style="margin-top:6px"><b>Research / training jobs:</b> ' + esc(J.training_backend === "UNAVAILABLE" ? "Training backend unavailable." : String(J.training_backend || "unknown")) + " " + esc(J.note || "") + "</div>" + monitorLabHtml(R.research, J);
+}
+function monitorLabHtml(L, J) {
+  if (!L) return "";
+  var F = L.final, V = L.validation, crit = F && F.criteria ? Object.keys(F.criteria).sort() : [], num = function (v, d) { return v === null || v === undefined || !isFinite(v) ? "n/a" : Number(v).toFixed(d); };
+  var cls = /^CANDIDATE/.test(L.state) ? "warnc" : /^REJECTED|UNREADABLE/.test(L.state) ? "bad" : "";
+  var h = '<div class="chip ' + cls + '" style="margin-top:10px;max-width:none"><b>Model Lab · ' + esc(L.preregistration) + " (research only)</b><div><span class=\"pill\">" + esc(L.state.replace(/_/g, " ")) + "</span> " + esc(L.headline) + "</div>";
+  h += '<div class="sub">Logged trials: ' + esc(L.trials.count) + " of " + esc(L.trials.cap) + " allowed" + (Object.keys(L.trials.by_family).length ? " (" + esc(Object.keys(L.trials.by_family).map(function (k) { return k + " " + L.trials.by_family[k]; }).join(", ")) + ")" : "") + ". Nothing here is promoted, places a trade or changes a policy.</div>";
+  if (V) h += '<div class="sub">Validation: base-rate log loss ' + esc(num(V.base_logloss, 4)) + (V.selected ? "; selected " + esc(V.selected.family) + " at threshold " + esc(V.selected.theta) + " (validation mean " + esc(num(V.selected.val_mean_R, 3)) + " R per trade, " + esc(V.selected.val_trades) + " trades)" : "; nothing selected") + (V.reason ? ". " + esc(V.reason) : "") + "</div>";
+  if (F) h += '<div class="sub">Final segment (scored once): ' + esc(F.trades) + " trades, mean " + esc(num(F.mean_R, 3)) + " R per trade" + (F.ci ? ", 95% CI [" + esc(num(F.ci.lo, 3)) + ", " + esc(num(F.ci.hi, 3)) + "]" : "") + (F.random_matched ? "; random entries with the same trade count: 95th percentile " + esc(num(F.random_matched.p95, 3)) : "") + ".<ul style=\"margin:2px 0 0;padding-left:18px\">" + crit.map(function (k) { return "<li>" + (F.criteria[k] ? "met" : "NOT met") + " · " + esc(k.replace(/^\d_/, "").replace(/_/g, " ")) + "</li>"; }).join("") + "</ul></div>";
+  if (L.loop) h += '<div class="sub">Local loop: ' + esc(L.loop.state || "unknown") + ", last tick " + esc(L.loop.last_tick_utc || "never") + ", last outcome " + esc(L.loop.last_outcome || "none") + ".</div>";
+  return h + "</div>";
 }
 
 // ------------------------------------------------------------------ position detail

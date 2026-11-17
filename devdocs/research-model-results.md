@@ -20,7 +20,7 @@ The gain is real but it is not directional skill. Its predicted probability corr
 
 ## What this means
 * With this template (a 15-minute bar, a 1 ATR stop) the round-trip cost is about half of the risk taken on every trade, and none of the 21 candidate models, from regularised logistic regression to shallow boosting, finds rows that overcome it. This agrees with Slice 1: the three rule analysts are break-even before costs and about -0.35 R after.
-* The boosting finding is useful, not a trading rule: **market quietness predicts that costs will dominate**. The existing risk gate already refuses very low volatility only indirectly; a cost-aware filter (do not enter when the stop distance is too small relative to the round-trip cost) is a plausible rule improvement to test on its own, in a new pre-registered version.
+* The boosting finding is useful, not a trading rule: **market quietness predicts that costs will dominate**. A cost-aware filter (do not enter when the stop distance is too small relative to the round-trip cost) is a plausible rule improvement to test on its own, in a new pre-registered version; whether the live gate already covers it has not been checked here.
 * No claim of edge, no shadow candidate, no promotion. The registry shows REJECTED_ON_VALIDATION.
 
 ## Options for the next pre-registration (v2), for the user to choose; none started

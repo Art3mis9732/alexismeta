@@ -15,9 +15,10 @@ function run(dbFile, m1 = null) {
     for (; k < a.length; k++) { const x = exitOnCandle(p, a[k]); if (x) { res = { ...x, t: a[k].t }; break; } if (a[k].t > r.exit_ts + 3600000) break; }
     tgt.checked++; if (!res) { (r.evaluable ? out.evaluable.mismatches : out.uncertain.details).push({ position: r.position_id, recorded: r.exit_reason, replay: "NO_EXIT_FOUND" }); continue; }
     const same = res.reason === r.exit_reason; if (same) tgt.same_reason++;
-    const dt = res.t - Math.floor(r.exit_ts / 60000) * 60000, bps = (res.px - r.exit_price) / r.exit_price * 1e4 * r.side;   // positive = replay exit better for the position
+    const slip = require("../server/risk").RISK_DEFAULTS.slipFrac, rpx = res.px * (1 - r.side * slip);                      // the engine records the exit AFTER slippage, so compare like with like
+    const dt = res.t - Math.floor(r.exit_ts / 60000) * 60000, bps = (rpx - r.exit_price) / r.exit_price * 1e4 * r.side;   // positive = replay exit better for the position
     if (r.evaluable) { if (Math.abs(dt) <= 60000) out.evaluable.exit_time_within_1m++; out.evaluable.price_diffs_bps.push(+bps.toFixed(2)); if (!same || Math.abs(dt) > 60000) out.evaluable.mismatches.push({ position: r.position_id, recorded: [r.exit_reason, new Date(r.exit_ts).toISOString(), r.exit_price], replay: [res.reason, new Date(res.t).toISOString(), res.px], ambiguous: res.ambiguous }); }
-    else out.uncertain.details.push({ position: r.position_id, recorded: [r.exit_reason, new Date(r.exit_ts).toISOString(), r.exit_price], replay: [res.reason, new Date(res.t).toISOString(), res.px], note: r.note });
+    else out.uncertain.details.push({ position: r.position_id, recorded: [r.exit_reason, new Date(r.exit_ts).toISOString(), r.exit_price], replay: [res.reason, new Date(res.t).toISOString(), rpx], diff_bps: +bps.toFixed(2), note: r.note });
   }
   db.close(); const e = out.evaluable; out.verdict = e.checked === 0 ? "NO_EVALUABLE_SAMPLE (every closed forward position had a trade-feed gap: the replay can be compared, not validated)" : (e.same_reason === e.checked && e.exit_time_within_1m === e.checked ? "PASS" : "FAIL");
   out.pass = e.checked === 0 ? null : out.verdict === "PASS"; return out;

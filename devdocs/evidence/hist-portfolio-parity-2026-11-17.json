@@ -1,0 +1,94 @@
+{
+ "db": "data/backups/market-pre-research-20261117-125116.db",
+ "window": [
+  "2026-11-16T08:45:00.000Z",
+  "2026-11-17T11:15:00.000Z"
+ ],
+ "recorded_positions": 10,
+ "matched": [
+  {
+   "key": "risk_taker|BTCUSDT|1794832200000|-1",
+   "replay_qty": 0.0121,
+   "recorded_qty": 0.0124,
+   "qty_ratio": 0.976,
+   "replay_entry": 63882.9697,
+   "recorded_entry": 63890.2194
+  },
+  {
+   "key": "risk_taker|ETHUSDT|1794832200000|-1",
+   "replay_qty": 0.46,
+   "recorded_qty": 0.46,
+   "qty_ratio": 1,
+   "replay_entry": 1786.2778,
+   "recorded_entry": 1786.202688
+  },
+  {
+   "key": "risk_taker|ETHUSDT|1794909600000|-1",
+   "replay_qty": 0.48,
+   "recorded_qty": 0.46,
+   "qty_ratio": 1.043,
+   "replay_entry": 1810.8128,
+   "recorded_entry": 1810.2778720000001
+  },
+  {
+   "key": "risk_taker|BTCUSDT|1794913200000|-1",
+   "replay_qty": 0.0212,
+   "recorded_qty": 0.0209,
+   "qty_ratio": 1.014,
+   "replay_entry": 64075.0312,
+   "recorded_entry": 64071.78308
+  },
+  {
+   "key": "risk_taker|ETHUSDT|1794913200000|-1",
+   "replay_qty": 0.35,
+   "recorded_qty": 0.36,
+   "qty_ratio": 0.972,
+   "replay_entry": 1787.6975,
+   "recorded_entry": 1787.182492
+  },
+  {
+   "key": "balanced|BTCUSDT|1794832200000|-1",
+   "replay_qty": 0.006,
+   "recorded_qty": 0.0062,
+   "qty_ratio": 0.968,
+   "replay_entry": 63882.9697,
+   "recorded_entry": 63890.2194
+  },
+  {
+   "key": "balanced|ETHUSDT|1794832200000|-1",
+   "replay_qty": 0.23,
+   "recorded_qty": 0.23,
+   "qty_ratio": 1,
+   "replay_entry": 1786.2778,
+   "recorded_entry": 1786.202688
+  },
+  {
+   "key": "balanced|ETHUSDT|1794909600000|-1",
+   "replay_qty": 0.24,
+   "recorded_qty": 0.23,
+   "qty_ratio": 1.043,
+   "replay_entry": 1810.8128,
+   "recorded_entry": 1810.2778720000001
+  },
+  {
+   "key": "balanced|BTCUSDT|1794913200000|-1",
+   "replay_qty": 0.0106,
+   "recorded_qty": 0.0104,
+   "qty_ratio": 1.019,
+   "replay_entry": 64075.0312,
+   "recorded_entry": 64071.78308
+  },
+  {
+   "key": "defensive|BTCUSDT|1794832200000|-1",
+   "replay_qty": 0.0024,
+   "recorded_qty": 0.0024,
+   "qty_ratio": 1,
+   "replay_entry": 63882.9697,
+   "recorded_entry": 63890.2194
+  }
+ ],
+ "recorded_not_in_replay": [],
+ "replay_not_in_recorded": [],
+ "recorded_decision_bars": 144,
+ "verdict": "SAME_POSITION_SET"
+}

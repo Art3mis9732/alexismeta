@@ -22,8 +22,9 @@
     "replay": [
      "stop",
      "2026-11-16T12:34:00.000Z",
-     1794.4108042610503
+     1794.7696864219024
     ],
+    "diff_bps": 0.16,
     "note": "trade-feed gap while open: exit may differ from reality"
    },
    {
@@ -36,8 +37,9 @@
     "replay": [
      "stop",
      "2026-11-16T12:34:00.000Z",
-     1794.4108042610503
+     1794.7696864219024
     ],
+    "diff_bps": 0.16,
     "note": "trade-feed gap while open: exit may differ from reality"
    },
    {
@@ -50,8 +52,9 @@
     "replay": [
      "stop",
      "2026-11-16T12:43:00.000Z",
-     64203.550041818904
+     64216.39075182727
     ],
+    "diff_bps": 0.09,
     "note": "trade-feed gap while open: exit may differ from reality"
    },
    {
@@ -64,8 +67,9 @@
     "replay": [
      "stop",
      "2026-11-16T12:43:00.000Z",
-     64203.550041818904
+     64216.39075182727
     ],
+    "diff_bps": 0.09,
     "note": "trade-feed gap while open: exit may differ from reality"
    },
    {
@@ -78,8 +82,9 @@
     "replay": [
      "stop",
      "2026-11-16T12:43:00.000Z",
-     64203.550041818904
+     64216.39075182727
     ],
+    "diff_bps": 0.09,
     "note": "trade-feed gap while open: exit may differ from reality"
    },
    {
@@ -92,8 +97,9 @@
     "replay": [
      "target",
      "2026-11-17T10:13:00.000Z",
-     1794.9845728662015
+     1795.3435697807747
     ],
+    "diff_bps": 0,
     "note": "trade-feed gap while open: exit may differ from reality"
    },
    {
@@ -106,8 +112,9 @@
     "replay": [
      "target",
      "2026-11-17T10:07:00.000Z",
-     1798.898429649651
+     1799.258209335581
     ],
+    "diff_bps": 0,
     "note": "trade-feed gap while open: exit may differ from reality"
    },
    {
@@ -120,8 +127,9 @@
     "replay": [
      "stop",
      "2026-11-17T11:09:00.000Z",
-     64219.968391090006
+     64232.81238476822
     ],
+    "diff_bps": 1.41,
     "note": "trade-feed gap while open: exit may differ from reality"
    },
    {
@@ -134,8 +142,9 @@
     "replay": [
      "stop",
      "2026-11-17T11:09:00.000Z",
-     64219.968391090006
+     64232.81238476822
     ],
+    "diff_bps": 1.41,
     "note": "trade-feed gap while open: exit may differ from reality"
    },
    {
@@ -148,8 +157,9 @@
     "replay": [
      "stop",
      "2026-11-17T11:07:00.000Z",
-     1792.8272606608707
+     1793.1858261130028
     ],
+    "diff_bps": 6.76,
     "note": "trade-feed gap while open: exit may differ from reality"
    }
   ]

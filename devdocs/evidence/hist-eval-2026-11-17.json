@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-17T13:08:57.882Z",
+ "generated_at": "2026-11-17T13:14:33.494Z",
  "variant": "candle-only-v1",
  "microstructure_assumption": {
   "spread_bps": {
@@ -1467,14 +1467,20 @@
   "risk_taker": {
    "no_trade_net_usdt": 0,
    "random_entry": {
-    "seeds": 10,
+    "seeds": 20,
     "entry_probability_per_coin_bar": 0.03384,
     "net_usdt_p5_p50_p95": [
-     -909.842931710475,
-     -891.450416412241,
+     -910.8393167181639,
+     -889.0889775661534,
      -855.4668016588756
     ],
-    "mean_trades": 1400.1
+    "mean_trades": 1402.85,
+    "R_per_trade_p5_p50_p95": [
+     -0.3777851480211145,
+     -0.34430933194329866,
+     -0.3203922906944135
+    ],
+    "note": "R per trade is the comparison unit: net USDT compounds on accounts that fall 60-90% and runs differ in trade count"
    },
    "trend_always": {
     "trades": 3950,
@@ -1504,14 +1510,20 @@
   "balanced": {
    "no_trade_net_usdt": 0,
    "random_entry": {
-    "seeds": 10,
+    "seeds": 20,
     "entry_probability_per_coin_bar": 0.0254,
     "net_usdt_p5_p50_p95": [
-     -632.0971335509574,
-     -592.6614590110969,
+     -634.8923275165281,
+     -606.5062728142309,
      -531.3606922132735
     ],
-    "mean_trades": 1066.7
+    "mean_trades": 1066.8,
+    "R_per_trade_p5_p50_p95": [
+     -0.3828153915671768,
+     -0.3539384293980574,
+     -0.2909061717054726
+    ],
+    "note": "R per trade is the comparison unit: net USDT compounds on accounts that fall 60-90% and runs differ in trade count"
    },
    "trend_always": {
     "trades": 3536,
@@ -1541,14 +1553,20 @@
   "defensive": {
    "no_trade_net_usdt": 0,
    "random_entry": {
-    "seeds": 10,
+    "seeds": 20,
     "entry_probability_per_coin_bar": 0.00942,
     "net_usdt_p5_p50_p95": [
-     -165.65079130576842,
-     -128.59954842989828,
-     -114.50842734096751
+     -166.8726766082513,
+     -129.92652097348721,
+     -111.89458865930612
     ],
-    "mean_trades": 432.7
+    "mean_trades": 434.5,
+    "R_per_trade_p5_p50_p95": [
+     -0.41722486435864325,
+     -0.33503118336715737,
+     -0.2680990582708223
+    ],
+    "note": "R per trade is the comparison unit: net USDT compounds on accounts that fall 60-90% and runs differ in trade count"
    },
    "trend_always": {
     "trades": 2627,

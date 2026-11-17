@@ -64,7 +64,9 @@ test("open and unavailable states: hypothetical mark P&L uses the same quantity 
 });
 
 test("the published journal's headline numbers are reproducible from its own trades (audit of what the summary cards mean)", () => {
-  const J = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "docs", "data", "journal.json"), "utf8"));
+  assert.equal(JSON.parse(fs.readFileSync(path.join(__dirname, "fixtures", "legacy", "journal_published_2026-11-17.json"), "utf8")).updated_utc, "2026-11-17 08:25:53", "the fixture is the journal shown in the screenshot");
+  // a committed copy of the REAL published journal (gh-pages journal.json, producer run 2026-11-17 08:25:53 UTC): the working-tree docs/data/journal.json is a pipeline artefact that is not in the repository
+  const J = JSON.parse(fs.readFileSync(path.join(__dirname, "fixtures", "legacy", "journal_published_2026-11-17.json"), "utf8"));
   for (const p of ["aggressive", "neutral", "careful"]) {
     const L = J.trades.filter(t => t.profile === p && t.status === "closed"), s = J.summary[p];
     assert.equal(s.closed, L.length); assert.equal(s.wins, L.filter(t => t.usd > 0).length);

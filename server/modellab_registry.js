@@ -27,7 +27,7 @@ function readLab(dir = DEFAULT_DIR) {
   } else if (out.validation) {
     out.state = out.validation.selected ? "SELECTED_ON_VALIDATION_FINAL_NOT_SCORED" : "REJECTED_ON_VALIDATION";
     out.headline = out.validation.selected ? "A configuration was selected on validation. The final segment has not been scored yet."
-      : "No configuration beat the base rate after costs on validation. Rejected; the final segment was never read.";
+      : "Rejected on validation: no configuration gave a positive after-cost result with enough trades. The final segment was never read.";
     if (out.validation.selected) out.models.push({ id: `${out.preregistration}/${out.validation.selected.family}`, family: out.validation.selected.family, params: out.validation.selected.params, state: out.state, edge: "NOT_DEMONSTRATED", promoted: false });
   } else if (out.trials.count) { out.state = "TRIALS_LOGGED_NO_RESULT"; out.headline = "Trials were logged but no validation result exists."; }
   return out;

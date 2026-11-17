@@ -45,7 +45,7 @@ class StressMonitor {
         const fresh = S.initialState(t);
         if (st.event_id) this.record({ ts: st.last_eval_ts, instrument_id: r.instrument_id, event_id: st.event_id, kind: "EVENT_END_UNOBSERVED", from_severity: st.severity, to_severity: "NORMAL",
           from_quality: st.quality, to_quality: "UNRELIABLE", reason: `monitor not running for ${Math.round(gap / 1000)} s; the event may have ended or continued, it was not observed`, measures: null, reasons: null });
-        fresh.last_valid_severity = st.last_valid_severity; fresh.last_valid_ts = st.last_valid_ts; fresh.unobserved_since_ts = st.last_eval_ts;
+        fresh.last_valid_severity = st.last_valid_severity; fresh.last_valid_ts = st.last_valid_ts; fresh.unobserved_since_ts = st.last_eval_ts; fresh.unusable_since_ts = st.last_eval_ts;   // the time the monitor was not running counts as an outage
         this.state[r.instrument_id] = fresh;
       } else this.state[r.instrument_id] = st;
     }

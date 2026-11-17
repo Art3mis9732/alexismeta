@@ -30,7 +30,7 @@ const CONFIG = deepFreeze({
   version: STRESS_VERSION,
   calibration: { status: "PROVISIONAL",
     basis: "price/volatility/volume thresholds = 99.5 / 99.9 / 99.97th percentiles of the metric over 59 development days of public 1m candles (BTC, ETH, XRP pooled), 2026-08-20 to 2026-10-18; liquidity thresholds (S, D) are engineering values with NO historical basis",
-    evaluation: "scored once on the following 30 days: see devdocs/stress-calibration.md. BTC/ETH: abnormal 60-minute forward ranges followed ELEVATED alerts ~4-5x as often as the base rate; XRP: no lift demonstrated. The detector reacts to moves, it does not anticipate them.",
+    evaluation: "scored on the following 30 days (three times; not a pristine holdout): see devdocs/stress-calibration.md. BTC/ETH: abnormal 60-minute forward ranges followed ELEVATED alerts ~4-5x as often as the base rate; XRP: no lift demonstrated. The detector reacts to moves, it does not anticipate them.",
     note: "PROVISIONAL: modest evidence on one 30-day period, liquidity families unevaluated. Policy stays in SHADOW until validated forward." },
   evalMs: 5000,
   horizonsMin: [1, 5, 15],
@@ -39,7 +39,7 @@ const CONFIG = deepFreeze({
   // [ELEVATED, HIGH_STRESS, CRITICAL]; higher is worse except D (depth ratio), where LOWER is worse.
   thresholds: { P: [8.6, 13.9, 19.3], V: [4.7, 8.0, 10.3], A: [3.2, 4.0], S: [3, 5, 8], D: [0.4, 0.25, 0.12] },     // P, V, A: development quantiles (see calibration); S, D: provisional engineering values
   persistence: { escalateMs: 30000, dwellMs: { ELEVATED: 600000, HIGH_STRESS: 900000, CRITICAL: 1200000 }, maxGapMs: 300000 },
-  quality: { tickerMaxAgeMs: 10000, candleMaxAgeMs: 180000, monitorStaleMs: 30000, recoveryValidMs: 300000 },
+  quality: { tickerMaxAgeMs: 10000, candleMaxAgeMs: 180000, monitorStaleMs: 30000, outageMs: 300000, recoveryValidMs: 300000 },
   maxDetectionDelayMs: 60000        // CONFIRMATION delay only: from the first threshold exceedance to a confirmed state (persistence 30 s + evaluation cadence). It is NOT the delay from the start of a move: a move must first grow past the threshold (median 12-15 min into a 15-minute abnormal move in the evaluation month).
 });
 
@@ -156,7 +156,7 @@ function dataQuality(q, cfg = CONFIG) {
 /* ---------------------------------------------------------------- state machine */
 function initialState(ts) {
   return { severity: "NORMAL", quality: "UNRELIABLE", since_ts: ts, event_id: null, event_onset_ts: null, peak: "NORMAL", up_since: null, up_min: null, down_since: null, down_max: null,
-    last_eval_ts: ts, last_valid_severity: null, last_valid_ts: null, valid_since_ts: null };
+    last_eval_ts: ts, last_valid_severity: null, last_valid_ts: null, valid_since_ts: null, unusable_since_ts: ts, recovery_until: null };
 }
 function baselineRefEnd(state, nowTs, cfg = CONFIG) { return (state.event_onset_ts !== null && state.event_onset_ts !== undefined ? state.event_onset_ts : nowTs) - cfg.baseline.excludeMs; }
 
@@ -188,6 +188,10 @@ function step(prev, obs, cfg = CONFIG, instrumentId = "?") {
     } else { s.up_since = s.up_min = s.down_since = s.down_max = null; }
     s.last_valid_severity = s.severity; s.last_valid_ts = ts;
   } else { s.up_since = s.up_min = s.down_since = s.down_max = null; }   // unreliable or unknown: severity is RETAINED, nothing escalates or recovers
+  // Outages: a brief UNRELIABLE spell (a websocket reconnect: the 60 s coverage rule that the risk gate already applies) needs no extra waiting. After a REAL outage
+  // (>= outageMs, which includes a monitor that was not running) entries stay blocked until the data has been usable for recoveryValidMs.
+  if (obs.quality === "UNRELIABLE") { if (s.unusable_since_ts === null || s.unusable_since_ts === undefined) s.unusable_since_ts = ts; }
+  else if (s.unusable_since_ts !== null && s.unusable_since_ts !== undefined) { if (ts - s.unusable_since_ts >= cfg.quality.outageMs) s.recovery_until = ts + cfg.quality.recoveryValidMs; s.unusable_since_ts = null; }
   // "usable" = not UNRELIABLE. DEGRADED (e.g. the liquidity baseline is still warming up after a fresh start) is usable; counting it as unusable would block every entry for hours.
   s.valid_since_ts = obs.quality !== "UNRELIABLE" ? (prev.valid_since_ts === null ? ts : prev.valid_since_ts) : null;
   if (prev.quality !== s.quality) mk("QUALITY_CHANGE");
@@ -202,9 +206,9 @@ const POLICY = deepFreeze({
   table: [
     { state: "NORMAL", scope: "-", new_entries: "no change", exposure: "no change", existing_positions: "managed as always", recovery: "-" },
     { state: "ELEVATED", scope: "affected asset", new_entries: "allowed (warning only in v1)", exposure: "no change", existing_positions: "managed as always", recovery: "dwell below ELEVATED for 10 min" },
-    { state: "HIGH_STRESS", scope: "affected asset; ALL assets when 2 or more are HIGH_STRESS or worse", new_entries: "BLOCKED", exposure: "no change (no reduction rule in v1)", existing_positions: "managed as always (stops, targets, time exits, funding, accounting)", recovery: "dwell below HIGH for 15 min, then data usable (not UNRELIABLE) for 5 min" },
-    { state: "CRITICAL", scope: "ALL assets (BTC, ETH and XRP are one correlated bucket)", new_entries: "BLOCKED", exposure: "no change (no reduction rule in v1)", existing_positions: "managed as always", recovery: "dwell below CRITICAL for 20 min, then data usable (not UNRELIABLE) for 5 min" },
-    { state: "DATA UNRELIABLE (quality)", scope: "affected asset", new_entries: "BLOCKED", exposure: "no change", existing_positions: "retained with their last valid timestamps; no fabricated exit", recovery: "data usable (not UNRELIABLE) for 5 min" },
+    { state: "HIGH_STRESS", scope: "affected asset; ALL assets when 2 or more are HIGH_STRESS or worse", new_entries: "BLOCKED", exposure: "no change (no reduction rule in v1)", existing_positions: "managed as always (stops, targets, time exits, funding, accounting)", recovery: "dwell below HIGH for 15 min" },
+    { state: "CRITICAL", scope: "ALL assets (BTC, ETH and XRP are one correlated bucket)", new_entries: "BLOCKED", exposure: "no change (no reduction rule in v1)", existing_positions: "managed as always", recovery: "dwell below CRITICAL for 20 min" },
+    { state: "DATA UNRELIABLE (quality)", scope: "affected asset", new_entries: "BLOCKED", exposure: "no change", existing_positions: "retained with their last valid timestamps; no fabricated exit", recovery: "data usable again; after an outage of 5 minutes or more (including a monitor that was not running) it must stay usable for 5 more minutes. Brief reconnects only need the 60 s coverage rule the risk gate already applies" },
     { state: "UNKNOWN (no stress state / stale monitor / warm-up)", scope: "affected asset", new_entries: "BLOCKED when enforced", exposure: "no change", existing_positions: "managed as always", recovery: "monitor evaluating again with VALID or DEGRADED quality" }
   ],
   not_implemented: ["exposure reduction", "forced exits", "size scaling", "extra confirmation requirements for entries", "automatic training or model replacement (never)"]
@@ -222,7 +226,7 @@ function entryGate({ states, instrumentId, nowTs, mode = "SHADOW", cfg = CONFIG 
   if (crit >= 1) return done(true, "STRESS_CRITICAL_MARKET", "market", `${crit} instrument(s) CRITICAL`, { market_wide: true });
   if (high >= 2) return done(true, "STRESS_HIGH_MARKET", "market", `${high} instruments HIGH_STRESS or worse`, { market_wide: true });
   if (SI(st.severity) >= 2) return done(true, "STRESS_HIGH_ASSET", "asset", "instrument is HIGH_STRESS");
-  if (st.valid_since_ts === null || nowTs - st.valid_since_ts < cfg.quality.recoveryValidMs) return done(true, "STRESS_RECOVERY_WINDOW", "asset", "data not usable (UNRELIABLE) within the last 5 minutes");
+  if (st.recovery_until !== null && st.recovery_until !== undefined && nowTs < st.recovery_until) return done(true, "STRESS_RECOVERY_WINDOW", "asset", "recovering from a data outage of 5 minutes or more: data must stay usable for 5 minutes");
   return done(false, null, "-", st.severity === "ELEVATED" ? "ELEVATED: warning only" : "no restriction");
 }
 

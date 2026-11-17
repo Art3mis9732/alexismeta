@@ -119,3 +119,10 @@ restore drill has been run yet; try it once on a copy before you need it.** The 
 `export-evidence`, `backup`) never migrate a database; only starting the worker does.
 Not verified by me: Windows itself, Node 26, PowerShell behaviour of these commands. The user-reported successful start is the only
 Windows evidence.
+
+## Market-stress build (schema v9) — update and enforcement notes (session 6)
+* The first start on this build migrates the database from v8 to v9 (additive: three new tables, append-only triggers, no existing table touched). The migration was validated on a copy of the real forward database (V-031). **Back up first** (`node server\admin.js backup ...` works on a v8 file), **stop the worker gracefully**, and prefer a moment with **no open paper position** (a restart is a data gap that flags open positions as unresolved, D-022). After the start check `http://127.0.0.1:8787/api/runtime` (`stress` block) and `/api/stress`, then `node server\admin.js verify-ledger`. Read-only admin commands refuse a v8 file under v9 code until the worker has migrated it; that is intended.
+* New options: `--stress-mode shadow|enforce` (default shadow), `--no-stress` (do not start the monitor), `--stress-fixture` (TEST environment only: scripted synthetic BTC crash for browser checks; refused for FORWARD in code and in the database).
+* **Do not use `--stress-mode enforce` on the forward environment without the user's explicit approval** (D-024): it blocks new paper entries and changes forward behaviour; the effective time is recorded and shown.
+* Rollback: stop the worker, start the previous commit's code with the pre-migration backup ONLY if no newer forward history exists. Otherwise keep the v9 file and run the new code with `--no-stress`: the stress tables are additive and nothing else reads them. Never replace a newer forward database with an older one.
+* The cloud container's workers stop when a session turn ends. A worker on your own PC runs until you stop it; the stress monitor records any gap as UNOBSERVED rather than as a recovery.

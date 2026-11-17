@@ -19,7 +19,7 @@ const snapOf = (o = {}) => ({ instrument_id: ID, bar_close_ts: CLOSE, decision_t
 
 /** a stress source whose state the test controls; gate() is the REAL pure policy (entryGate), so policy and engine are tested together */
 function stressSrc(mode, states, now) { return { gate: (id, t) => S.entryGate({ states: typeof states === "function" ? states() : states, instrumentId: id, nowTs: t, mode }), calls: 0 }; }
-const st = (sev, over = {}, t = CLOSE + 3000) => ({ severity: sev, quality: "VALID", last_eval_ts: t, valid_since_ts: t - 10 * 60000, ...over });
+const st = (sev, over = {}, t = CLOSE + 3000) => ({ severity: sev, quality: "VALID", last_eval_ts: t, valid_since_ts: t - 10 * 60000, recovery_until: null, ...over });
 
 function rig({ mode = "ENFORCE", state = () => ({ [ID]: st("NORMAL") }), withStress = true } = {}) {
   let t = CLOSE + 3000; const now = () => t, store = new Store(":memory:", { now }), ledger = new Ledger(store, { now, codeRev: "test" });
@@ -70,7 +70,7 @@ test("scope: HIGH_STRESS on one asset blocks that asset only; UNRELIABLE data, a
   r = rig({ state: () => ({ [ID]: st("HIGH_STRESS"), [ETH]: st("NORMAL") }) });
   assert.ok(r.engine.onBarClose(ID, CLOSE, CLOSE + 3000).results.every(x => x.reasons.includes("STRESS_HIGH_ASSET")));
   for (const [name, state, code] of [["unreliable", () => ({ [ID]: st("NORMAL", { quality: "UNRELIABLE" }) }), "STRESS_DATA_UNRELIABLE"], ["no state", () => ({}), "STRESS_UNKNOWN"],
-    ["stale monitor", () => ({ [ID]: st("NORMAL", { last_eval_ts: CLOSE - 120000 }) }), "STRESS_MONITOR_STALE"], ["recovery window", () => ({ [ID]: st("NORMAL", { valid_since_ts: CLOSE }) }), "STRESS_RECOVERY_WINDOW"]]) {
+    ["stale monitor", () => ({ [ID]: st("NORMAL", { last_eval_ts: CLOSE - 120000 }) }), "STRESS_MONITOR_STALE"], ["recovery window", () => ({ [ID]: st("NORMAL", { recovery_until: CLOSE + 4 * 60000 }) }), "STRESS_RECOVERY_WINDOW"]]) {
     r = rig({ state }); const out = r.engine.onBarClose(ID, CLOSE, CLOSE + 3000);
     assert.ok(out.results.every(x => x.reasons && x.reasons.includes(code)), name + " -> " + code);
   }
@@ -106,9 +106,9 @@ test("the gate is read AT each authorisation, never cached from an earlier signa
   assert.equal(nPos(r), 1);
 });
 
-test("recovery: after the restriction clears and data has been usable for 5 minutes, entries are allowed again", () => {
-  const t = CLOSE + 3000;
-  assert.equal(S.entryGate({ states: { [ID]: st("NORMAL", { valid_since_ts: t - 4 * 60000 }) }, instrumentId: ID, nowTs: t, mode: "ENFORCE" }).code, "STRESS_RECOVERY_WINDOW");
-  assert.equal(S.entryGate({ states: { [ID]: st("NORMAL", { valid_since_ts: t - 6 * 60000 }) }, instrumentId: ID, nowTs: t, mode: "ENFORCE" }).would_block, false);
-  assert.equal(S.entryGate({ states: { [ID]: st("NORMAL", { quality: "DEGRADED", valid_since_ts: t - 6 * 60000 }) }, instrumentId: ID, nowTs: t, mode: "ENFORCE" }).would_block, false, "DEGRADED (liquidity warming up) is usable");
+test("recovery: the window after a real outage blocks until it elapses; DEGRADED (liquidity warming up) is usable and never blocks", () => {
+  const t = CLOSE + 3000, g = o => S.entryGate({ states: { [ID]: st("NORMAL", o, t) }, instrumentId: ID, nowTs: t, mode: "ENFORCE" });
+  assert.equal(g({ recovery_until: t + 60000 }).code, "STRESS_RECOVERY_WINDOW");
+  assert.equal(g({ recovery_until: t - 1 }).would_block, false);
+  assert.equal(g({ quality: "DEGRADED" }).would_block, false, "DEGRADED must not block: after every fresh start the liquidity baseline needs hours to warm up");
 });

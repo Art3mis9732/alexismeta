@@ -158,3 +158,12 @@ Evidence references point to `verification.md` entries (V-xxx).
 | P4-11 | System-visibility views | - | PARTIAL: status chips, runtime identity, news source health | V-022, V-026 |
 | P4-12 | Windows usability | - | the user reports Node v26.13.0 / npm 12.2.2 started the app; NOT verified by me | runbook |
 | P4-13 | Release preparation without deploying | K | NOT_STARTED beyond the hosting analysis | runbook |
+| P6-01 | Reconcile source, runtime, CI before new work | A | DONE (V-030) | V-030 |
+| P6-02 | Market-stress measurements with data contracts | C | DONE for price/volatility/volume; spread/depth implemented but UNCALIBRATED; OI/funding/imbalance context only; liquidations/holders NOT available | stress-design.md |
+| P6-03 | Severity separate from data quality; retained across disconnects | C | DONE, unit + browser verified | V-031 |
+| P6-04 | Calibration with independent labels, honest evaluation | C | PARTIAL: dev/eval split, forward-range and move-onset labels, sensitivity; evaluation month not a pristine holdout; no liquidity evaluation | stress-calibration.md |
+| P6-05 | Persisted reproducible events (append-only), restart restoration | C | DONE (schema v9, UNOBSERVED rule); applied to TEST and a copy only | V-031 |
+| P6-06 | Risk integration with an explicit policy table | C | DONE in SHADOW; ENFORCE implemented and unit-tested, NOT enabled anywhere | D-024, D-025 |
+| P6-07 | Stress UI + news context, all states | C | DONE, browser-verified on TEST synthetic + real-data TEST; NOT on the forward worker | V-031 |
+| P6-08 | Forward activation of the stress monitor | C | BLOCKED: waits for the next restart with no open position (D-027) | resume.md |
+| P6-09 | Historical strategy evaluation (analysts, stress-gated vs ungated) | D | NOT_STARTED | roadmap |

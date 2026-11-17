@@ -165,7 +165,7 @@ test("baseline reference is frozen at the event onset so an ongoing crash cannot
 });
 
 /* ------------------------------------------------------------------ policy gate */
-const st = (sev, over = {}) => ({ severity: sev, quality: "VALID", last_eval_ts: T0, valid_since_ts: T0 - 10 * MIN, ...over });
+const st = (sev, over = {}) => ({ severity: sev, quality: "VALID", last_eval_ts: T0, valid_since_ts: T0 - 10 * MIN, recovery_until: null, ...over });
 const ID = ["bitget:perp:BTCUSDT", "bitget:perp:ETHUSDT", "bitget:perp:XRPUSDT"];
 const gate = (states, id, mode = "ENFORCE", now = T0 + 1000) => S.entryGate({ states, instrumentId: id, nowTs: now, mode });
 
@@ -184,10 +184,22 @@ test("gate: unreliable data, missing state, stale monitor and the recovery windo
   assert.equal(gate({ [ID[0]]: st("NORMAL", { quality: "UNRELIABLE" }) }, ID[0]).code, "STRESS_DATA_UNRELIABLE");
   assert.equal(gate({}, ID[0]).code, "STRESS_UNKNOWN");
   assert.equal(gate(ok, ID[0], "ENFORCE", T0 + 31000).code, "STRESS_MONITOR_STALE", "a dead monitor is UNRELIABLE, never NORMAL");
-  assert.equal(gate({ [ID[0]]: st("NORMAL", { valid_since_ts: T0 - 2 * MIN }) }, ID[0]).code, "STRESS_RECOVERY_WINDOW");
-  assert.equal(gate({ [ID[0]]: st("NORMAL", { valid_since_ts: null }) }, ID[0]).code, "STRESS_RECOVERY_WINDOW");
+  assert.equal(gate({ [ID[0]]: st("NORMAL", { recovery_until: T0 + 3 * MIN }) }, ID[0]).code, "STRESS_RECOVERY_WINDOW");
+  assert.equal(gate({ [ID[0]]: st("NORMAL", { recovery_until: T0 - 1 }) }, ID[0]).would_block, false, "the window has elapsed");
   const sh = gate({ [ID[0]]: st("CRITICAL") }, ID[0], "SHADOW");
   assert.equal(sh.would_block, true); assert.equal(sh.enforced, false); assert.equal(sh.policy, S.POLICY_VERSION); assert.equal(sh.mode, "SHADOW");
+});
+
+test("outages: a brief reconnect needs no recovery window; an outage of 5 minutes or more (or a cold start) does", () => {
+  const usable = (s, ts) => S.step(s, { ts, raw: 0, quality: "VALID", measures: null, reasons: null }, CFG, "x").state;
+  const down = (s, ts) => S.step(s, { ts, raw: null, quality: "UNRELIABLE", measures: null, reasons: null }, CFG, "x").state;
+  let s = usable(S.initialState(T0 - 10 * MIN), T0);                                         // cold start: unusable since T0-10min, first usable evaluation at T0
+  assert.equal(s.recovery_until, T0 + 5 * MIN, "a cold start after a long unobserved period is an outage");
+  s = usable(s, T0 + 6 * MIN); assert.equal(S.entryGate({ states: { x: { ...s, last_eval_ts: T0 + 6 * MIN } }, instrumentId: "x", nowTs: T0 + 6 * MIN, mode: "ENFORCE" }).would_block, false, "after the window it is allowed");
+  s = down(s, T0 + 7 * MIN); s = usable(s, T0 + 7 * MIN + 60000);                              // a one-minute reconnect blip
+  assert.equal(s.recovery_until, T0 + 5 * MIN, "no NEW recovery window for a brief blip");
+  s = down(s, T0 + 20 * MIN); s = usable(s, T0 + 27 * MIN);                                    // a 7-minute outage
+  assert.equal(s.recovery_until, T0 + 32 * MIN);
 });
 
 test("policy table states what stops and what never stops", () => {

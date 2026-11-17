@@ -25,3 +25,8 @@ The page has exactly five tabs: Paper monitor, News, Buy / Sell, Patterns, Indic
 Advisor" or Model Lab tab; an external prompt listed them and they were not invented. (The coding advisor and the three analysts are
 different things; the analysts appear in Paper monitor and Buy / Sell.) All five were screenshot-reviewed at desktop and phone width
 (V-029). The trained logistic-regression scores are shown in Buy / Sell as "Model scores (uncalibrated, not probabilities)".
+
+## Session 6 note (2026-11-17)
+A sixth tab, **Market stress**, was added (after News) together with a summary strip visible on every tab. Tabs are now: Paper monitor, News, Market stress,
+Buy / Sell, Patterns, Indicators. Still no Dashboard, Settings, Fable Advisor or Model Lab tab. Phone width: the tab bar wraps to two rows of three.
+

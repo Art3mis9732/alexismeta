@@ -27,4 +27,8 @@ Classes: VERIFIED · IMPLEMENTED_UNVERIFIED · PARTIAL · BROKEN · MISSING · E
 | 21 | Earlier summaries and an external analysis said the project has no trained model; a logistic regression per timeframe is trained daily (display-only, no edge) | DOC ERROR | corrected in `training-audit.md` | training-audit.md |
 | 22 | External prompt listed tabs "Dashboard, Settings, Fable Advisor, Model Lab"; the page has only five tabs (Paper monitor, News, Buy/Sell, Patterns, Indicators) | NOT A DEFECT (nonexistent) | recorded; nothing invented | tab-inventory.md |
 | 23 | `deployment-runbook.md` said the news milestone was not pushed | DOC STALE | fixed | runbook |
+| 24 | Natural forward positions (ETH shorts 10:00:08 UTC) were flagged "outcome not evaluable" by a 1.8 s real websocket disconnect; websocket drops recur every ~10-13 min today | OBSERVED (data-feed property, D-016 working as designed) | recorded; cause of the drops unknown; whether container CPU load contributed is unknown | V-031 |
+| 25 | Forward worker runs the pre-stress build (schema v8) and has no stress monitor | PENDING (D-027) | migration validated on a copy; applies at next restart with no open position | V-031 |
+| 26 | Stress detector reacts to moves rather than anticipating them; XRP shows no lift; severity levels not monotonic; liquidity families uncalibrated | LIMITATION (documented, not a bug) | provisional; shadow-only | stress-calibration.md |
+| 27 | Cloud workers die when a turn ends (observed twice at 08:56 UTC and between sessions); every session starts as a restart after a gap | LIMITATION | monitor treats the gap as UNOBSERVED; no continuous-monitoring claim is made; a Windows worker would run continuously | resume.md |
 

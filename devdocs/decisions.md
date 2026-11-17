@@ -144,3 +144,18 @@ Four layout defects (V-029) passed every API and DOM-text test because those tes
 by reading rendered screenshots (desktop and phone) and each repaired layout defect gets a browser assertion on geometry or computed
 range that is **mutation-verified** (the fix is reverted and the check must fail). A check that passes without its fix is a weak check
 and is rewritten (it happened once: the clipped-accounts check ran on a page where the defect did not reproduce).
+
+## D-024 (2026-11-17) — the stress policy ships in SHADOW; enforcing it is a user decision
+Calibration is modest (BTC/ETH lift only, XRP none, liquidity families uncalibrated, reactive timing). Enforcing blocks forward entries, which changes forward strategy behaviour and comparability. Default everywhere: `SHADOW` (record `would_block` in the ledger, block nothing). `--stress-mode enforce` exists but needs the user's explicit approval and a recorded effective time (shown in `/api/stress`). Read the SHADOW record first.
+
+## D-025 (2026-11-17) — stress may only block NEW entries
+No exposure reduction, forced exit, size scaling or re-pricing exists. Stress is read inside `risk.evaluate` at authorisation and never in `manage()`, accounting, or valuation. Stale monitor, missing state, warm-up and unreliable data all count as "unsafe to open", never as NORMAL.
+
+## D-026 (2026-11-17) — the recovery window applies only after a real outage
+Found with live data: websocket drops every 10-13 minutes would, with a 5-minute window after every blip, block entries most of the time. The existing gate already applies a 60 s coverage rule to blips. After an outage of >= 5 min (including a monitor that was not running) usable data must persist for 5 more minutes. DEGRADED is usable.
+
+## D-027 (2026-11-17) — no forward restart while positions are open; the v9 migration waits
+The forward worker holds two open natural positions (flagged by a real websocket gap). D-022 stands: it keeps running the older build, the migration is validated on a copy and applies at the next restart with no open position (backup first, just after a bar close). The stress monitor therefore is not yet watching the forward environment.
+
+## D-028 (2026-11-17) — event closure after an unobserved gap is UNOBSERVED, not RECOVERED
+When the monitor was not running for more than 5 minutes, an active event is closed at the last evaluation time with reason UNOBSERVED. A disconnect or restart is never recorded as a recovery.

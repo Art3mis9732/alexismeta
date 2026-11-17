@@ -39,3 +39,12 @@ test("split rule: time ordered, embargo >= 3 days between segments, burn-in excl
   assert.equal(D.splitOf(sp.train[1] + DAY, sp), null);                                                                              // inside the embargo
   assert.equal(D.splitOf(sp.validation[0] + 1, sp), "validation"); assert.equal(D.splitOf(a, sp), null);
 });
+test("registered dataset-v1 is replaced only by an identical rebuild; a different one is refused and leaves it untouched", () => {
+  const fs = require("node:fs"), os = require("node:os"), path = require("node:path"), root = fs.mkdtempSync(path.join(os.tmpdir(), "ds-")), out = path.join(root, "dataset-v1");
+  const mkBuild = (hash, mark) => (dir) => { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, "mark.txt"), mark); return { manifest: { matrix_sha256: hash } }; };
+  fs.mkdirSync(out); fs.writeFileSync(path.join(out, "mark.txt"), "original");
+  assert.throws(() => D.placeBuild({ out, registered: { matrix_sha256: "aaa" }, buildFn: mkBuild("bbb", "changed") }), /REFUSED/);
+  assert.equal(fs.readFileSync(path.join(out, "mark.txt"), "utf8"), "original"); assert.ok(!fs.existsSync(out + ".build"));
+  D.placeBuild({ out, registered: { matrix_sha256: "aaa" }, buildFn: mkBuild("aaa", "identical") }); assert.equal(fs.readFileSync(path.join(out, "mark.txt"), "utf8"), "identical");
+  const draft = path.join(root, "dataset-draft-1"); D.placeBuild({ out: draft, registered: { matrix_sha256: "aaa" }, buildFn: mkBuild("zzz", "draft") }); assert.ok(fs.existsSync(draft));   // other directories are unrestricted
+});

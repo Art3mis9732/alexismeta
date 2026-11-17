@@ -6,7 +6,7 @@
  * Guards, each recorded as the tick's outcome: another run active (lock), market stress HIGH/CRITICAL (asset or market-wide) on the local worker, low disk, trial cap reached, time budget. */
 const fs = require("node:fs"), path = require("node:path"), http = require("node:http"), cp = require("node:child_process");
 const ROOT = path.join(__dirname, ".."), REG = path.join(ROOT, "research", "registry"), ALLOWED = ["fetch", "dataset", "validate"], MIN_FREE = 2 * 1024 ** 3, CAP = 40;
-const SEVERE = new Set(["HIGH", "HIGH_STRESS", "CRITICAL"]);
+const PY = process.env.ALEXIS_PYTHON || (process.platform === "win32" ? "python" : "python3"), SEVERE = new Set(["HIGH", "HIGH_STRESS", "CRITICAL"]);
 
 function getStressHttp(worker, timeoutMs = 4000) {
   return new Promise((resolve) => { const u = new URL("/api/stress", worker), req = http.get(u, { timeout: timeoutMs }, r => { let s = ""; r.on("data", d => s += d); r.on("end", () => { try { resolve(JSON.parse(s)); } catch (e) { resolve(null); } }); }); req.on("error", () => resolve(null)); req.on("timeout", () => { req.destroy(); resolve(null); }); });
@@ -21,7 +21,7 @@ function stressSevere(api) {
 }
 function defaults() {
   return { now: () => Date.now(), registryDir: REG, getStress: (w) => getStressHttp(w), freeBytes: () => { try { const s = fs.statfsSync(ROOT); return Number(s.bavail) * Number(s.bsize); } catch (e) { return Infinity; } },
-    runStep: (name) => { const cmds = { fetch: [["node", ["research/fetch_native.js", "730"]], ["node", ["scripts/stress_fetch_1m.js", "730"]]], dataset: [["node", ["research/dataset.js"]]], validate: [["python3", ["-c", "from modellab import fit; import json; print(json.dumps(fit.run_validation('data/research/dataset-v1','research/registry'), default=str)[:400])"]]] };
+    runStep: (name) => { const cmds = { fetch: [["node", ["research/fetch_native.js", "730"]], ["node", ["scripts/stress_fetch_1m.js", "730"]]], dataset: [["node", ["research/dataset.js"]]], validate: [[PY, ["-c", "from modellab import fit; import json; print(json.dumps(fit.run_validation('data/research/dataset-v1','research/registry'), default=str)[:400])"]]] };
       for (const [c, a] of cmds[name]) { const r = cp.spawnSync(c, a, { cwd: ROOT, encoding: "utf8", env: { ...process.env, NODE_USE_ENV_PROXY: "1" } }); if (r.status !== 0) return { ok: false, detail: String(r.stderr || r.error || "").slice(0, 300) }; } return { ok: true }; } };
 }
 async function tick(opts = {}, deps = {}) {

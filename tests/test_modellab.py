@@ -139,3 +139,19 @@ def test_gate_passes_when_the_model_truly_separates_good_rows():
     p = np.where(good, 0.9, 0.1)
     r = evalkit.gate(df, p, 0.5, seeds=60)
     assert r["verdict"] == "PASS_CANDIDATE_FOR_SHADOW", r
+
+
+def test_second_validation_run_for_the_same_dataset_is_refused(planted_dir, tmp_path):
+    reg = str(tmp_path / "reg")
+    fit.run_validation(planted_dir, reg)
+    with pytest.raises(RuntimeError, match="already run"):
+        fit.run_validation(planted_dir, reg)
+    assert sum(1 for _ in open(os.path.join(reg, "trials.jsonl"))) <= fit.TRIAL_CAP
+
+
+def test_final_refuses_a_dataset_that_differs_from_the_registered_manifest(planted_dir, tmp_path):
+    reg = str(tmp_path / "reg")
+    fit.run_validation(planted_dir, reg)
+    json.dump({"matrix_sha256": "0" * 64}, open(os.path.join(reg, "dataset-v1-manifest.json"), "w"))
+    with pytest.raises(RuntimeError, match="registered manifest"):
+        final.score_final(planted_dir, reg)

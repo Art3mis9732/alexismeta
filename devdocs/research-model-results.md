@@ -19,7 +19,7 @@ The label-shuffled control gives -0.0001 (no leakage signal). Boosting was the o
 The gain is real but it is not directional skill. Its predicted probability correlates -0.54 with the trade's cost in R, and the win rate collapses from 39% to 25% in the highest-cost bin (cost above 1.2 R, i.e. very quiet markets where a 1.5 ATR target cannot beat 16 bps of costs). The model learned "do not expect a win when costs eat the target", which is true and tradable as a *filter* but not as an entry signal: the 10% of rows with the highest predicted probability still lose -0.53 R on average (win rate 38%), no better than the average row (-0.52 R). Even in the cheapest cost bin (about 0.16 R) the result is -0.14 R. Trend direction alone separates nothing (-0.49, -0.54, -0.53 R).
 
 ## What this means
-* With this template (a 15-minute bar, a 1 ATR stop) the round-trip cost is about half of the risk taken on every trade, and none of the 21 candidate models, from regularised logistic regression to shallow boosting, finds rows that overcome it. This agrees with Slice 1: the three rule analysts are break-even before costs and about -0.35 R after.
+* With this template (a 15-minute bar, a 1 ATR stop) the round-trip cost is about half of the risk taken on every trade, and none of the 21 candidate models, from regularised logistic regression to shallow boosting, passed selection (the linear models have no skill at all; boosting's only gain is the cost effect below). This agrees with Slice 1: the three rule analysts are break-even before costs and about -0.35 R after.
 * The boosting finding is useful, not a trading rule: **market quietness predicts that costs will dominate**. A cost-aware filter (do not enter when the stop distance is too small relative to the round-trip cost) is a plausible rule improvement to test on its own, in a new pre-registered version; whether the live gate already covers it has not been checked here.
 * No claim of edge, no shadow candidate, no promotion. The registry shows REJECTED_ON_VALIDATION.
 
@@ -27,5 +27,6 @@ The gain is real but it is not directional skill. Its predicted probability corr
 1. **Wider template** (longer bar such as 1 h or 4 h, or a 2 to 3 ATR stop) so costs are a smaller share of risk. Cheapest, directly addresses the cost ratio; needs its own fresh final segment.
 2. **Cost-aware entry filter** applied to the existing analysts (a rule, not a model), evaluated by the Slice 1 harness.
 3. **Maker (limit) entries**: halves fees but adds fill uncertainty that candles cannot measure; needs forward order-book recording.
-4. **More inputs** (order-book imbalance, funding, news) once the forward worker has recorded enough: needs weeks of forward data.
+4. **Label the frictionless outcome and apply costs only in the gate.** v1 labelled `net > 0`, which let boosting score by predicting the cost term; a v2 label of 'target before stop' with costs charged afterwards avoids rewarding that.
+5. **More inputs** (order-book imbalance, funding, news) once the forward worker has recorded enough: needs weeks of forward data.
 The final segment of v1 stays unread; if v1 is ever scored it must follow the registered procedure exactly.

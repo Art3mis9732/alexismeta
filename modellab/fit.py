@@ -69,6 +69,9 @@ def log_trial(path, rec):
 
 def run_validation(dataset_dir: str, registry_dir: str, shuffle_control=True):
     df, manifest, split = data.load(dataset_dir)
+    prev = os.path.join(registry_dir, "validation_result.json")
+    if os.path.exists(prev) and json.load(open(prev)).get("matrix_sha256") == manifest["matrix_sha256"]:
+        raise RuntimeError("validation was already run for this dataset: a second run would spend more of the trial budget. A new dataset needs a new pre-registration version.")
     feats = manifest["features"]
     tr, va = df[df["split"] == "train"], df[df["split"] == "validation"]            # FINAL rows are not touched
     os.makedirs(registry_dir, exist_ok=True)

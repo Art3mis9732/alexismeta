@@ -50,3 +50,8 @@ Made while building the pipeline; each item is stricter or more specific, none l
 4. FINAL scoring refits the chosen configuration on TRAIN only, writes a lock file, and refuses a second run. A label-shuffled control is logged next to the validation trials.
 5. The dataset also stores `costR` (fees and slippage in R) so the "+25% costs" check can be computed exactly.
 6. Selection on FINAL and the random baseline use R per trade with fixed size, as in section 5; random baselines use 200 seeds.
+
+## Amendment 2 (2026-11-17, after the first real fit, which was REJECTED_ON_VALIDATION; FINAL unread)
+1. Section 6 lists a Python/JavaScript *feature* parity check. Python never computes features (the dataset is built once by the JavaScript code), so that check is not applicable; the JavaScript/Python *scoring* parity of an exported model is tested instead (a fresh fit is scored by the JS scorer in the test).
+2. Safeguards added to stop a second look by accident: `modellab.validate` refuses to run again for the same dataset (it would spend more of the trial budget); the dataset builder refuses to replace the registered `dataset-v1` with a rebuilt one whose hash differs (a refreshed download writes a DRAFT directory that needs its own pre-registration); FINAL scoring checks the dataset against the committed manifest.
+These change no number in the registered result.

@@ -15,6 +15,9 @@ def score_final(dataset_dir: str, registry_dir: str, seeds=200):
     df, manifest, _ = data.load(dataset_dir)
     if manifest["matrix_sha256"] != sel["matrix_sha256"]:
         raise RuntimeError("dataset changed since validation")
+    reg = os.path.join(registry_dir, "dataset-v1-manifest.json")                    # the committed copy of the registered manifest, when the registry holds one
+    if os.path.exists(reg) and json.load(open(reg))["matrix_sha256"] != manifest["matrix_sha256"]:
+        raise RuntimeError("dataset does not match the registered manifest")
     s = sel["selected"]
     tr, fi = df[df["split"] == "train"], df[df["split"] == "final"]
     m = fit.Model(s["family"], s["params"], manifest["features"]).fit(tr, tr["y"].to_numpy())

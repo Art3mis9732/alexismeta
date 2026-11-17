@@ -71,5 +71,20 @@ function build(outDir) {
     code_sha256: Object.fromEntries(["dataset.js", "snapshots.js", "simulate.js"].map(f => [f, sha(fs.readFileSync(path.join(__dirname, f)))])), variant: SN.VARIANT, microstructure_assumption: SN.MICRO };
   fs.writeFileSync(path.join(outDir, "manifest.json"), JSON.stringify(manifest, null, 1)); return { manifest, split: sp };
 }
-if (require.main === module) { const i = process.argv.indexOf("--out"), out = i >= 0 ? process.argv[i + 1] : path.join(__dirname, "..", "data", "research", "dataset-v1"); const r = build(out); console.log(JSON.stringify({ split: r.split.iso, counts: r.manifest.counts, matrix_sha256: r.manifest.matrix_sha256 }, null, 1)); }
-module.exports = { FEATURES, TEMPLATE, SPLIT, VERSION, features, label, splitRule, splitOf, build };
+/** Build into `out`, except that the registered dataset-v1 can only be replaced by an IDENTICAL rebuild (same matrix hash); otherwise it is left untouched and an error is thrown. */
+function placeBuild({ out, registered, buildFn }) {
+  const guarded = registered && path.basename(out) === "dataset-v1", dir = guarded ? out + ".build" : out, r = buildFn(dir);
+  if (guarded) {
+    if (r.manifest.matrix_sha256 !== registered.matrix_sha256) { fs.rmSync(dir, { recursive: true, force: true }); throw Object.assign(new Error(`REFUSED: the rebuilt dataset (${r.manifest.matrix_sha256.slice(0, 12)}) differs from the registered one (${registered.matrix_sha256.slice(0, 12)}); dataset-v1 is left untouched. Use a new directory and a new pre-registration version.`), { refused: true }); }
+    fs.rmSync(out, { recursive: true, force: true }); fs.renameSync(dir, out);
+  }
+  return r;
+}
+if (require.main === module) {
+  // The registered dataset (research/registry/dataset-v1-manifest.json) can never be replaced by a different one: refreshed candles produce a DRAFT directory that needs its own pre-registration.
+  const i = process.argv.indexOf("--out"), REGF = path.join(__dirname, "registry", "dataset-v1-manifest.json"), registered = fs.existsSync(REGF) ? JSON.parse(fs.readFileSync(REGF, "utf8")) : null;
+  const base = path.join(__dirname, "..", "data", "research"), out = i >= 0 ? process.argv[i + 1] : path.join(base, registered ? "dataset-draft-" + new Date().toISOString().slice(0, 10).replace(/-/g, "") : "dataset-v1");
+  let r; try { r = placeBuild({ out, registered, buildFn: build }); } catch (e) { if (e.refused) { console.error(e.message); process.exit(2); } throw e; }
+  console.log(JSON.stringify({ split: r.split.iso, counts: r.manifest.counts, matrix_sha256: r.manifest.matrix_sha256, written_to: out }, null, 1));
+}
+module.exports = { FEATURES, TEMPLATE, SPLIT, VERSION, features, label, splitRule, splitOf, build, placeBuild };

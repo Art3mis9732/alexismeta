@@ -213,3 +213,12 @@ test("news shadow: the engine's decisions, ledger and positions are identical wi
   assert.equal(rows.length, 3); assert.ok(rows.every(x => x.verdict === "NO_RELEVANT_NEWS" && x.intent === "OPEN_LONG" && x.risk_outcome === "OPENED"));
   assert.equal(plain.store.db.prepare("SELECT COUNT(*) n FROM news_shadow").get().n, 0);
 });
+
+test("filter shadow: engine decisions, ledger and positions are identical with a recording, a throwing and no filter shadow; entry candidates are recorded", () => {
+  const { FilterShadow } = require("../server/filter_shadow"), risk = require("../server/risk"), plain = rig(), rec = rig(), bad = rig();
+  rec.engine.filterShadow = new FilterShadow({ db: rec.store.db, ledger: rec.ledger, config: risk.RISK_DEFAULTS, environment: "FORWARD", now: rec.now }); bad.engine.filterShadow = { record() { throw new Error("boom"); } };
+  const strip = r => ({ l: r.store.db.prepare("SELECT entry_id, kind, payload FROM ledger_entries ORDER BY seq").all().map(x => [x.entry_id, x.kind, x.payload]), p: r.store.db.prepare("SELECT position_id, qty, entry, stop FROM paper_positions ORDER BY position_id").all() });
+  for (const r of [plain, rec, bad]) r.engine.onBarClose(ID, CLOSE, CLOSE + 3000);
+  assert.deepEqual(strip(rec), strip(plain)); assert.deepEqual(strip(bad), strip(plain));
+  const rows = rec.store.db.prepare("SELECT analyst, intent, risk_outcome, stop_bps FROM filter_shadow").all(); assert.equal(rows.length, 3); assert.ok(rows.every(x => x.intent === "OPEN_LONG" && x.risk_outcome === "OPENED" && x.stop_bps > 0));
+});

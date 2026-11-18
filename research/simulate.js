@@ -12,15 +12,8 @@
 const risk = require("../server/risk"), { decide, RULES } = require("../server/policies");
 const BAR = 900000, MIN = 60000, DAY = 86400000, ORDER = ["BTCUSDT", "ETHUSDT", "XRPUSDT"];
 
-/** THE exit rule on one 1m candle for a position {side, stop, target, time_exit_ts}: returns {px, reason, ambiguous} or null. Shared with the fill-parity validation so both use the same code. */
-function exitOnCandle(p, c) {
-  if (c.t >= p.time_exit_ts) return { px: c.o, reason: "time_exit", ambiguous: false };
-  const stopHit = p.side > 0 ? c.l <= p.stop : c.h >= p.stop, tgtHit = p.side > 0 ? c.h >= p.target : c.l <= p.target;
-  if (stopHit) { const gap = p.side > 0 ? c.o < p.stop : c.o > p.stop; return { px: gap ? c.o : p.stop, reason: "stop", ambiguous: tgtHit }; }
-  if (tgtHit) return { px: p.target, reason: "target", ambiguous: false };
-  return null;
-}
-function simulate({ analyst, snaps, m1, funding = {}, instruments, from = -Infinity, to = Infinity, config = risk.RISK_DEFAULTS, startEquity = 1000, gate = null, policy = decide, label = "" }) {
+const { exitOnCandle } = require("../server/exit_rule");
+function simulate({ analyst, snaps, m1, funding = {}, instruments, from = -Infinity, to = Infinity, config = risk.RISK_DEFAULTS, startEquity = 1000, gate = null, policy = decide, label = "", fixedSizing = false }) {
   const R = RULES[analyst], slip = config.slipFrac, taker = config.taker;
   const times = [...new Set(ORDER.flatMap(s => (snaps[s] || []).map(x => x.bar_close_ts)))].filter(t => t >= from && t <= to).sort((a, b) => a - b);
   const snapAt = {}, ptr = {}; for (const s of ORDER) { snapAt[s] = new Map((snaps[s] || []).map(x => [x.bar_close_ts, x])); ptr[s] = 0; }
@@ -69,7 +62,7 @@ function simulate({ analyst, snaps, m1, funding = {}, instruments, from = -Infin
       if (d.intent !== "OPEN_LONG" && d.intent !== "OPEN_SHORT") continue;
       bump("setup"); bump("setup:" + sym);
       if (gate) { const g = gate(sym, t, open); if (g && g.block) { bump("blocked_by_gate"); bump("gate:" + g.reason); continue; } }
-      const pf = { analyst, equity: cash, peak_equity: peak, day: { start_ts: dayStart, start_equity: dayEq }, kill_switch: false,
+      const pf = { analyst, equity: fixedSizing ? startEquity : cash, peak_equity: peak, day: { start_ts: dayStart, start_equity: dayEq }, kill_switch: false,
         positions: open.map(p => ({ instrument_id: "bitget:perp:" + p.sym, side: p.side, qty: p.qty, entry: p.entry, stop: p.stop, mark: markOf(p.sym, t) ?? p.last_mark })) };
       const g = risk.evaluate({ analyst, setup: { intent: d.intent, stop: d.setup.stop }, snapshot: snap, portfolio: pf, instrument: instruments[sym], config });
       if (!g.approved) { for (const r of g.reasons) bump("risk_reject:" + r); continue; }
@@ -82,6 +75,6 @@ function simulate({ analyst, snaps, m1, funding = {}, instruments, from = -Infin
   }
   const tEnd = times[times.length - 1];
   for (const p of [...open]) closePos(p, markOf(p.sym, tEnd) ?? p.last_mark, tEnd, "end_of_data", { forced: true });
-  return { analyst, trades, curve, counts, start_equity: startEquity, end_cash: cash, from: times[0], to: tEnd, bars: times.length };
+  return { analyst, trades, curve, counts, min_equity: Math.min(startEquity, ...curve.map(c => c.equity)), fixed_sizing: !!fixedSizing, start_equity: startEquity, end_cash: cash, from: times[0], to: tEnd, bars: times.length };
 }
 module.exports = { simulate, exitOnCandle, ORDER, BAR, DAY };

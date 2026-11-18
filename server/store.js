@@ -192,7 +192,22 @@ const MIGRATIONS = [
      verdict TEXT NOT NULL, would_change INTEGER NOT NULL, overlay_version TEXT NOT NULL, assessment TEXT NOT NULL, created_ts INTEGER NOT NULL);
    CREATE INDEX IF NOT EXISTS news_shadow_by_ts ON news_shadow (decision_ts);
    CREATE TRIGGER IF NOT EXISTS news_shadow_no_update BEFORE UPDATE ON news_shadow BEGIN SELECT RAISE(ABORT, 'news shadow rows are append-only'); END;
-   CREATE TRIGGER IF NOT EXISTS news_shadow_no_delete BEFORE DELETE ON news_shadow BEGIN SELECT RAISE(ABORT, 'news shadow rows are append-only'); END;`
+   CREATE TRIGGER IF NOT EXISTS news_shadow_no_delete BEFORE DELETE ON news_shadow BEGIN SELECT RAISE(ABORT, 'news shadow rows are append-only'); END;`,
+  // v12: cost-filter SHADOW (cost-filter-shadow-v1, research-prereg-v3 rule). ADDITIVE and append-only, written after the decision transaction; read by nothing that decides.
+  //   filter_shadow          one row per analyst ENTRY CANDIDATE: stop/cost in bps, cost-to-risk, would-allow flags per predeclared threshold K, data quality, regime
+  //   filter_shadow_outcomes the hypothetical result of that candidate on stored 1m candles (same exit rule as the replay), inserted only when resolvable; a data gap is recorded as a gap, never invented
+  `CREATE TABLE IF NOT EXISTS filter_shadow (
+     decision_id TEXT PRIMARY KEY, analyst TEXT NOT NULL, instrument_id TEXT NOT NULL, decision_ts INTEGER NOT NULL, strategy_version TEXT NOT NULL, environment TEXT NOT NULL, intent TEXT NOT NULL,
+     risk_outcome TEXT, side INTEGER NOT NULL, entry_ref REAL NOT NULL, stop REAL NOT NULL, target REAL NOT NULL, time_exit_ts INTEGER NOT NULL, stop_bps REAL NOT NULL, est_cost_bps REAL NOT NULL, cost_to_risk REAL NOT NULL,
+     allow_by_k TEXT NOT NULL, data_quality TEXT NOT NULL, regime TEXT NOT NULL, filter_version TEXT NOT NULL, created_ts INTEGER NOT NULL);
+   CREATE INDEX IF NOT EXISTS filter_shadow_by_ts ON filter_shadow (decision_ts);
+   CREATE TABLE IF NOT EXISTS filter_shadow_outcomes (
+     decision_id TEXT PRIMARY KEY, status TEXT NOT NULL CHECK (status IN ('RESOLVED','UNRESOLVED_GAP')), resolved_ts INTEGER NOT NULL, exit_reason TEXT, exit_ts INTEGER, exit_px REAL, net_r REAL, cost_r REAL, ambiguous INTEGER,
+     candles_expected INTEGER, candles_found INTEGER, basis TEXT NOT NULL);
+   CREATE TRIGGER IF NOT EXISTS filter_shadow_no_update BEFORE UPDATE ON filter_shadow BEGIN SELECT RAISE(ABORT, 'filter shadow rows are append-only'); END;
+   CREATE TRIGGER IF NOT EXISTS filter_shadow_no_delete BEFORE DELETE ON filter_shadow BEGIN SELECT RAISE(ABORT, 'filter shadow rows are append-only'); END;
+   CREATE TRIGGER IF NOT EXISTS filter_shadow_out_no_update BEFORE UPDATE ON filter_shadow_outcomes BEGIN SELECT RAISE(ABORT, 'filter shadow outcomes are append-only'); END;
+   CREATE TRIGGER IF NOT EXISTS filter_shadow_out_no_delete BEFORE DELETE ON filter_shadow_outcomes BEGIN SELECT RAISE(ABORT, 'filter shadow outcomes are append-only'); END;`
 ];
 
 const DEFAULT_RETENTION_MS = {

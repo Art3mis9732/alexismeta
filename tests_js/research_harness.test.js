@@ -92,3 +92,12 @@ test("account identity: end cash equals start equity plus the sum of trade nets 
     assert.ok(Math.abs(r.end_cash - (r.start_equity + sum)) < 1e-9, `${r.end_cash} vs ${r.start_equity + sum}`);
   }
 });
+test("fixed sizing: the risk budget stays constant after losses (no depletion artefact); compounding shrinks it", () => {
+  const snaps = []; for (let i = 1; i <= 40; i++) snaps.push(snap(T0 + i * BAR, 60000));
+  const m1 = flat(T0, 41 * 15, 60000).map((c, k) => (k % 15 === 5 ? { ...c, l: 59000, c: 59000 } : c));
+  const pol = (a, s, ctx) => (ctx.position_open ? { analyst: a, intent: "WAIT", code: "POSITION_OPEN" } : { analyst: a, intent: "OPEN_LONG", code: "SETUP", setup: { stop: s.ask - 300, target: s.ask + 3000, time_exit_ts: s.bar_close_ts + 4 * BAR, trigger: "T" } });
+  const free = { ...risk.RISK_DEFAULTS, dailyLossFrac: 10, maxDrawdownFrac: 10 }, base = { analyst: "risk_taker", snaps: { BTCUSDT: snaps }, m1: { BTCUSDT: m1 }, funding: {}, instruments: inst, config: free, policy: pol };
+  const c = simulate(base), f = simulate({ ...base, fixedSizing: true });
+  assert.ok(c.trades.length > 5 && f.trades.length === c.trades.length); const risks = t => t.map(x => x.risk_usdt);
+  assert.ok(risks(f.trades).every(r => Math.abs(r - risks(f.trades)[0]) < 1e-9), "fixed: constant risk budget"); assert.ok(risks(c.trades)[c.trades.length - 1] < risks(c.trades)[0], "compounding: risk shrinks with equity");
+});

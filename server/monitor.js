@@ -195,7 +195,8 @@ class Monitor {
 
   registry() {
     const lab = readLab(this.labDir);
-    return { strategies: registry(), models: lab.models, research: lab, model_note: lab.models.length ? "A research model appears below with its state; none is promoted and none places a trade. The three analysts remain deterministic rule sets." : "No statistical or machine-learning model is registered. The three analysts are deterministic rule sets.",
+    let fs_ = null; try { fs_ = new (require("./filter_shadow").FilterShadow)({ db: this.db, ledger: null, config: this.config }).summary(); } catch (e) { fs_ = { error: String(e.message).slice(0, 80) }; }
+    return { strategies: registry(), models: lab.models, research: lab, filter_shadow: fs_, model_note: lab.models.length ? "A research model appears below with its state; none is promoted and none places a trade. The three analysts remain deterministic rule sets." : "No statistical or machine-learning model is registered. The three analysts are deterministic rule sets.",
       legacy: [{ id: "legacy-logistic-score", type: "STATISTICAL (logistic regression, legacy cron job)", state: "DISPLAY_ONLY", calibration: "NOT_CALIBRATED", note: "shown on the Buy/Sell tab as an uncalibrated score; not used by any analyst" }],
       evidence_version: EVIDENCE_VERSION, valuation_version: acct.VALUATION_VERSION };
   }

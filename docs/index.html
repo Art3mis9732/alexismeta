@@ -699,6 +699,32 @@ function renderModel() {
     <details><summary>How these models work</summary><div class="sub" style="margin-top:6px">${esc(MODEL.method.note)} "Right on unseen data" is compared with always guessing the more common direction in that test period.
       "Trading its calls" uses the confidence threshold picked on the training part only (shown as the UP/DOWN lean). bps = hundredths of a percent; 14 bps of costs are included. Retrained ${esc(MODEL.generated_at_utc)} UTC.</div></details>`;
 }
+/** Live (hypothetical) result of a trade the producer still shows as open: what it is worth right now, or what the producer's next run will record. Nothing is written anywhere. */
+function legacyHypo(t) {
+  const st = t.tf === "5m" ? live5 : live, rowsT = (st[t.sym] && st[t.sym].rows) || [], f = (t.tf === "5m" ? forming5 : forming)[t.sym], last = f ? +f.c : rowsT.length ? +rowsT[rowsT.length - 1][4] : null;
+  const r = Legacy.replay(t, rowsT, Patterns, last), out = { r, last };
+  if (r.state === "OPEN" && last) { const c = Legacy.closeUsd(t, last, "time", Patterns); out.net = c.usd; out.gross = r.gross_usdt; }
+  return out;
+}
+function legacyCellHtml(t) {
+  const U = x => (x < 0 ? "−" : x > 0 ? "+" : "") + Math.abs(x).toFixed(2) + " USDT", cls = x => (x > 0 ? "up" : x < 0 ? "down" : "");
+  const h = legacyHypo(t), r = h.r;
+  if (r.state === "OPEN" && h.net !== undefined) return `<b class="${cls(h.net)}">${U(h.net)}</b> <span class="sub">live · if closed now · gross ${U(h.gross)} at ${nf(h.last, dp(t.entry))}</span>`;
+  if (r.state === "STOP" || r.state === "TARGET" || r.state === "TIME_LIMIT") return `<b class="${cls(r.usd)}">${U(r.usd)}</b> <span class="sub">${esc(r.how)} reached · not yet recorded</span>`;
+  return "—";
+}
+function legacyLiveTick() {
+  if (!JOURNAL || !JOURNAL.trades || !$("journal")) return;
+  const blk = $("legacyOpenBlk"); if (blk && window.__legacyOpenFn) blk.innerHTML = window.__legacyOpenFn();
+  const open = JOURNAL.trades.filter(t => t.status === "open"), U = x => (x < 0 ? "−" : x > 0 ? "+" : "") + Math.abs(x).toFixed(2) + " USDT";
+  JOURNAL.trades.forEach((t, i) => { if (t.status !== "open") return; const c = document.querySelector(`[data-lv="${i}"]`); if (c) c.innerHTML = legacyCellHtml(t); });
+  for (const p of ["aggressive", "neutral", "careful"]) {
+    const el = document.querySelector(`[data-lvsum="${p}"]`); if (!el) continue;
+    const mine = open.filter(t => t.profile === p); if (!mine.length) { el.textContent = ""; continue; }
+    let sum = 0, n = 0; for (const t of mine) { const h = legacyHypo(t), v = h.net !== undefined ? h.net : (h.r.usd !== undefined ? h.r.usd : null); if (v !== null) { sum += v; n++; } }
+    el.innerHTML = n ? `open now (live, hypothetical): <b class="${sum > 0 ? "up" : sum < 0 ? "down" : ""}">${U(sum)}</b> across ${n} open trade(s)` : "";
+  }
+}
 function renderJournal() {
   const el = $("journal");
   if (!JOURNAL || !JOURNAL.trades) { el.innerHTML = "No journal has been published yet. The scheduled job creates it at its next run."; return; }
@@ -709,14 +735,14 @@ function renderJournal() {
   const card = p => { const x = S[p] || {}, PR = Patterns.PROFILES[p];
     return `<div class="pf" style="cursor:default"><span class="nm">${PR.name}</span><span class="tf">$5 margin at ${PR.lev}× = $${5 * PR.lev} notional · hypothetical</span>
       <div class="sg ${x.usd > 0 ? "up" : x.usd < 0 ? "down" : "muted"}" data-legacy="result-${p}">${x.closed ? U(x.usd) : "0.00 USDT"}</div>
-      <div class="rec">${x.closed || 0} closed (${x.wins || 0} won) · ${x.open || 0} open · result after fees and slippage, closed trades only · sum of R multiples before fees: ${x.R >= 0 ? "+" : ""}${(x.R || 0).toFixed(2)}R</div></div>`; };
-  const rows = JOURNAL.trades.slice().reverse().slice(0, 15).map(t => {
+      <div class="rec">${x.closed || 0} closed (${x.wins || 0} won) · ${x.open || 0} open · result after fees and slippage, closed trades only · sum of R multiples before fees: ${x.R >= 0 ? "+" : ""}${(x.R || 0).toFixed(2)}R</div><div class="rec" data-lvsum="${p}"></div></div>`; };
+  const rows = JOURNAL.trades.map((t, i) => [t, i]).reverse().slice(0, 15).map(([t, i]) => {
     const d = dp(t.entry);
     return `<tr><td>${istT(t.entry_time)}</td><td>${Patterns.PROFILES[t.profile].name}</td><td>${t.sym.replace("USDT", "")}</td><td class="${t.dir > 0 ? "up" : "down"}">${t.dir > 0 ? "BUY" : "SELL"}</td>
       <td class="sub">${esc(t.signal)}</td><td class="r">${nf(t.entry, d)}</td><td class="r">${nf(t.sl, d)} / ${nf(t.tp, d)}</td>
-      <td>${t.status === "open" ? `<span class="warn">open as of the last run</span>` : esc(t.how)}</td><td class="r ${t.usd > 0 ? "up" : t.usd < 0 ? "down" : ""}">${t.status === "open" ? "—" : U(t.usd)}</td></tr>`; }).join("");
+      <td>${t.status === "open" ? `<span class="warn">open as of the last run</span>` : esc(t.how)}</td><td class="r ${t.status === "open" ? "" : t.usd > 0 ? "up" : t.usd < 0 ? "down" : ""}" ${t.status === "open" ? `data-lv="${i}"` : ""}>${t.status === "open" ? legacyCellHtml(t) : U(t.usd)}</td></tr>`; }).join("");
   // HYPOTHETICAL check of open trades against final candles this page holds (docs/legacy.js; the producer's own rule; recorded nowhere)
-  const openBlock = open.map(t => {
+  const openFn = () => open.map(t => {
     const st = t.tf === "5m" ? live5 : live, rowsT = (st[t.sym] && st[t.sym].rows) || [], f = (t.tf === "5m" ? forming5 : forming)[t.sym], last = f ? +f.c : rowsT.length ? +rowsT[rowsT.length - 1][4] : null;
     const r = Legacy.replay(t, rowsT, Patterns, last), PR = Patterns.PROFILES[t.profile], head = `<b>${PR.name} · ${t.sym.replace("USDT", "")} ${t.dir > 0 ? "BUY" : "SELL"}</b> entered ${istT(t.entry_time)} ${TZ.label} at ${nf(t.entry, dp(t.entry))}, stop ${nf(t.sl, dp(t.entry))}, target ${nf(t.tp, dp(t.entry))}`;
     let msg;
@@ -725,6 +751,7 @@ function renderJournal() {
     else if (r.state === "OPEN") msg = `Still open on the candles this page holds (${r.candles_checked} final candle(s) since the last check). ` + (r.mark ? `Hypothetical mark-to-market at ${nf(r.mark, dp(t.entry))}: gross <b class="${r.gross_usdt > 0 ? "up" : r.gross_usdt < 0 ? "down" : ""}">${U(r.gross_usdt)}</b> (${(r.gross_usdt / 5 * 100 >= 0 ? "+" : "") + (r.gross_usdt / 5 * 100).toFixed(1)}% of the $5 margin; notional $${r.notional}, quantity ${r.qty.toFixed(6)}), before fees. Not recorded anywhere.` : "no current price is available here.");
     else msg = `<span class="muted">Cannot be checked here: ${esc(r.note || r.state)}.</span>`;
     return `<div class="legacy-open" data-state="${esc(r.state)}" style="margin-top:6px">${head}<br>${msg}</div>`; }).join("");
+  const openBlock = openFn(); window.__legacyOpenFn = openFn;
   el.innerHTML = `<div class="banner" style="display:block;border-color:var(--line);color:var(--text);background:#13161c"><b>LEGACY SCHEDULED SIMULATOR — hypothetical results, not the worker's paper accounts.</b>
       <ul style="margin:4px 0 0;padding-left:18px">
         <li><b>What "$5 at 50×" means:</b> every simulated trade assumes a fixed $5 (USDT) margin at the profile's default leverage (Aggressive 50× = $250 notional, Neutral 10× = $50, Careful 3× = $15). It is a fixed margin per trade, not a risk-based size and not an account balance.</li>
@@ -734,7 +761,7 @@ function renderJournal() {
     <div style="margin-top:8px">Producer: started ${esc(JOURNAL.started_utc)} UTC · <span class="${age !== null && age > 3600000 ? "warn" : ""}" data-legacy="lastrun"><b>last successful run ${esc(JOURNAL.updated_utc || "—")} UTC (${ageTxt})</b></span>.
       It is scheduled every 15 minutes, but GitHub throttles scheduled workflows: runs observed from 2026-11-14 to 2026-11-17 were roughly 4 to 9 hours apart (GitHub Actions run list, checked 2026-11-17; this may change). This display only changes when that job runs and publishes, never because this page is open. A late run does not change the result, because it works from closed candles.</div>
     <div class="profiles">${["aggressive", "neutral", "careful"].map(card).join("")}</div>
-    ${openBlock ? `<div style="margin-top:8px"><b>Open trades, checked against the final candles this page holds (hypothetical; recorded nowhere; never part of any account):</b>${openBlock}</div>` : ""}
+    ${openBlock ? `<div style="margin-top:8px"><b>Open trades, checked against the final candles this page holds (hypothetical; recorded nowhere; never part of any account):</b><span id="legacyOpenBlk">${openBlock}</span></div>` : ""}
     ${rows ? `<table style="margin-top:10px"><tr><th>Entry (${TZ.label})</th><th>Profile</th><th>Coin</th><th>Side</th><th>Signal</th><th class="r">Entry</th><th class="r">Stop / target</th><th>Recorded result</th><th class="r">USDT (after fees)</th></tr>${rows}</table>` : `<div style="margin-top:8px">No trades yet: waiting for the first signal.</div>`}`;
 }
 const IND_INFO = {
@@ -1096,6 +1123,7 @@ $("tzSel").onchange = () => { TZ = TZS[$("tzSel").value] || TZS.IST; try { local
   renderAll(false);
   if (WMODE) { startWorkerMode(); document.querySelector('#views span[data-view="monitor"]').click(); } else { connectStream(); renderMonitor(true); }
   setInterval(async () => { await loadSnapshot(); if (view === "trade") { renderModel(); renderJournal(); } }, 300000);
+  setInterval(() => { if (view === "trade") legacyLiveTick(); }, 2000);
   setInterval(async () => { await Promise.all([fetchRest(sym), fetchRest(sym, "5m"), fetchRest(sym, "4H")]); renderAll(true); }, 300000);
 })();
 </script>

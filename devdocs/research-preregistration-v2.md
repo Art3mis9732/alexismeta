@@ -25,3 +25,8 @@ H-A and H-B: a model's selected trades have mean net R per trade above zero on t
 
 ## 4. What a pass or a fail means
 Pass: a candidate for forward SHADOW evaluation only; never promoted, never trades. Fail: recorded as REJECTED, with the audit-style gross/cost decomposition, and the next hypothesis named (cost-aware entry filter; funding/order-book/open-interest inputs once recorded). No retuning on a failed FINAL.
+
+## Pre-fit record (2026-11-18, before any v2 model was fitted)
+Datasets built from the same 2-year public candles (manifests and splits committed in `research/registry/v2A` and `v2B` before the first fit). v2A: 404,874 rows (train 224,952 / validation 79,710 / final 100,212), matrix sha256 `ba4f55ca…`. v2B: 101,226 rows (56,238 / 19,932 / 25,056), sha256 `2b6da200…`.
+Label check on TRAIN rows only (advisor review): target hits that still net <= 0 after costs are 0.02% of rows in A and 0.0% in B (it was the high-cost tail in v1 that let boosting score by predicting cost). The registered label is therefore kept unchanged. Measured costs: mean 0.231 R (A) and 0.207 R (B); unconditional net -0.236 R and -0.209 R; gross -0.004 R and -0.002 R; break-even win probability 49.3% and 48.3% against a 39.9% base.
+Disclosure: A and B are close to the same bet (ATR(1h) is about twice ATR(15m)); they are treated as one family when reading results, and no criterion changes because two were run. If either reaches FINAL, that calendar period is spent for this feature set.

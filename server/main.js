@@ -16,7 +16,7 @@ const { createServer } = require("./http");
 const { Ledger } = require("./ledger");
 const { PaperEngine } = require("./engine");
 const { NewsIngester, SOURCES: NEWS_SOURCES, PARSER_VERSION } = require("./news");
-const { withReaction } = require("./news_reaction");
+const { withReaction } = require("./news_reaction"), { NewsShadow } = require("./news_shadow");
 const { appliesTo, INTERPRETERS } = require("./news_interpret");
 const { Monitor, MONITOR_SCHEMA } = require("./monitor");
 const { StressMonitor } = require("./stress_monitor");
@@ -112,6 +112,13 @@ function buildApi({ store, health, collector, startedAt, ledger, getEngine = () 
       }
       return snap;
     },
+    newsShadow: (limit = 50) => {
+      const rows = store.db.prepare("SELECT s.decision_id, s.analyst, s.instrument_id, s.decision_ts, s.intent, s.risk_outcome, s.verdict, s.would_change, s.overlay_version, s.assessment, p.state AS pos_state, p.pnl AS pos_pnl FROM news_shadow s LEFT JOIN paper_positions p ON p.decision_id = s.decision_id ORDER BY s.decision_ts DESC, s.decision_id LIMIT ?").all(limit)
+        .map(r => ({ ...r, assessment: JSON.parse(r.assessment), would_change: !!r.would_change }));
+      const by = {}; for (const r of store.db.prepare("SELECT s.verdict, COUNT(*) n, SUM(CASE WHEN p.state='CLOSED' THEN 1 ELSE 0 END) closed, SUM(CASE WHEN p.state='CLOSED' THEN p.pnl ELSE 0 END) net FROM news_shadow s LEFT JOIN paper_positions p ON p.decision_id = s.decision_id GROUP BY s.verdict").all()) by[r.verdict] = { candidates: r.n, closed_positions: r.closed, net_usdt_of_closed: r.net };
+      return { schema_version: "news-shadow-v1", overlay_version: require("./news_overlay").VERSION, mode: "SHADOW", effect_on_decisions: "NONE", environment: runtime ? runtime.database.environment : null, rows,
+        summary: { by_verdict: by, caveat: "A shadow record annotates what the overlay WOULD have said about each candidate entry; it changed no decision. Counts are small and outcomes are not evidence of benefit until a pre-registered evaluation says so." } };
+    },
     news: (o = {}) => {
       if (!news) return { schema_version: "news-v2", items: [], sources: [], counts: null, unavailable: "news ingestion is not running" };
       const now = Date.now(), items = withReaction(store.db, news.itemsAsOf(now, o), now, appliesTo), counts = news.counts(now), sources = news.sourceHealth();
@@ -187,7 +194,7 @@ async function main() {
     } catch (e) { runtime.stress_error = e.message; stressRef.current = null; log("stress monitor NOT started: " + e.message); }
   }
   try {
-    engineRef.current = new PaperEngine({ store, ledger, collector, health, log, instanceId: runtime.instance_id, environment: a.env, stress: stressRef.current });
+    engineRef.current = new PaperEngine({ store, ledger, collector, health, log, instanceId: runtime.instance_id, environment: a.env, stress: stressRef.current, newsShadow: news ? new NewsShadow({ db: store.db, news, log }) : null });
     log(`paper engine running (${a.env}): decisions at each 15m bar close; execution mode PAPER`);
   } catch (e) { runtime.engine_error = e.message; log("paper engine NOT started: " + e.message + " (this instance serves data read-only)"); }
   timers.push(setInterval(() => {

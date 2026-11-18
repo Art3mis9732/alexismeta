@@ -67,6 +67,7 @@ function createServer({ api, staticDir, port }) {
         if (p === "/api/ledger") { const n = intParam(q("limit"), 50, 1, 500); return Number.isNaN(n) ? err(res, 400, "bad limit") : send(res, 200, api.ledgerRecent(n)); }
         if (p === "/api/ledger/verify") return send(res, 200, api.ledgerVerify());
         if (p === "/api/paper") return send(res, 200, api.paper ? api.paper() : { portfolios: [] });
+        if (p === "/api/news/shadow") { const n = intParam(q("limit"), 50, 1, 200); return Number.isNaN(n) ? err(res, 400, "bad limit") : send(res, 200, api.newsShadow ? api.newsShadow(n) : { rows: [], summary: null }); }
         if (p === "/api/news") {
           const n = intParam(q("limit"), 30, 1, 200), asset = q("asset"), source = q("source"), scope = q("scope"), all = q("all");
           if (Number.isNaN(n) || (asset !== null && !/^(BTC|ETH|XRP)$/.test(asset)) || (source !== null && !/^[a-z_]{3,40}$/.test(source)) ||

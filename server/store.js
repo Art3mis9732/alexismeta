@@ -185,7 +185,14 @@ const MIGRATIONS = [
      mark_status TEXT, book_status TEXT, PRIMARY KEY (position_id, ts)) WITHOUT ROWID;
    CREATE TABLE IF NOT EXISTS paper_equity_samples (
      analyst TEXT NOT NULL, ts INTEGER NOT NULL, cash REAL, mark_equity REAL, closeout_equity REAL, open_positions INTEGER, pricing TEXT, peak REAL, drawdown_pct REAL,
-     PRIMARY KEY (analyst, ts)) WITHOUT ROWID;`
+     PRIMARY KEY (analyst, ts)) WITHOUT ROWID;`,
+  // v11: news SHADOW assessments (news-overlay-v1). ADDITIVE and append-only, written after the decision transaction; never read by any analyst, the risk gate or the engine.
+  `CREATE TABLE IF NOT EXISTS news_shadow (
+     decision_id TEXT PRIMARY KEY, analyst TEXT NOT NULL, instrument_id TEXT NOT NULL, decision_ts INTEGER NOT NULL, intent TEXT NOT NULL, risk_outcome TEXT,
+     verdict TEXT NOT NULL, would_change INTEGER NOT NULL, overlay_version TEXT NOT NULL, assessment TEXT NOT NULL, created_ts INTEGER NOT NULL);
+   CREATE INDEX IF NOT EXISTS news_shadow_by_ts ON news_shadow (decision_ts);
+   CREATE TRIGGER IF NOT EXISTS news_shadow_no_update BEFORE UPDATE ON news_shadow BEGIN SELECT RAISE(ABORT, 'news shadow rows are append-only'); END;
+   CREATE TRIGGER IF NOT EXISTS news_shadow_no_delete BEFORE DELETE ON news_shadow BEGIN SELECT RAISE(ABORT, 'news shadow rows are append-only'); END;`
 ];
 
 const DEFAULT_RETENTION_MS = {

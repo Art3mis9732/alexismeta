@@ -153,7 +153,7 @@ function rig() {
     triggers: [{ code: "RETEST_UP", name: "RETEST_UP", dir: 1, stop: 64600, level: null }] };
   const engine = new PaperEngine({ store, ledger, collector, health, now, buildSnapshot: () => snap }); engine.feedHealthy = () => true;
   const runtime = { build: buildInfo(), instance_id: engine.instanceId, started_at: t, database: store.identity("FORWARD"), engine_error: null };
-  return { store, ledger, engine, monitor: new Monitor({ store, collector, health, getEngine: () => engine, runtime, now }), book, collector, now };
+  return { store, ledger, engine, monitor: new Monitor({ store, collector, health, getEngine: () => engine, runtime, now, labDir: "/nonexistent-lab-dir" }), book, collector, now };
 }
 
 test("reconciliation through the ENGINE's own close path: the pre-close whole-trade estimate equals the booked result at the same price and fee; closeout equity equals the cash afterwards", () => {

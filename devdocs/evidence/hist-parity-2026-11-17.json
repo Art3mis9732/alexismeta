@@ -1,0 +1,18 @@
+{
+ "db": "data/backups/market-pre-research-20261117-125116.db",
+ "evidence": {
+  "checked": 48,
+  "no_native_bar": 0,
+  "field_mismatches": [],
+  "trigger_mismatches": []
+ },
+ "decisions": {
+  "checked": 126,
+  "same": 126,
+  "explained_microstructure": 0,
+  "unexplained": [],
+  "no_context": 18,
+  "version_other": 0
+ },
+ "pass": true
+}

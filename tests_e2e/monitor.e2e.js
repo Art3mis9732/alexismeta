@@ -23,8 +23,13 @@ const check = (name, ok, detail) => { results.push({ name, ok: !!ok }); console.
 const getJson = url => new Promise((res, rej) => http.get(url, r => { let s = ""; r.on("data", d => s += d); r.on("end", () => { try { res(JSON.parse(s)); } catch (e) { rej(e); } }); }).on("error", rej));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// the TEST worker reads its research registry from a fixture directory (a rejected research run), never from the repository's real one
+const LAB_DIR = fs.mkdtempSync(path.join(require("node:os").tmpdir(), "e2e-lab-"));
+fs.writeFileSync(path.join(LAB_DIR, "trials.jsonl"), [1, 2, 3].map(i => JSON.stringify({ trial_id: i, kind: "config", family: i === 1 ? "constant" : "lr" })).join("\n") + "\n");
+fs.writeFileSync(path.join(LAB_DIR, "validation_result.json"), JSON.stringify({ val_base_logloss: 0.6543, selected: null, reason: "REJECTED_ON_VALIDATION: no configuration beat the base rate", n_config_trials: 3 }));
+fs.writeFileSync(path.join(LAB_DIR, "loop_state.json"), JSON.stringify({ state: "IDLE", last_tick_utc: "2026-11-17T00:00:00Z", last_outcome: "SKIPPED_STRESS" }));
 function startTestWorker(db) {
-  const p = spawn(process.execPath, ["--disable-warning=ExperimentalWarning", path.join(ROOT, "server", "main.js"), "--port", String(TEST_PORT), "--env", "test", "--fixture", "--stress-fixture", "--db", db], { cwd: ROOT, env: process.env, stdio: "ignore" });
+  const p = spawn(process.execPath, ["--disable-warning=ExperimentalWarning", path.join(ROOT, "server", "main.js"), "--port", String(TEST_PORT), "--env", "test", "--fixture", "--stress-fixture", "--db", db], { cwd: ROOT, env: { ...process.env, ALEXIS_LAB_DIR: LAB_DIR }, stdio: "ignore" });
   return p;
 }
 async function waitFor(fn, ms, step = 500) { const end = Date.now() + ms; for (;;) { try { const v = await fn(); if (v) return v; } catch (e) { /* not yet */ } if (Date.now() > end) return null; await sleep(step); } }
@@ -83,7 +88,15 @@ async function main() {
     check("1. activity timeline lists durable events and filters by type", types.length > 0 && types.every(t => t === "FILL"), `${types.length} FILL rows`);
     await page.selectOption("#mFType", "");
     const reg = await page.locator("#mRegistry").innerText();
-    check("1. registry labels analysts DETERMINISTIC / training NOT APPLICABLE / edge NOT DEMONSTRATED; no fake training", (reg.match(/DETERMINISTIC/g) || []).length >= 3 && /NOT APPLICABLE/.test(reg) && /NOT DEMONSTRATED/.test(reg) && /Training backend unavailable/.test(reg), "");
+    check("1. registry labels analysts DETERMINISTIC / training NOT APPLICABLE / edge NOT DEMONSTRATED; Model Lab shows a REJECTED research run read-only, nothing promoted", (reg.match(/DETERMINISTIC/g) || []).length >= 3 && /NOT APPLICABLE/.test(reg) && /NOT DEMONSTRATED/.test(reg) && /Model Lab/i.test(reg) && /REJECTED ON VALIDATION/.test(reg) && /Logged trials: 3 of 40/.test(reg) && /SKIPPED_STRESS/.test(reg) && /places a trade or changes a policy/.test(reg) && !/promoted: true/.test(reg), "");
+
+    // ---------- 1b. news SHADOW overlay: recorded for candidate entries, never an input to a decision, visible on the News tab
+    const shadowApi = await getJson(testUrl + "api/news/shadow?limit=20");
+    check("1b. news shadow API: mode SHADOW, effect on decisions NONE, one record per candidate entry with a verdict", shadowApi.mode === "SHADOW" && shadowApi.effect_on_decisions === "NONE" && shadowApi.rows.length >= 1 && shadowApi.rows.every(r => r.verdict && r.assessment.effect_on_decision === "NONE (shadow only)"), `${shadowApi.rows.length} rows`);
+    await page.click('#views span[data-view="news"]'); await page.waitForTimeout(1500);
+    const shTxt = await page.locator("#nShadow").innerText();
+    check("1b. News tab shows the shadow card: SHADOW, effect NONE, each candidate with analyst, verdict and the gate/paper result", /SHADOW/i.test(shTxt) && /NONE/.test(shTxt) && /risk taker|balanced|defensive/i.test(shTxt) && /LONG|SHORT/.test(shTxt), shTxt.slice(0, 120));
+    await page.click('#views span[data-view="monitor"]'); await page.waitForTimeout(500);
 
     // ---------- 2. refresh and stream reconnect never create or duplicate anything
     const before = await getJson(testUrl + "api/paper/snapshot");
@@ -334,6 +347,13 @@ async function main() {
       const jt = await p4.locator("#journal").innerText(), jh = await p4.locator("#journal").evaluate(e => e.previousElementSibling.innerText), openStates = await p4.locator("#journal .legacy-open").evaluateAll(a => a.map(x => x.dataset.state));
       check("5. legacy scheduled simulator panel: labelled LEGACY and hypothetical, explains $5 margin and leverage, amounts in USDT (not $), producer's last run with its age, and no 'runs every 15 minutes ... even when this page is closed' claim", /LEGACY SCHEDULED SIMULATOR/i.test(jh) && /hypothetical/i.test(jh) && /What "\$5 at 50×" means/.test(jt) && /\$250 notional/.test(jt) && /last successful run .* UTC \(/.test(jt) && /GitHub throttles scheduled workflows/.test(jt) && !/even when this page is closed/i.test(jt + jh) && /USDT/.test(jt) && !/[+−]\$\d/.test(jt) && /different from the worker's Risk Taker, Balanced and Defensive/.test(jt), jh.slice(0, 80));
       check("5. legacy open trades are checked against final candles and each gets an explicit state (never silently shown as live)", openStates.length > 0 && openStates.every(x => ["STOP", "TARGET", "TIME_LIMIT", "OPEN", "INCOMPLETE", "NO_CANDLES"].includes(x)) && /recorded nowhere|Recorded nowhere|not part of any account/.test(jt), openStates.join(","));
+      {  // a legacy trade that is still open on the candles shows its LIVE result (net if closed now, gross, mark) in the table row, updating without a reload; a view-only trade added in the page, recorded nowhere
+        await p4.evaluate(() => { const rows = live.BTCUSDT.rows, last = rows[rows.length - 1], px = forming.BTCUSDT ? +forming.BTCUSDT.c : +last[4];
+          JOURNAL.trades.push({ id: "e2e-view-only", profile: "neutral", sym: "BTCUSDT", tf: "15m", dir: 1, entry: px * 0.999, sl: px * 0.9, tp: px * 1.2, risk_pct: 10, entry_time: last[0] + 1000, checked_to: last[0], max_end: 0, status: "open", signal: "e2e view only", usd: 0, how: "" }); renderJournal(); });
+        await p4.waitForTimeout(2500);
+        const lv = await p4.locator("[data-lv]").first().innerText(), sum = await p4.locator('[data-lvsum="neutral"]').innerText();
+        check("5. legacy: an open trade shows its live result in the table row (net if closed now, gross, price) and the profile card shows the live open total", /[+−-]?\d+\.\d\d USDT live · if closed now · gross [+−]?\d+\.\d\d USDT at [\d,.]+/.test(lv) && /open now \(live, hypothetical\)/.test(sum), lv + " | " + sum.slice(0, 80));
+      }
       await p4.locator('#views span[data-view="stress"]').click(); await sleep(300);
       const sbs = (await p4.locator("#stressBar").innerText()).replace(/\n/g, " ");
       check("5. static page: the stress tab and strip say a worker is needed and show nothing simulated", /No local worker on this page/.test(await p4.locator("#sInst").innerText()) && /needs the local worker/.test(sbs) && (await p4.locator("#sInst .scard").count()) === 0, sbs.slice(0, 120));

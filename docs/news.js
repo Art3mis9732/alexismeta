@@ -18,13 +18,27 @@ async function newsLoad() {
   if (!WMODE) { newsRender(); return; }
   var q = "api/news?limit=80" + (NEWS.asset ? "&asset=" + NEWS.asset : "") + (NEWS.source ? "&source=" + encodeURIComponent(NEWS.source) : "") + (NEWS.all ? "&all=1" : "");
   try { NEWS.data = await apiJson(q); NEWS.error = null; NEWS.loadedAt = Date.now(); } catch (e) { NEWS.error = "The worker did not answer the news request."; }
+  try { NEWS.shadow = await apiJson("api/news/shadow?limit=30"); } catch (e) { NEWS.shadow = null; }
   newsRender();
+}
+var N_VERDICT = { WOULD_BLOCK: ["■ WOULD BLOCK", "down"], WOULD_VETO: ["▼ WOULD VETO", "down"], CAUTION: ["▲ CAUTION", "warn"], SUPPORTS: ["● SUPPORTS (note only)", "up"], NEUTRAL: ["○ NEUTRAL", ""], NO_RELEVANT_NEWS: ["– no relevant news", ""] };
+function newsShadowRender() {
+  var el = $("nShadow"); if (!el) return; var S = NEWS.shadow;
+  if (!WMODE && !S) { el.textContent = "Needs the local worker: candidate entries and what the news overlay would have said about them are recorded there."; return; }
+  if (!S) { el.textContent = "The worker did not return shadow records (it may be running an older build)."; return; }
+  var by = S.summary && S.summary.by_verdict || {}, head = Object.keys(by).map(function (k) { return k.replace(/_/g, " ").toLowerCase() + ": " + by[k].candidates; }).join(" · ") || "no candidate entries recorded yet";
+  el.innerHTML = '<div><b>' + nAttr(S.mode) + "</b> · overlay " + nAttr(S.overlay_version) + " · effect on decisions: <b>" + nAttr(S.effect_on_decisions) + "</b>. " + nAttr(head) + ".</div>" +
+    '<div class="sub">' + nAttr(S.summary ? S.summary.caveat : "") + "</div>" + (S.rows.length ? "<table><tr><th>Decision time</th><th>Analyst · coin</th><th>Candidate</th><th>News verdict</th><th>Why (observed, not causal)</th><th>Risk gate / paper result</th></tr>" + S.rows.map(function (r) {
+      var v = N_VERDICT[r.verdict] || [r.verdict, ""], a = r.assessment || {}, res = r.pos_state === "CLOSED" ? "closed, net " + Number(r.pos_pnl).toFixed(2) + " USDT" : r.pos_state === "OPEN" ? "position open" : nAttr(r.risk_outcome || "no position");
+      return "<tr><td>" + nAttr(nTime(r.decision_ts)) + "</td><td>" + nAttr(r.analyst.replace("_", " ")) + " · " + nAttr(r.instrument_id.split(":").pop()) + "</td><td>" + nAttr(r.intent.replace("OPEN_", "")) + '</td><td class="' + v[1] + '"><b>' + nAttr(v[0]) + "</b>" + (r.would_change ? " (would have changed the decision)" : "") + '</td><td class="sub">' + (a.reasons && a.reasons.length ? nAttr(a.reasons.join("; ")) : "no relevant article in this analyst's window") + "</td><td>" + res + "</td></tr>";
+    }).join("") + "</table>" : "");
 }
 var N_STATUS = { OK: ["● OK", "up"], DEGRADED: ["◐ DEGRADED", "warn"], STALE: ["◐ STALE", "warn"], FAILING: ["○ FAILING", "down"], BACKOFF: ["○ BACKING OFF", "down"], RATE_LIMITED_BACKOFF: ["○ RATE-LIMITED, BACKING OFF", "down"], NOT_YET_POLLED: ["◐ NOT YET POLLED", "muted"] };
 var N_STANCE = { BULLISH: ["▲ BULLISH (potential)", "up"], BEARISH: ["▼ BEARISH (potential)", "down"], NEUTRAL: ["◆ NEUTRAL (administrative)", "muted"], MIXED: ["◆ MIXED", "muted"], UNCERTAIN: ["◆ UNCERTAIN", "muted"] };
 
 function newsRender() {
   if (!$("newsView")) return;
+  newsShadowRender();
   var d = NEWS.data, frozen = !WMODE && d;
   if (!WMODE && !d) {
     $("nSummary").innerHTML = ""; $("nSources").innerHTML = "";

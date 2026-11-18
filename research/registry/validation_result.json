@@ -1,0 +1,12 @@
+{
+ "matrix_sha256": "205a589aac1f7eaacd1791ca23dd745da23c29c02a612e8f618b7bc54ab80e33",
+ "val_base_logloss": 0.6678864721852574,
+ "control": {
+  "val_gain_vs_base_with_shuffled_train_labels": -9.71983871127513e-05,
+  "note": "should be about 0; a clearly positive value would mean leakage"
+ },
+ "n_config_trials": 21,
+ "selected": null,
+ "reason": "REJECTED_ON_VALIDATION: no threshold gives a positive mean R per trade with enough validation trades (FINAL not touched)",
+ "best_threshold": null
+}

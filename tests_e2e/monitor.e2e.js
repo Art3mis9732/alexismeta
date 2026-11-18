@@ -32,6 +32,7 @@ function startTestWorker(db) {
   const p = spawn(process.execPath, ["--disable-warning=ExperimentalWarning", path.join(ROOT, "server", "main.js"), "--port", String(TEST_PORT), "--env", "test", "--fixture", "--stress-fixture", "--db", db], { cwd: ROOT, env: { ...process.env, ALEXIS_LAB_DIR: LAB_DIR }, stdio: "ignore" });
   return p;
 }
+async function expandNews(p) { for (let i = 0; i < 30 && (await p.locator("#nMore").count()); i++) { await p.click("#nMore"); await p.waitForTimeout(120); } }   // the News list shows 15 at a time
 async function waitFor(fn, ms, step = 500) { const end = Date.now() + ms; for (;;) { try { const v = await fn(); if (v) return v; } catch (e) { /* not yet */ } if (Date.now() > end) return null; await sleep(step); } }
 const stop = p => new Promise(res => { if (!p || p.exitCode !== null) return res(); p.once("exit", res); p.kill("SIGINT"); setTimeout(() => { try { p.kill("SIGKILL"); } catch (e) { /* gone */ } }, 5000); });
 
@@ -166,9 +167,9 @@ async function main() {
     const apiNews = await getJson(newsUrl + "api/news?limit=80"), summary = await pn.locator("#nSummary").innerText(), rows = await pn.locator("#nSources table tr").count();
     check("4b. source health table has one row per source, with text status and separate fetch vs newest-item clocks", rows === apiNews.sources.length + 1 && /Fetched/.test(await pn.locator("#nSources").innerText()) && /Newest item/.test(await pn.locator("#nSources").innerText()) && /sources healthy/.test(summary), summary.slice(0, 160));
     check("4b. the summary counts agree with the API (relevant vs hidden), not a hard-coded list", summary.includes(String(apiNews.counts.total) + " items stored") && summary.includes(String(apiNews.counts.hidden_not_relevant) + " not related"), `${apiNews.counts.total} total / ${apiNews.counts.relevant} relevant`);
-    const shown = await pn.locator("#nItems .pf").count();
+    await expandNews(pn); const shown = await pn.locator("#nItems .pf").count();
     check("4b. relevant-only by default; 'include unrelated' reveals the rest", shown === apiNews.items.length, `${shown} shown`);
-    await pn.locator("#nAll").check(); await pn.waitForFunction(n => document.querySelectorAll("#nItems .pf").length > n, shown, { timeout: 15000 }).catch(() => {});
+    await pn.locator("#nAll").check(); await pn.waitForTimeout(2500); await expandNews(pn);
     const allShown = await pn.locator("#nItems .pf").count();
     check("4b. including unrelated items shows more items (filters apply before the limit)", allShown > shown, `${shown} -> ${allShown}`);
     const txt = await pn.locator("#nItems").innerText();
@@ -342,7 +343,16 @@ async function main() {
       await p4.locator('#views span[data-view="monitor"]').click();
       const t = await p4.locator("#monitorView").innerText();
       await p4.locator('#views span[data-view="news"]').click();
-      check("5. static page: the News tab says it needs the worker and why, with no invented items", /No local worker on this page/.test(await p4.locator("#nItems").innerText()) && (await p4.locator("#nItems .pf").count()) === 0, "");
+      {  // static (public) site: the News tab shows the PUBLISHED SNAPSHOT when data/news.json exists, never as live, with no price reaction; otherwise an honest empty state
+        await p4.waitForTimeout(2500);
+        const hasSnap = fs.existsSync(path.join(ROOT, "docs", "data", "news.json")), nTxt = await p4.locator("#newsView").innerText(), nItems = await p4.locator(".newsitem").count();
+        if (hasSnap) {
+          const chips = await p4.locator(".newsitem").evaluateAll(a => a.slice(0, 40).every(e => /^(■|◇|□) (GREEN|RED|GRAY|UNCERTAIN|NOT CLASSIFIED)/.test(e.querySelector(".sub").innerText))), links = await p4.locator(".newsitem a").evaluateAll(a => a.every(x => /^https:\/\//.test(x.href) && x.rel.includes("noopener") && x.target === "_blank"));
+          check("5. static page: the News tab shows the published snapshot, labelled not live, with items, a classification in words and colour, safe links, and no price reaction", /PUBLISHED SNAPSHOT — not live/.test(nTxt) && nItems > 0 && chips && links && !/Observed price reaction since discovery \(/.test(nTxt) && !/WORKER DISCONNECTED/.test(nTxt), `${nItems} items`);
+          const g0 = await p4.locator(".newsitem").count(); await p4.selectOption("#nClass", "UNCERTAIN"); await p4.waitForTimeout(300); const onlyU = await p4.locator(".newsitem").evaluateAll(a => a.every(e => e.dataset.class === "UNCERTAIN")); await p4.selectOption("#nClass", "");
+          check("5. static page: the classification filter shows only the chosen class", onlyU, `${g0} before`);
+        } else check("5. static page: with no snapshot the News tab gives an honest empty state and invents no items", /No news available on this page/.test(nTxt) && nItems === 0, "");
+      }
       await p4.locator('#views span[data-view="trade"]').click(); await p4.waitForFunction(() => /Producer: started/.test(document.getElementById("journal").innerText), null, { timeout: 30000 }).catch(() => {}); await sleep(2500);
       const jt = await p4.locator("#journal").innerText(), jh = await p4.locator("#journal").evaluate(e => e.previousElementSibling.innerText), openStates = await p4.locator("#journal .legacy-open").evaluateAll(a => a.map(x => x.dataset.state));
       check("5. legacy scheduled simulator panel: labelled LEGACY and hypothetical, explains $5 margin and leverage, amounts in USDT (not $), producer's last run with its age, and no 'runs every 15 minutes ... even when this page is closed' claim", /LEGACY SCHEDULED SIMULATOR/i.test(jh) && /hypothetical/i.test(jh) && /What "\$5 at 50×" means/.test(jt) && /\$250 notional/.test(jt) && /last successful run .* UTC \(/.test(jt) && /GitHub throttles scheduled workflows/.test(jt) && !/even when this page is closed/i.test(jt + jh) && /USDT/.test(jt) && !/[+−]\$\d/.test(jt) && /different from the worker's Risk Taker, Balanced and Defensive/.test(jt), jh.slice(0, 80));

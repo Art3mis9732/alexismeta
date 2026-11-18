@@ -155,3 +155,21 @@ def test_final_refuses_a_dataset_that_differs_from_the_registered_manifest(plant
     json.dump({"matrix_sha256": "0" * 64}, open(os.path.join(reg, "dataset-v1-manifest.json"), "w"))
     with pytest.raises(RuntimeError, match="registered manifest"):
         final.score_final(planted_dir, reg)
+
+
+def test_random_matched_uses_real_time_occupancy_for_hourly_rows():
+    """Hourly rows (4 slots apart) with a 4-bar hold do not overlap, so all 20 can be taken; a 6-bar hold overlaps its neighbour in real time, so at most 10 fit in a run of 20. (A row-index occupancy gets both wrong.)"""
+    ts = 1_700_000_000_000 + np.arange(20) * 3_600_000
+    df = pd.DataFrame({"ts": ts, "coin": "A", "side": 1, "netR": 1.0, "costR": 0.2, "bars_held": 4.0})
+    _, ns = evalkit.random_matched(df, {"A": 20}, seeds=5, with_counts=True)
+    assert ns == [20] * 5
+    _, ns6 = evalkit.random_matched(df.assign(bars_held=6.0), {"A": 20}, seeds=5, with_counts=True)
+    assert all(5 <= n < 20 for n in ns6), ns6
+
+
+def test_final_checks_a_v2_style_manifest_name(planted_dir, tmp_path):
+    reg = str(tmp_path / "reg")
+    fit.run_validation(planted_dir, reg)
+    json.dump({"matrix_sha256": "0" * 64}, open(os.path.join(reg, "dataset-manifest.json"), "w"))
+    with pytest.raises(RuntimeError, match="registered manifest"):
+        final.score_final(planted_dir, reg)

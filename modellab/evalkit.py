@@ -61,9 +61,10 @@ def day_block_ci(ts, r, B=2000, seed=1):
     return {"mean": float(r.mean()), "lo": float(np.quantile(means, 0.025)), "hi": float(np.quantile(means, 0.975)), "trades": int(len(r)), "days": int(len(days))}
 
 
-def random_matched(df: pd.DataFrame, counts: dict, seeds=200, base_seed=7):
+def random_matched(df: pd.DataFrame, counts: dict, seeds=200, base_seed=7, with_counts=False):
     """Mean R of random entries with the same trade count per coin, random side, the same template exits and the same one-position rule."""
     out = []
+    ns = []
     pools = {}
     for coin, g in df.groupby("coin"):
         g = g.sort_values("ts")
@@ -75,13 +76,14 @@ def random_matched(df: pd.DataFrame, counts: dict, seeds=200, base_seed=7):
             if want <= 0 or coin not in pools:
                 continue
             ts, r, held = pools[coin]
-            ubar = np.unique(ts)
-            pos = {t: i for i, t in enumerate(ubar)}
-            occ = np.zeros(len(ubar) + 400, bool)
+            # occupancy in REAL TIME (15-minute slots from the first row), so a template with hourly rows or a 24 h hold blocks exactly the slots it covers
+            t0 = int(ts.min())
+            slot = ((ts - t0) // BAR_MS).astype(np.int64)
+            occ = np.zeros(int(slot.max()) + 400, bool)
             order = rng.permutation(len(ts))
             got = 0
             for j in order:
-                i = pos[ts[j]]
+                i = int(slot[j])
                 h = int(np.ceil(max(held[j], 1.0)))
                 if occ[i:i + h].any():
                     continue
@@ -92,7 +94,8 @@ def random_matched(df: pd.DataFrame, counts: dict, seeds=200, base_seed=7):
                 if got >= want:
                     break
         out.append(tot / n if n else 0.0)
-    return np.asarray(out)
+        ns.append(n)
+    return (np.asarray(out), ns) if with_counts else np.asarray(out)
 
 
 def gate(final_df: pd.DataFrame, p, theta: float, seeds=200, B=2000, min_trades=300):

@@ -48,3 +48,22 @@ test("registered dataset-v1 is replaced only by an identical rebuild; a differen
   D.placeBuild({ out, registered: { matrix_sha256: "aaa" }, buildFn: mkBuild("aaa", "identical") }); assert.equal(fs.readFileSync(path.join(out, "mark.txt"), "utf8"), "identical");
   const draft = path.join(root, "dataset-draft-1"); D.placeBuild({ out: draft, registered: { matrix_sha256: "aaa" }, buildFn: mkBuild("zzz", "draft") }); assert.ok(fs.existsSync(draft));   // other directories are unrestricted
 });
+
+test("v2: ATR(1h) is point in time, uses only complete contiguous UTC hours, and refuses non-hour bars", () => {
+  const rows = walk(900), H = 3600000, i = rows.findIndex((r, k) => k > 600 && (r.open_ts + BAR) % H === 0), a = D.atr1h(rows, i);
+  assert.ok(a > 0 && Number.isFinite(a)); assert.equal(D.atr1h(rows, i + 1), null, "a bar that does not close on an hour boundary has no ATR(1h)");
+  const alt = rows.map((r, k) => (k > i ? { ...r, o: r.o * 2, h: r.h * 2, l: r.l * 0.1, c: r.c * 2 } : r)); assert.equal(D.atr1h(alt, i), a, "candles after the decision bar change nothing");
+  const gap = rows.map((r, k) => (k === i - 9 ? null : r)).filter(Boolean); assert.equal(D.atr1h(gap, gap.findIndex(r => r.open_ts === rows[i].open_ts)), null, "a missing 15-minute bar inside the lookback makes it unavailable, never an estimate");
+  const bigger = rows.map((r, k) => (k > i - 40 && k <= i ? { ...r, h: r.h + 500 } : r)); assert.ok(D.atr1h(bigger, i) > a, "recent ranges do enter it");
+});
+test("v2: variant definitions are the registered ones and the purge works at a 96-bar horizon", () => {
+  const A = D.VARIANTS.v2A, B = D.VARIANTS.v2B; assert.deepEqual([A.template.stop_atr, A.template.target_atr, A.template.time_exit_bars, A.cadence_bars, A.atr], [2, 3, 96, 1, "15m"]); assert.deepEqual([B.template.stop_atr, B.template.target_atr, B.template.time_exit_bars, B.cadence_bars, B.atr], [1, 1.5, 96, 4, "1h"]);
+  const DAY = 86400000, sp = D.splitRule(T0, T0 + 700 * DAY), h = 96 * BAR; assert.equal(D.splitOf(sp.train[1] - h - 1, sp, h), "train"); assert.equal(D.splitOf(sp.train[1] - h + 1, sp, h), null); assert.equal(D.splitOf(sp.train[1] - 32 * BAR, sp, 32 * BAR), "train", "the v1 horizon would not have purged this row, the 96-bar one must");
+  assert.equal(D.splitOf(sp.train[1] - 32 * BAR, sp, h), null);
+  assert.equal(D.splitForVariant(sp.train[1] - 32 * BAR, sp, D.VARIANTS.v1), "train"); assert.equal(D.splitForVariant(sp.train[1] - 32 * BAR, sp, D.VARIANTS.v2A), null); assert.equal(D.splitForVariant(sp.train[1] - 32 * BAR, sp, D.VARIANTS.v2B), null);
+});
+test("v2: a label uses the ATR it is given (B's stop and target follow ATR(1h), not ATR(15m))", () => {
+  const rows = walk(700), snap = SN.snapshotAt("BTCUSDT", rows, 500), t = snap.bar_close_ts, ref = snap.ask, big = snap.atr * 3;
+  const m1 = []; for (let k = 0; k < 1600; k++) m1.push({ t: t + k * MIN, o: ref, h: ref, l: ref, c: ref, v: 1 }); m1[7] = { ...m1[7], h: ref + 1.6 * snap.atr };
+  assert.equal(D.label(snap, m1, 0, 1, D.VARIANTS.v2B.template, snap.atr).reason, "target"); assert.equal(D.label(snap, m1, 0, 1, D.VARIANTS.v2B.template, big).reason, "time_exit", "with a 3x larger ATR the same move no longer reaches the target");
+});

@@ -1,0 +1,230 @@
+{
+ "generated_at": "2026-11-18T07:41:17.601Z",
+ "prereg": "research-prereg-v3",
+ "ks": [
+  2,
+  3,
+  4,
+  5,
+  6
+ ],
+ "round_trip_bps": 16,
+ "analysts": {
+  "risk_taker": {
+   "selected_K": 6,
+   "selection_basis": "highest development mean R per trade among K with >= 100 trades and >= 0.02 R improvement",
+   "by_K": {
+    "0": {
+     "dev_trades": 3543,
+     "dev_mean_R": -0.35488285478779735,
+     "final_trades": 120,
+     "final_mean_R": -0.5526004645132424,
+     "blocked_setups": 0
+    },
+    "2": {
+     "dev_trades": 3345,
+     "dev_mean_R": -0.21251427283928576,
+     "final_trades": 829,
+     "final_mean_R": -0.25166098866512965,
+     "blocked_setups": 3959
+    },
+    "3": {
+     "dev_trades": 2280,
+     "dev_mean_R": -0.150012624535366,
+     "final_trades": 591,
+     "final_mean_R": -0.17553556398823142,
+     "blocked_setups": 6365
+    },
+    "4": {
+     "dev_trades": 1574,
+     "dev_mean_R": -0.12493012087145033,
+     "final_trades": 372,
+     "final_mean_R": -0.1721525136552162,
+     "blocked_setups": 7961
+    },
+    "5": {
+     "dev_trades": 1082,
+     "dev_mean_R": -0.13740651157448797,
+     "final_trades": 243,
+     "final_mean_R": -0.16392645877464665,
+     "blocked_setups": 9064
+    },
+    "6": {
+     "dev_trades": 767,
+     "dev_mean_R": -0.10330029095111493,
+     "final_trades": 156,
+     "final_mean_R": -0.022328201451696967,
+     "blocked_setups": 9769
+    }
+   },
+   "final": {
+    "trades_filtered": 156,
+    "trades_unfiltered": 120,
+    "mean_R_filtered": -0.022328201451696967,
+    "mean_R_unfiltered": -0.5526004645132424,
+    "improvement_ci95": [
+     0.3364878773302653,
+     0.7154312410782552
+    ],
+    "filtered_mean_ci95": [
+     -0.1829855101839148,
+     0.13469797243113246
+    ],
+    "resamples": 2000,
+    "random_entry_same_filter_mean_R_p95": 1.599891541546287,
+    "criteria": {
+     "C1_min_200_trades": false,
+     "C2_improvement_ci_lower_gt_0": true,
+     "C3_edge": false
+    }
+   },
+   "verdict": "REJECTED"
+  },
+  "balanced": {
+   "selected_K": 6,
+   "selection_basis": "highest development mean R per trade among K with >= 100 trades and >= 0.02 R improvement",
+   "by_K": {
+    "0": {
+     "dev_trades": 3847,
+     "dev_mean_R": -0.29747567111307,
+     "final_trades": 1317,
+     "final_mean_R": -0.38666421611551666,
+     "blocked_setups": 0
+    },
+    "2": {
+     "dev_trades": 2759,
+     "dev_mean_R": -0.21025374174822486,
+     "final_trades": 894,
+     "final_mean_R": -0.24844417064738147,
+     "blocked_setups": 3119
+    },
+    "3": {
+     "dev_trades": 1976,
+     "dev_mean_R": -0.15969027597673552,
+     "final_trades": 547,
+     "final_mean_R": -0.18178334503912286,
+     "blocked_setups": 5122
+    },
+    "4": {
+     "dev_trades": 1399,
+     "dev_mean_R": -0.14178774247940756,
+     "final_trades": 340,
+     "final_mean_R": -0.13529712097534358,
+     "blocked_setups": 6548
+    },
+    "5": {
+     "dev_trades": 981,
+     "dev_mean_R": -0.15775597415302875,
+     "final_trades": 229,
+     "final_mean_R": -0.1152185758718673,
+     "blocked_setups": 7585
+    },
+    "6": {
+     "dev_trades": 710,
+     "dev_mean_R": -0.12398619448331069,
+     "final_trades": 153,
+     "final_mean_R": 0.05590351535979902,
+     "blocked_setups": 8270
+    }
+   },
+   "final": {
+    "trades_filtered": 153,
+    "trades_unfiltered": 1317,
+    "mean_R_filtered": 0.05590351535979902,
+    "mean_R_unfiltered": -0.38666421611551666,
+    "improvement_ci95": [
+     0.26227914991588797,
+     0.6258445502287534
+    ],
+    "filtered_mean_ci95": [
+     -0.12865578693623425,
+     0.23366571166385963
+    ],
+    "resamples": 2000,
+    "random_entry_same_filter_mean_R_p95": 1.2140898926837225,
+    "criteria": {
+     "C1_min_200_trades": false,
+     "C2_improvement_ci_lower_gt_0": true,
+     "C3_edge": false
+    }
+   },
+   "verdict": "REJECTED"
+  },
+  "defensive": {
+   "selected_K": 6,
+   "selection_basis": "highest development mean R per trade among K with >= 100 trades and >= 0.02 R improvement",
+   "by_K": {
+    "0": {
+     "dev_trades": 1513,
+     "dev_mean_R": -0.2881918846485401,
+     "final_trades": 601,
+     "final_mean_R": -0.3322552152106392,
+     "blocked_setups": 0
+    },
+    "2": {
+     "dev_trades": 1128,
+     "dev_mean_R": -0.2422055580839133,
+     "final_trades": 332,
+     "final_mean_R": -0.2972774331486561,
+     "blocked_setups": 869
+    },
+    "3": {
+     "dev_trades": 691,
+     "dev_mean_R": -0.18924670180326456,
+     "final_trades": 132,
+     "final_mean_R": -0.24875887776862665,
+     "blocked_setups": 1718
+    },
+    "4": {
+     "dev_trades": 421,
+     "dev_mean_R": -0.1803543208171271,
+     "final_trades": 64,
+     "final_mean_R": -0.3400376428819984,
+     "blocked_setups": 2197
+    },
+    "5": {
+     "dev_trades": 253,
+     "dev_mean_R": -0.1867616371753715,
+     "final_trades": 34,
+     "final_mean_R": -0.34369978821462105,
+     "blocked_setups": 2474
+    },
+    "6": {
+     "dev_trades": 163,
+     "dev_mean_R": -0.15884596946820984,
+     "final_trades": 17,
+     "final_mean_R": -0.2445803170406118,
+     "blocked_setups": 2622
+    }
+   },
+   "final": {
+    "trades_filtered": 17,
+    "trades_unfiltered": 601,
+    "mean_R_filtered": -0.2445803170406118,
+    "mean_R_unfiltered": -0.3322552152106392,
+    "improvement_ci95": [
+     -0.34938605221411767,
+     0.5355641936625194
+    ],
+    "filtered_mean_ci95": [
+     -0.6846054171495916,
+     0.21748582813212064
+    ],
+    "resamples": 2000,
+    "random_entry_same_filter_mean_R_p95": 1.297820757868447,
+    "criteria": {
+     "C1_min_200_trades": false,
+     "C2_improvement_ci_lower_gt_0": false,
+     "C3_edge": false
+    }
+   },
+   "verdict": "REJECTED"
+  }
+ },
+ "window": {
+  "from": "2024-11-17T13:30:00.000Z",
+  "split": "2026-04-12T13:19:30.000Z",
+  "to": "2026-11-17T13:15:00.000Z",
+  "days": 730
+ }
+}

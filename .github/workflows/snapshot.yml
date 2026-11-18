@@ -29,6 +29,14 @@ jobs:
           git show origin/gh-pages:data/stats.json > docs/data/stats.json 2>/dev/null || rm -f docs/data/stats.json
       - name: Carry over the paper-trade journal
         run: git show origin/gh-pages:data/journal.json > docs/data/journal.json 2>/dev/null || rm -f docs/data/journal.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Carry over the previous news snapshot, which is the memory that gives items their first-seen time
+        run: git show origin/gh-pages:data/news.json > docs/data/news.json 2>/dev/null || rm -f docs/data/news.json
+      - name: Official news snapshot for the public site, fail-soft so a news outage never blocks the market snapshot
+        continue-on-error: true
+        run: node scripts/news_snapshot.js docs/data/news.json
       - run: node scripts/paper_trader.js
       - run: node scripts/analyze.js
       - run: bash scripts/publish.sh

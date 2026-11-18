@@ -101,6 +101,7 @@ function newsRender() {
 function newsEmptyReason(d, S, C) {
   var allBad = S.length && S.every(function (s) { return s.status !== "OK"; });
   if (allBad && C.total === 0) return "<b>No news stored and every source is failing or not yet polled.</b> See the source table above for the error of each.";
+  if (C.total === 0 && NEWS.mode === "snapshot") return "<b>The published snapshot contains no items.</b> Either no relevant items exist in the official feeds right now or the publishing job could not reach the sources; see the source table for each source's status. Nothing is simulated.";
   if (C.total === 0) return "<b>No items stored yet.</b> Sources are polled every 5–15 minutes; the first poll may still be running.";
   if (!NEWS.all && C.relevant === 0) return "<b>" + C.total + " items are stored, but none relates to BTC, ETH, XRP, macro policy or Bitget operations.</b> The official sources mostly publish unrelated items. <a href=\"#\" id=\"nShowAll2\">Show everything</a>.";
   return "<b>Your filters exclude everything</b> (" + (NEWS.asset || "all assets") + " · " + (NEWS.source || "all sources") + " · " + (NEWS.cls ? NEWS.cls + " only" : "any classification") + (NEWS.all ? " · including unrelated" : " · relevant only") + "). Clear a filter to see items.";

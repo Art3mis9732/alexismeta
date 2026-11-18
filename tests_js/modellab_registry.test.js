@@ -34,3 +34,10 @@ test("monitor: registry and jobs show the research state read-only and stay UNAV
   assert.equal(reg.research.state, "REJECTED_ON_VALIDATION"); assert.deepEqual(reg.models, []); assert.equal(jobs.training_backend, "LOCAL_BATCH"); assert.equal(jobs.jobs[0].last_outcome, "SKIPPED_STRESS"); assert.match(jobs.note, /nothing here changes a trading policy/);
   mon.labDir = "/nonexistent-lab-dir"; assert.equal(mon.jobs().training_backend, "UNAVAILABLE");
 });
+test("lab registry: follow-up experiments in v2A/v2B subdirectories are listed separately with their own state", () => {
+  const d = mk({ "trials.jsonl": trial(1, "lr"), "validation_result.json": { selected: null, reason: "REJECTED_ON_VALIDATION: none" } });
+  for (const [n, f] of [["v2A", { selected: null, reason: "REJECTED_ON_VALIDATION: none", val_base_logloss: 0.67 }], ["v2B", { selected: { family: "hgb", params: {}, theta: 0.5 } }]]) { fs.mkdirSync(path.join(d, n)); fs.writeFileSync(path.join(d, n, "validation_result.json"), JSON.stringify(f)); fs.writeFileSync(path.join(d, n, "trials.jsonl"), trial(1, "lr") + trial(2, "hgb")); }
+  fs.mkdirSync(path.join(d, "not-an-experiment")); const r = readLab(d);
+  assert.deepEqual(r.experiments.map(e => e.id), ["v2A", "v2B"]); assert.equal(r.experiments[0].state, "REJECTED_ON_VALIDATION"); assert.equal(r.experiments[1].state, "SELECTED_ON_VALIDATION_FINAL_NOT_SCORED"); assert.equal(r.experiments[0].trials.count, 2); assert.equal(r.state, "REJECTED_ON_VALIDATION", "the v1 verdict is not replaced by a follow-up");
+  assert.equal(r.experiments[1].models[0].promoted, false);
+});

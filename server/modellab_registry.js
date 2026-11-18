@@ -5,7 +5,7 @@ const fs = require("node:fs"), path = require("node:path");
 const CAP = 40, DEFAULT_DIR = process.env.ALEXIS_LAB_DIR !== undefined ? process.env.ALEXIS_LAB_DIR : path.join(__dirname, "..", "research", "registry");
 const readJson = (f) => { try { return { ok: true, v: JSON.parse(fs.readFileSync(f, "utf8")) }; } catch (e) { return e.code === "ENOENT" ? { ok: false, missing: true } : { ok: false, error: String(e.message).slice(0, 120) }; } };
 
-function readLab(dir = DEFAULT_DIR) {
+function readLab(dir = DEFAULT_DIR, _sub = false) {
   const out = { preregistration: "research-prereg-v1", dir_present: !!dir && fs.existsSync(dir), state: "NO_RESEARCH_RUN", headline: "No model has been trained or evaluated yet.", trials: { count: 0, cap: CAP, by_family: {} }, validation: null, final: null, loop: null, models: [], promoted: false, errors: [] };
   if (!out.dir_present) return out;
   try {
@@ -30,6 +30,10 @@ function readLab(dir = DEFAULT_DIR) {
       : "Rejected on validation: no configuration gave a positive after-cost result with enough trades. The final segment was never read.";
     if (out.validation.selected) out.models.push({ id: `${out.preregistration}/${out.validation.selected.family}`, family: out.validation.selected.family, params: out.validation.selected.params, state: out.state, edge: "NOT_DEMONSTRATED", promoted: false });
   } else if (out.trials.count) { out.state = "TRIALS_LOGGED_NO_RESULT"; out.headline = "Trials were logged but no validation result exists."; }
+  if (!_sub) {                                                                                       // follow-up pre-registered experiments live in subdirectories (v2A, v2B, ...): shown separately, never merged
+    out.experiments = [];
+    try { for (const n of fs.readdirSync(dir).filter(x => /^v\d+[A-Za-z]*$/.test(x)).sort()) { const e = readLab(path.join(dir, n), true); out.experiments.push({ id: n, preregistration: "research-prereg-" + n.replace(/[A-Za-z]+$/, ""), state: e.state, headline: e.headline, trials: e.trials, validation: e.validation, final: e.final, models: e.models }); } } catch (e) { /* none */ }
+  }
   return out;
 }
 module.exports = { readLab, CAP, DEFAULT_DIR };

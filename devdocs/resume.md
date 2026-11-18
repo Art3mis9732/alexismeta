@@ -11,10 +11,10 @@
 * Forward worker 8787 (when the session is alive) runs build `89826e4` (older than the working tree, so it does not show the Model Lab card until restarted; whether it holds open positions was not checked this session: check before any restart, D-022). It dies with the session; start it only if none is running (D-029). Back up `data/market.db` first.
 
 ## Next exact steps
-1. Ask the user whether to push the dev branch `claude/friendly-dirac-ouvgn4` (NOT main: main publishes the site). Nothing after the merge is pushed.
-2. The user chooses the next research step (options in `research-model-results.md`: wider template, cost-aware entry filter for the existing analysts, maker entries, richer inputs, frictionless label). Each needs a new pre-registration version and a fresh final segment; do not score v1 FINAL.
-3. The user decides about the account-level drawdown suspension (5% from peak, never resets, so a paper account stops opening trades for good after one drawdown; seen in the replay). Not changed.
-4. Ask before: pushing, merging, deploying, paid services (Firecrawl), new network hosts, ENFORCE stress mode.
+1. Public site: PR #3 merged (94251ea); the publishing job now writes `data/news.json` (7/7 sources answered from GitHub's runners on the first run). Confirm the public News tab in a browser when convenient (this container cannot fetch the public host).
+2. Research: v1 and v2 (A, B) are all REJECTED_ON_VALIDATION with the final segments unread; next hypotheses are in `research-model-results-v2.md` (different information, cost-aware filter for the analysts, regression target, maker entries). Each needs its own pre-registration. Do not retune closed versions.
+3. News to trading is SHADOW only (`news-to-trading.md`); it needs weeks of shadow rows before any evaluation. Run the worker on your PC (`windows-npm-verification.md`).
+4. Ask before: pushing, merging, deploying, paid services, new network hosts, ENFORCE stress mode, any model promotion.
 
 ## Environment notes
 * Cloud: `NODE_USE_ENV_PROXY=1` for outbound HTTPS/WSS; Playwright needs `NODE_PATH=$(npm root -g)`; `pip install -r requirements.txt` after a container reset (pandas, numpy, pytest, scikit-learn). Node 22.23.4.

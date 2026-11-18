@@ -16,7 +16,7 @@ const { createServer } = require("./http");
 const { Ledger } = require("./ledger");
 const { PaperEngine } = require("./engine");
 const { NewsIngester, SOURCES: NEWS_SOURCES, PARSER_VERSION } = require("./news");
-const { withReaction } = require("./news_reaction"), { NewsShadow } = require("./news_shadow");
+const { withReaction } = require("./news_reaction"), { NewsShadow } = require("./news_shadow"), { FilterShadow } = require("./filter_shadow");
 const { appliesTo, INTERPRETERS } = require("./news_interpret");
 const { Monitor, MONITOR_SCHEMA } = require("./monitor");
 const { StressMonitor } = require("./stress_monitor");
@@ -157,7 +157,9 @@ async function main() {
   const api = buildApi({ store, health, collector, startedAt, ledger, getEngine: () => engineRef.current, news, monitor, runtime, getStress: () => stressRef.current });
   const server = createServer({ api, staticDir: path.join(ROOT, "docs"), port: a.port });
 
+  const filterShadowRef = { current: null };
   const timers = [
+    setInterval(() => { try { if (filterShadowRef.current) filterShadowRef.current.resolve(); } catch (e) { log("filter shadow resolve: " + e.message); } }, 60000),
     setInterval(() => { try { store.flush(); } catch (e) { log("flush failed: " + e.message); } }, 250),
     setInterval(async () => { try { const c = await rest.clockOffset(); health.setClock(c.offset_ms, c.rtt_ms); } catch (e) { log("clock: " + e.message); } }, 300000),
     setInterval(() => { collector.finalizeSweep().catch(e => log("finalize: " + e.message)); }, 30000),
@@ -194,7 +196,7 @@ async function main() {
     } catch (e) { runtime.stress_error = e.message; stressRef.current = null; log("stress monitor NOT started: " + e.message); }
   }
   try {
-    engineRef.current = new PaperEngine({ store, ledger, collector, health, log, instanceId: runtime.instance_id, environment: a.env, stress: stressRef.current, newsShadow: news ? new NewsShadow({ db: store.db, news, log }) : null });
+    engineRef.current = new PaperEngine({ store, ledger, collector, health, log, instanceId: runtime.instance_id, environment: a.env, stress: stressRef.current, newsShadow: news ? new NewsShadow({ db: store.db, news, log }) : null, filterShadow: (filterShadowRef.current = new FilterShadow({ db: store.db, ledger, config: require("./risk").RISK_DEFAULTS, environment: a.env, log })) });
     log(`paper engine running (${a.env}): decisions at each 15m bar close; execution mode PAPER`);
   } catch (e) { runtime.engine_error = e.message; log("paper engine NOT started: " + e.message + " (this instance serves data read-only)"); }
   timers.push(setInterval(() => {

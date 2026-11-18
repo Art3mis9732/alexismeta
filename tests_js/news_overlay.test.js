@@ -56,5 +56,5 @@ test("shadow recorder: stores a verdict only for entry candidates, uses only can
   const row = store.db.prepare("SELECT * FROM news_shadow WHERE decision_id='d1'").get(); assert.equal(row.verdict, "WOULD_VETO"); assert.equal(row.would_change, 1); assert.equal(row.risk_outcome, "OPENED");
   assert.throws(() => store.db.prepare("UPDATE news_shadow SET verdict='NEUTRAL'").run(), /append-only/); assert.throws(() => store.db.prepare("DELETE FROM news_shadow").run(), /append-only/);
   sh.record({ analyst: "balanced", instrument_id: "bitget:perp:BTCUSDT", decisionId: "d1", intent: "OPEN_LONG", decisionTs: T });                     // idempotent
-  assert.equal(store.db.prepare("SELECT COUNT(*) n FROM news_shadow").get().n, 1); assert.equal(MIGRATIONS.length, 11);
+  assert.equal(store.db.prepare("SELECT COUNT(*) n FROM news_shadow").get().n, 1); assert.equal(MIGRATIONS.length, 12);
 });

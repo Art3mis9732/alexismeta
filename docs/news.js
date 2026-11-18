@@ -13,21 +13,42 @@ async function newsStart() {
   if (NEWS.started) return; NEWS.started = true;
   setInterval(function () { if (WMODE || (NEWS.mode === "snapshot" && Date.now() - NEWS.loadedAt > 240000)) newsLoad(); }, 30000);
   if (!WMODE) newsLoadStatic();
+  setInterval(function () { if (!WMODE && NEWS.mode === "snapshot") newsLoadLive(); }, 60000);
   ["nAsset", "nSource", "nAll", "nClass"].forEach(function (k) { $(k).onchange = function () { NEWS.asset = $("nAsset").value; NEWS.source = $("nSource").value; NEWS.all = $("nAll").checked; NEWS.cls = $("nClass").value; NEWS.limit = 15; newsLoad(); }; });
+}
+/** LIVE layer, public page only: Bitget's announcement API allows cross-origin reads, so THIS BROWSER fetches it directly every minute (Fed, SEC and OKX do not allow it: they stay in the published snapshot).
+ *  Items are shown as fetched: not interpreted (the rules run in the worker and the snapshot job), only relevance-filtered (BTC / ETH / XRP named, or a maintenance / system-update notice). */
+var BG_LIVE = ["https://api.bitget.com/api/v2/public/annoucements?language=en_US&limit=10", "https://api.bitget.com/api/v2/public/annoucements?language=en_US&limit=10&annType=maintenance_system_updates"];
+async function newsLoadLive() {
+  var items = {}, ok = 0, now = Date.now();
+  for (var i = 0; i < BG_LIVE.length; i++) {
+    try {
+      var r = await fetch(BG_LIVE[i], { cache: "no-store" }); if (!r.ok) throw new Error("HTTP " + r.status); var j = await r.json(); if (j.code !== "00000" || !Array.isArray(j.data)) throw new Error("bad response"); ok++;
+      j.data.forEach(function (a) {
+        var title = String(a.annTitle || "").slice(0, 300), url = String(a.annUrl || ""); if (!title || !/^https:\/\/www\.bitget\.com\//.test(url)) return;
+        var named = /\b(BTC|ETH|XRP|Bitcoin|Ethereum|Ripple)\b/i.test(title), maint = a.annType === "maintenance_system_updates"; if (!named && !maint) return;
+        var pub = Number(a.cTime) || null;
+        items[a.annId] = { item_id: "live:" + a.annId, source: "bitget_live", publisher: "Bitget", url: url, title: title, summary: null, published_ts: pub, discovered_ts: now, ts_certainty: pub ? "SOURCE_STATED" : "UNKNOWN", backlog: !(pub && now - pub < 6 * 3600000),
+          assets: [], scope: named ? "ASSET" : "EXCHANGE_OPS", source_category: "exchange", verification: "INTERESTED_PARTY_CLAIM", event_type: "exchange_announcement", interpretations: [], interpretation_status: "LIVE_UNINTERPRETED", reaction: [], refs: [], revisions_known: 0, cluster_size: 1, discovery_lag_ms: null, live_browser: true };
+      });
+    } catch (e) { /* counted below */ }
+  }
+  NEWS.live = { items: Object.keys(items).map(function (k) { return items[k]; }), at: now, ok: ok }; newsApplySnapshot(); newsRender();
 }
 /** Public (static) site: no worker, so show the PUBLISHED SNAPSHOT (data/news.json, built by the scheduled job) with its age. Never presented as live; no price reaction exists in it. */
 async function newsLoadStatic() {
   try {
     var r = await fetch("data/news.json?t=" + Date.now(), { cache: "no-store" }); if (!r.ok) throw new Error("HTTP " + r.status);
     var j = await r.json(); if (!j || j.schema_version !== "news-snapshot-v1" || !Array.isArray(j.items)) throw new Error("unrecognised snapshot");
-    NEWS.snap = j; NEWS.snapErr = null; NEWS.mode = "snapshot"; NEWS.loadedAt = Date.now();
+    NEWS.snap = j; NEWS.snapErr = null; NEWS.mode = "snapshot"; NEWS.loadedAt = Date.now(); if (!NEWS.live) newsLoadLive();
   } catch (e) { NEWS.snap = null; NEWS.snapErr = String(e.message || e); NEWS.mode = null; NEWS.data = null; }
   newsApplySnapshot(); newsRender();
 }
 /** apply the asset/source filters client-side and shift source ages forward by the time since the snapshot was generated */
 function newsApplySnapshot() {
   var j = NEWS.snap; if (!j) { NEWS.data = null; return; }
-  var delta = Math.max(0, Date.now() - j.generated_ts), items = j.items.filter(function (it) {
+  var snapUrls = {}; j.items.forEach(function (i) { snapUrls[i.url] = 1; }); var liveItems = ((NEWS.live && NEWS.live.items) || []).filter(function (i) { return !snapUrls[i.url]; });
+  var delta = Math.max(0, Date.now() - j.generated_ts), items = liveItems.concat(j.items).filter(function (it) {
     return (!NEWS.asset || (it.interpretations || []).some(function (p) { return p.asset === NEWS.asset; })) && (!NEWS.source || it.source === NEWS.source); });
   NEWS.data = { schema_version: j.schema_version, as_of: j.generated_ts, note: j.note, items: items, counts: { total: j.items.length, relevant: items.length, hidden_not_relevant: 0, backlog: j.items.filter(function (i) { return i.backlog; }).length },
     coverage: "7 sources: Federal Reserve (3 feeds), SEC press releases, Bitget and OKX exchange announcements. Not comprehensive: no CFTC, ECB, BLS, ETF issuers, crypto media or security-incident feeds.",
@@ -62,14 +83,14 @@ function newsRender() {
   var d = NEWS.data, snap = NEWS.mode === "snapshot" && !WMODE, frozen = !WMODE && d && !snap;
   if (!WMODE && !d) {
     $("nSummary").innerHTML = ""; $("nSources").innerHTML = "";
-    $("nItems").innerHTML = '<b>No news available on this page.</b> The public site shows a published snapshot of the official feeds' + (NEWS.snapErr ? ' (it could not be loaded: ' + esc(NEWS.snapErr) + ")" : " (loading…)") + '. Live news needs the local worker (<code>npm start</code>, then open <b>http://127.0.0.1:8787</b>). Nothing is simulated here.';
+    $("nItems").innerHTML = '<b>No news available on this page.</b> The public site shows a published snapshot of the official feeds' + (NEWS.snapErr ? ' (it could not be loaded: ' + esc(NEWS.snapErr) + ")" : " (loading…)") + '. Live news needs the worker on your computer (double-click <code>start-worker.cmd</code>, or run <code>npm.cmd start</code>, then open <b>http://127.0.0.1:8787</b>). Nothing is simulated here.';
     return;
   }
   if (!d) { $("nItems").textContent = NEWS.error || "Loading news from the worker…"; return; }
   var S = d.sources || [], C = d.counts || { total: 0, relevant: 0, hidden_not_relevant: 0 }, ok = S.filter(function (s) { return s.status === "OK"; }).length;
   var snapAge = snap ? Date.now() - NEWS.snap.generated_ts : 0;
   $("nSummary").innerHTML = (snap ? '<div class="banner" style="display:block;margin-bottom:6px;border-color:' + (snapAge > 6 * 3600000 ? "var(--warn)" : "var(--line)") + '"><b>PUBLISHED SNAPSHOT — not live.</b> Generated ' + nTime(NEWS.snap.generated_ts) + " (" + nAge(snapAge) + " ago) by the scheduled job from the official feeds" + (snapAge > 6 * 3600000 ? ' · <b class="warn">older than 6 hours: the publishing job may be delayed</b>' : "") +
-      ". “Discovered” means first seen by a snapshot, not when the article appeared. No price reaction is available here: run the local worker (<code>npm start</code>) for live news with price reaction.</div>" : "") + (frozen ? '<span class="down"><b>○ WORKER DISCONNECTED</b></span> — showing the last news loaded at ' + nTime(NEWS.loadedAt) + "; nothing is updating. " : "") +
+      ". “Discovered” means first seen by a snapshot, not when the article appeared. No price reaction is available here. " + (NEWS.live && NEWS.live.ok ? '<b class="up">Bitget announcements are LIVE</b> (read by your browser at ' + nTime(NEWS.live.at) + ", refreshed every minute, not yet interpreted). " : (NEWS.live ? '<b class="warn">Live Bitget layer unavailable right now.</b> ' : "")) + "Fed, SEC and OKX cannot be read by a web page, so they update only when the publishing job runs. For everything live with price reactions, double-click <code>start-worker.cmd</code> in the project folder on your computer (or run <code>npm.cmd start</code>).</div>" : "") + (frozen ? '<span class="down"><b>○ WORKER DISCONNECTED</b></span> — showing the last news loaded at ' + nTime(NEWS.loadedAt) + "; nothing is updating. " : "") +
     "<b>" + ok + " of " + S.length + " sources healthy</b> · " + C.total + " items stored · <b>" + C.relevant + "</b> relate to BTC / ETH / XRP, macro policy or Bitget operations · " + C.hidden_not_relevant + " not related" + (C.backlog ? " · " + C.backlog + " from the first poll (backlog)" : "") +
     (C.hidden_not_relevant && !NEWS.all ? ' · <a href="#" id="nShowAll">show everything</a>' : "") + '. <span class="muted">as of ' + nTime(d.as_of) + "</span>";
   var sa = $("nShowAll"); if (sa) sa.onclick = function (e) { e.preventDefault(); NEWS.all = true; $("nAll").checked = true; newsLoad(); };
@@ -113,7 +134,7 @@ function newsGroups(it) {
 }
 /** One plain-language classification for the card: colour AND words (never colour alone). Describes a possible implication, never an instruction. */
 function newsClass(it) {
-  var ps = it.interpretations || []; if (!ps.length) return { w: "NOT CLASSIFIED", sub: "not tied to BTC, ETH, XRP, macro policy or Bitget operations", c: "muted", b: "var(--line)", sq: "□" };
+  var ps = it.interpretations || []; if (!ps.length && it.live_browser) return { w: "NOT CLASSIFIED YET (LIVE)", sub: "fetched live by your browser; the interpretation rules run in the worker and the snapshot job", c: "muted", b: "var(--line)", sq: "□" }; if (!ps.length) return { w: "NOT CLASSIFIED", sub: "not tied to BTC, ETH, XRP, macro policy or Bitget operations", c: "muted", b: "var(--line)", sq: "□" };
   var st = {}; ps.forEach(function (p) { st[p.stance] = 1; });
   if (ps.some(function (p) { return p.kind === "operational_risk"; })) return { w: "UNCERTAIN · OPERATIONAL RISK", sub: "venue operations notice: execution and data quality, not a price direction", c: "warn", b: "var(--warn)", sq: "◇" };
   if (st.BULLISH && !st.BEARISH && !st.MIXED) return { w: "GREEN · POTENTIALLY BULLISH", sub: "a possible implication, not a buy instruction", c: "up", b: "var(--up)", sq: "■" };
@@ -128,7 +149,7 @@ function newsItem(it) {
     return '<div style="margin-top:6px"><b>' + esc(g.assets.join(" · ")) + ':</b> <b class="' + st[1] + '">' + st[0] + '</b> <span class="pill">' + esc(p.kind.replace("_", " ")) + "</span>" + (p.mechanism ? '<div class="sub">Mechanism: ' + esc(p.mechanism) + (p.horizon ? " Horizon: " + esc(p.horizon) + "." : "") + "</div>" : "") +
       "<details><summary>Evidence and limits</summary><div class=\"sub\">" + (p.supporting.length ? "<b>Supporting:</b> " + esc(p.supporting.join(" ")) + "<br>" : "") + (p.contradicting.length ? "<b>Contradicting / caveats:</b> " + esc(p.contradicting.join(" ")) + "<br>" : "") + "<b>Limitations:</b> " + esc(p.limitations.join(" ")) +
       "<br>Method: " + esc(p.interpreter) + " (" + esc(p.rule_ids.join(", ")) + ") — headline-level keyword rule, not evaluated against prices. No probability or confidence is attached.</div></details></div>"; }).join("")
-    : '<div class="sub" style="margin-top:6px">' + (it.interpretation_status === "NOT_APPLICABLE" ? "No interpretation: not tied to BTC, ETH, XRP, macro policy or Bitget operations." : "<b>Interpretation unavailable</b> for this item (the interpreter failed or has not run). The article is shown as published.") + "</div>";
+    : '<div class="sub" style="margin-top:6px">' + (it.interpretation_status === "LIVE_UNINTERPRETED" ? "<b>Live from Bitget, fetched by your browser just now.</b> Not interpreted: the interpretation rules run in the worker and the snapshot job, so this item is listed for freshness only. No price reaction here." : it.interpretation_status === "NOT_APPLICABLE" ? "No interpretation: not tied to BTC, ETH, XRP, macro policy or Bitget operations." : "<b>Interpretation unavailable</b> for this item (the interpreter failed or has not run). The article is shown as published.") + "</div>";
   var allNA = rev.length && rev.every(function (r) { return r.horizons.every(function (h) { return h.status === "NA"; }); });
   var reac = !rev.length ? "" : allNA ? '<div class="sub" style="margin-top:6px"><b>Observed price reaction since discovery:</b> N/A — ' + esc(rev[0].horizons[0].reason) + "</div>"
     : '<div class="sub" style="margin-top:6px"><b>Observed price reaction since discovery</b> (Bitget perpetual, association not cause; “already priced in” is not assessed):<table>' + rev.map(function (r) {

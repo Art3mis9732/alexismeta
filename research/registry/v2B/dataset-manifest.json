@@ -1,0 +1,79 @@
+{
+ "version": "dataset-v1",
+ "built_at": "2026-11-18T07:22:24.660Z",
+ "variant": "candle-only-v1",
+ "template": {
+  "stop_atr": 1,
+  "target_atr": 1.5,
+  "time_exit_bars": 96,
+  "taker": 0.0006,
+  "slip": 0.0002
+ },
+ "atr_unit": "1h",
+ "cadence_bars": 4,
+ "split_rule": {
+  "burn_in_days": 14,
+  "fractions": {
+   "train": 0.55,
+   "validation": 0.2,
+   "final": 0.25
+  },
+  "embargo_days": 3
+ },
+ "features": [
+  "trend",
+  "vwap_side",
+  "vwap_dist_atr",
+  "atr_pct",
+  "atr_pctile",
+  "chg24h",
+  "rv24h",
+  "trig_with",
+  "trig_against",
+  "trig_bo_with",
+  "trig_retest_with",
+  "trig_vwap_with",
+  "trig_fail_with",
+  "ret1",
+  "ret4",
+  "ret16",
+  "ret96",
+  "range_pos",
+  "vol_ratio",
+  "hour_sin",
+  "hour_cos"
+ ],
+ "input_sha256": {
+  "15m_BTCUSDT.json": "6b3ade8bb52e423372ad989ac5fe067729c2a0bfc2811f651baef05ec6f32131",
+  "1m_BTCUSDT.json": "2ea145b3947d4f31efb50f50b48957fb66f65f88332d9ae27befe806171d016f",
+  "15m_ETHUSDT.json": "8bc1999a34e17a6d2fb3b6c3a1c218d115455d3a4ac6e67bd9de38f0c70d0bf0",
+  "1m_ETHUSDT.json": "a46588c00ca1843d3fdd563e589bede9eb154f3e266a88c86694b3a571fed07f",
+  "15m_XRPUSDT.json": "c101b212f1f55981a6cad7cc7469c8c55758c63190c6566d4b00838a4796658b",
+  "1m_XRPUSDT.json": "4db686f392b81e8b416de5e39ecb7e149f0a51f7bf95333dae470a9c0eb724bb"
+ },
+ "matrix_sha256": "2b6da2000971c3e9eaebf0bc54368fe426c9df1716c05313eb99c36861841190",
+ "counts": {
+  "rows": 101226,
+  "dropped_no_label": 0,
+  "dropped_embargo_or_purge": 1284,
+  "by_split": {
+   "train": 56238,
+   "validation": 19932,
+   "final": 25056
+  }
+ },
+ "code_sha256": {
+  "dataset.js": "7f198029f2bc2be1c682bec74144db0b0746979afc83e6e46bb96aee947f5265",
+  "snapshots.js": "aaaaf25ecbff2be9aaee5fa3439092f23bfe8d7409a57c63bf139438ce58178e",
+  "simulate.js": "9f89615e5e329cacbbea1725cc2e376e9c7c2bc1dbafbe70f1f385375a37d819"
+ },
+ "microstructure_assumption": {
+  "spread_bps": {
+   "BTCUSDT": 0.016,
+   "ETHUSDT": 0.055,
+   "XRPUSDT": 1.046
+  },
+  "depth_usdt_per_side": 75000,
+  "source": "forward ticker medians 2026-11-16/17 (one tick); depth = 3x the Defensive minimum (assumption)"
+ }
+}

@@ -62,7 +62,7 @@ function simulate({ analyst, snaps, m1, funding = {}, instruments, from = -Infin
       if (d.intent !== "OPEN_LONG" && d.intent !== "OPEN_SHORT") continue;
       bump("setup"); bump("setup:" + sym);
       if (gate) { const g = gate(sym, t, open); if (g && g.block) { bump("blocked_by_gate"); bump("gate:" + g.reason); continue; } }
-      const pf = { analyst, equity: fixedSizing ? startEquity : cash, peak_equity: peak, day: { start_ts: dayStart, start_equity: dayEq }, kill_switch: false,
+      const pf = { analyst, equity: fixedSizing ? startEquity : cash, peak_equity: fixedSizing ? startEquity : peak, day: { start_ts: dayStart, start_equity: fixedSizing ? startEquity : dayEq }, kill_switch: false,
         positions: open.map(p => ({ instrument_id: "bitget:perp:" + p.sym, side: p.side, qty: p.qty, entry: p.entry, stop: p.stop, mark: markOf(p.sym, t) ?? p.last_mark })) };
       const g = risk.evaluate({ analyst, setup: { intent: d.intent, stop: d.setup.stop }, snapshot: snap, portfolio: pf, instrument: instruments[sym], config });
       if (!g.approved) { for (const r of g.reasons) bump("risk_reject:" + r); continue; }

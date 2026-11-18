@@ -101,3 +101,11 @@ test("fixed sizing: the risk budget stays constant after losses (no depletion ar
   assert.ok(c.trades.length > 5 && f.trades.length === c.trades.length); const risks = t => t.map(x => x.risk_usdt);
   assert.ok(risks(f.trades).every(r => Math.abs(r - risks(f.trades)[0]) < 1e-9), "fixed: constant risk budget"); assert.ok(risks(c.trades)[c.trades.length - 1] < risks(c.trades)[0], "compounding: risk shrinks with equity");
 });
+test("fixed sizing: the account going NEGATIVE does not trip the daily-loss or drawdown gates (a sign flip in the day-start equity once blocked every later trade)", () => {
+  const n = 40, DAYMS = 86400000, snaps = []; for (let i = 1; i <= n; i++) snaps.push(snap(T0 + i * DAYMS, 60000));          // one decision per UTC day, so the day-start equity is re-read every day
+  const m1 = flat(T0, (n + 2) * 1440, 60000).map((c, k) => (k % 1440 === 3 ? { ...c, o: 54000, h: 54000, l: 53900, c: 54000 } : c));   // gap far through the stop each day: losses of many R
+  const pol = (a, s, ctx) => (ctx.position_open ? { analyst: a, intent: "WAIT", code: "POSITION_OPEN" } : { analyst: a, intent: "OPEN_LONG", code: "SETUP", setup: { stop: s.ask - 300, target: s.ask + 3000, time_exit_ts: s.bar_close_ts + 40 * BAR, trigger: "T" } });
+  const base = { analyst: "risk_taker", snaps: { BTCUSDT: snaps }, m1: { BTCUSDT: m1 }, funding: {}, instruments: inst, config: { ...risk.RISK_DEFAULTS, dailyLossFrac: 10, maxDrawdownFrac: 10 }, policy: pol };
+  const f = simulate({ ...base, fixedSizing: true }); assert.ok(f.end_cash < 0, "the account really went negative: " + f.end_cash);
+  assert.ok(f.trades.length >= 35, `trades kept flowing: ${f.trades.length}`); assert.equal(f.counts["risk_reject:DAILY_LOSS_SUSPENDED"], undefined); assert.equal(f.counts["risk_reject:DRAWDOWN_SUSPENDED"], undefined);
+});

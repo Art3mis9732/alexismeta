@@ -1,0 +1,749 @@
+{
+ "window": {
+  "from": "2024-11-17T13:30:00.000Z",
+  "split": "2026-04-12T13:19:30.000Z",
+  "to": "2026-11-17T13:15:00.000Z"
+ },
+ "analysts": {
+  "risk_taker": {
+   "survival_compounding_K0": {
+    "start": 1000,
+    "end_cash": 3.11,
+    "min_equity": 3.09,
+    "trades_dev": 3543,
+    "trades_final": 120,
+    "risk_rejections": {
+     "risk_reject:MIN_NOTIONAL": 1514,
+     "risk_reject:MIN_SIZE_EXCEEDS_BUDGET": 4194,
+     "risk_reject:OPEN_RISK_LIMIT": 1,
+     "risk_reject:VOLATILITY": 4
+    },
+    "last_trade_risk_usdt": 0.0151,
+    "first_trade_risk_usdt": 5.0028
+   },
+   "stop_bps_quantiles_unfiltered_fixed": {
+    "p10": 21.584920012858458,
+    "p50": 50.792015536418276,
+    "p90": 130.13597302625303,
+    "share_ge_96bps_dev": 0.1872103799814643,
+    "share_ge_96bps_final": 0
+   },
+   "by_K_fixed_sizing": {
+    "0": {
+     "dev_filtered": {
+      "n": 1079,
+      "mean_R": -0.23643489068512982,
+      "total_R": -255.11324704925508
+     },
+     "final_filtered": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "final_unfiltered": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "allowed_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_share_of_all_trades_final": 0,
+     "winners_blocked_final": {
+      "n": 0,
+      "of_all_winners": 0,
+      "sum_positive_R_blocked": 0,
+      "sum_positive_R_all": 0
+     },
+     "gross_R_mean_blocked_final": null,
+     "cost_R_mean_blocked_final": null,
+     "cost_R_mean_allowed_final": null
+    },
+    "2": {
+     "dev_filtered": {
+      "n": 1212,
+      "mean_R": -0.20867364672818695,
+      "total_R": -252.91245983456258
+     },
+     "final_filtered": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "final_unfiltered": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "allowed_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_share_of_all_trades_final": 0,
+     "winners_blocked_final": {
+      "n": 0,
+      "of_all_winners": 0,
+      "sum_positive_R_blocked": 0,
+      "sum_positive_R_all": 0
+     },
+     "gross_R_mean_blocked_final": null,
+     "cost_R_mean_blocked_final": null,
+     "cost_R_mean_allowed_final": null
+    },
+    "3": {
+     "dev_filtered": {
+      "n": 1407,
+      "mean_R": -0.16754738803410044,
+      "total_R": -235.7391749639793
+     },
+     "final_filtered": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "final_unfiltered": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "allowed_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_share_of_all_trades_final": 0,
+     "winners_blocked_final": {
+      "n": 0,
+      "of_all_winners": 0,
+      "sum_positive_R_blocked": 0,
+      "sum_positive_R_all": 0
+     },
+     "gross_R_mean_blocked_final": null,
+     "cost_R_mean_blocked_final": null,
+     "cost_R_mean_allowed_final": null
+    },
+    "4": {
+     "dev_filtered": {
+      "n": 1577,
+      "mean_R": -0.124635031458332,
+      "total_R": -196.54944460978956
+     },
+     "final_filtered": {
+      "n": 230,
+      "mean_R": -0.22360994825480804,
+      "total_R": -51.43028809860585
+     },
+     "final_unfiltered": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "allowed_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_share_of_all_trades_final": 0,
+     "winners_blocked_final": {
+      "n": 0,
+      "of_all_winners": 0,
+      "sum_positive_R_blocked": 0,
+      "sum_positive_R_all": 0
+     },
+     "gross_R_mean_blocked_final": null,
+     "cost_R_mean_blocked_final": null,
+     "cost_R_mean_allowed_final": null
+    },
+    "5": {
+     "dev_filtered": {
+      "n": 1084,
+      "mean_R": -0.14042829284201896,
+      "total_R": -152.22426944074857
+     },
+     "final_filtered": {
+      "n": 243,
+      "mean_R": -0.14258364535724144,
+      "total_R": -34.64782582180967
+     },
+     "final_unfiltered": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "allowed_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_share_of_all_trades_final": 0,
+     "winners_blocked_final": {
+      "n": 0,
+      "of_all_winners": 0,
+      "sum_positive_R_blocked": 0,
+      "sum_positive_R_all": 0
+     },
+     "gross_R_mean_blocked_final": null,
+     "cost_R_mean_blocked_final": null,
+     "cost_R_mean_allowed_final": null
+    },
+    "6": {
+     "dev_filtered": {
+      "n": 770,
+      "mean_R": -0.10238809092531227,
+      "total_R": -78.83883001249045
+     },
+     "final_filtered": {
+      "n": 158,
+      "mean_R": -0.020167933920941794,
+      "total_R": -3.1865335595088036
+     },
+     "final_unfiltered": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "allowed_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_share_of_all_trades_final": 0,
+     "winners_blocked_final": {
+      "n": 0,
+      "of_all_winners": 0,
+      "sum_positive_R_blocked": 0,
+      "sum_positive_R_all": 0
+     },
+     "gross_R_mean_blocked_final": null,
+     "cost_R_mean_blocked_final": null,
+     "cost_R_mean_allowed_final": null
+    }
+   }
+  },
+  "balanced": {
+   "survival_compounding_K0": {
+    "start": 1000,
+    "end_cash": 21.87,
+    "min_equity": 21.87,
+    "trades_dev": 3847,
+    "trades_final": 1317,
+    "risk_rejections": {
+     "risk_reject:VOLATILITY": 3,
+     "risk_reject:MIN_SIZE_EXCEEDS_BUDGET": 585,
+     "risk_reject:MIN_NOTIONAL": 36
+    },
+    "last_trade_risk_usdt": 0.0469,
+    "first_trade_risk_usdt": 2.4832
+   },
+   "stop_bps_quantiles_unfiltered_fixed": {
+    "p10": 19.700680096650043,
+    "p50": 44.77583185864293,
+    "p90": 119.11782777464066,
+    "share_ge_96bps_dev": 0.15703444249854057,
+    "share_ge_96bps_final": 0
+   },
+   "by_K_fixed_sizing": {
+    "0": {
+     "dev_filtered": {
+      "n": 1713,
+      "mean_R": -0.2629543889240019,
+      "total_R": -450.4408682268153
+     },
+     "final_filtered": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "final_unfiltered": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "allowed_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_share_of_all_trades_final": 0,
+     "winners_blocked_final": {
+      "n": 0,
+      "of_all_winners": 0,
+      "sum_positive_R_blocked": 0,
+      "sum_positive_R_all": 0
+     },
+     "gross_R_mean_blocked_final": null,
+     "cost_R_mean_blocked_final": null,
+     "cost_R_mean_allowed_final": null
+    },
+    "2": {
+     "dev_filtered": {
+      "n": 2268,
+      "mean_R": -0.20060272363497386,
+      "total_R": -454.9669772041207
+     },
+     "final_filtered": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "final_unfiltered": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "allowed_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_share_of_all_trades_final": 0,
+     "winners_blocked_final": {
+      "n": 0,
+      "of_all_winners": 0,
+      "sum_positive_R_blocked": 0,
+      "sum_positive_R_all": 0
+     },
+     "gross_R_mean_blocked_final": null,
+     "cost_R_mean_blocked_final": null,
+     "cost_R_mean_allowed_final": null
+    },
+    "3": {
+     "dev_filtered": {
+      "n": 1976,
+      "mean_R": -0.15969027597673552,
+      "total_R": -315.5479853300294
+     },
+     "final_filtered": {
+      "n": 549,
+      "mean_R": -0.18293824569887374,
+      "total_R": -100.43309688868167
+     },
+     "final_unfiltered": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "allowed_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_share_of_all_trades_final": 0,
+     "winners_blocked_final": {
+      "n": 0,
+      "of_all_winners": 0,
+      "sum_positive_R_blocked": 0,
+      "sum_positive_R_all": 0
+     },
+     "gross_R_mean_blocked_final": null,
+     "cost_R_mean_blocked_final": null,
+     "cost_R_mean_allowed_final": null
+    },
+    "4": {
+     "dev_filtered": {
+      "n": 1399,
+      "mean_R": -0.14178774247940756,
+      "total_R": -198.36105172869117
+     },
+     "final_filtered": {
+      "n": 340,
+      "mean_R": -0.13529712097534355,
+      "total_R": -46.00102113161681
+     },
+     "final_unfiltered": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "allowed_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_share_of_all_trades_final": 0,
+     "winners_blocked_final": {
+      "n": 0,
+      "of_all_winners": 0,
+      "sum_positive_R_blocked": 0,
+      "sum_positive_R_all": 0
+     },
+     "gross_R_mean_blocked_final": null,
+     "cost_R_mean_blocked_final": null,
+     "cost_R_mean_allowed_final": null
+    },
+    "5": {
+     "dev_filtered": {
+      "n": 981,
+      "mean_R": -0.1577559741530287,
+      "total_R": -154.75861064412115
+     },
+     "final_filtered": {
+      "n": 229,
+      "mean_R": -0.11521857587186733,
+      "total_R": -26.38505387465762
+     },
+     "final_unfiltered": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "allowed_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_share_of_all_trades_final": 0,
+     "winners_blocked_final": {
+      "n": 0,
+      "of_all_winners": 0,
+      "sum_positive_R_blocked": 0,
+      "sum_positive_R_all": 0
+     },
+     "gross_R_mean_blocked_final": null,
+     "cost_R_mean_blocked_final": null,
+     "cost_R_mean_allowed_final": null
+    },
+    "6": {
+     "dev_filtered": {
+      "n": 710,
+      "mean_R": -0.12398619448331069,
+      "total_R": -88.0301980831506
+     },
+     "final_filtered": {
+      "n": 153,
+      "mean_R": 0.05590351535979902,
+      "total_R": 8.55323785004925
+     },
+     "final_unfiltered": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "allowed_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "blocked_share_of_all_trades_final": 0,
+     "winners_blocked_final": {
+      "n": 0,
+      "of_all_winners": 0,
+      "sum_positive_R_blocked": 0,
+      "sum_positive_R_all": 0
+     },
+     "gross_R_mean_blocked_final": null,
+     "cost_R_mean_blocked_final": null,
+     "cost_R_mean_allowed_final": null
+    }
+   }
+  },
+  "defensive": {
+   "survival_compounding_K0": {
+    "start": 1000,
+    "end_cash": 545.23,
+    "min_equity": 541.5,
+    "trades_dev": 1513,
+    "trades_final": 601,
+    "risk_rejections": {
+     "risk_reject:MIN_SIZE_EXCEEDS_BUDGET": 1
+    },
+    "last_trade_risk_usdt": 0.5318,
+    "first_trade_risk_usdt": 0.981
+   },
+   "stop_bps_quantiles_unfiltered_fixed": {
+    "p10": 21.79089899854868,
+    "p50": 41.98116829030463,
+    "p90": 86.73871958841221,
+    "share_ge_96bps_dev": 0.0945142101784534,
+    "share_ge_96bps_final": 0.029950083194675542
+   },
+   "by_K_fixed_sizing": {
+    "0": {
+     "dev_filtered": {
+      "n": 1513,
+      "mean_R": -0.2881918846485401,
+      "total_R": -436.0343214732412
+     },
+     "final_filtered": {
+      "n": 601,
+      "mean_R": -0.3322552152106392,
+      "total_R": -199.6853843415942
+     },
+     "final_unfiltered": {
+      "n": 601,
+      "mean_R": -0.3322552152106392,
+      "total_R": -199.6853843415942
+     },
+     "blocked_final_from_unfiltered_path": {
+      "n": 0,
+      "mean_R": null,
+      "total_R": 0
+     },
+     "allowed_final_from_unfiltered_path": {
+      "n": 601,
+      "mean_R": -0.3322552152106392,
+      "total_R": -199.6853843415942
+     },
+     "blocked_share_of_all_trades_final": 0,
+     "winners_blocked_final": {
+      "n": 0,
+      "of_all_winners": 239,
+      "sum_positive_R_blocked": 0,
+      "sum_positive_R_all": 153.25407946162338
+     },
+     "gross_R_mean_blocked_final": null,
+     "cost_R_mean_blocked_final": null,
+     "cost_R_mean_allowed_final": 0.25484990768819304
+    },
+    "2": {
+     "dev_filtered": {
+      "n": 1128,
+      "mean_R": -0.2422055580839133,
+      "total_R": -273.2078695186542
+     },
+     "final_filtered": {
+      "n": 332,
+      "mean_R": -0.2972774331486561,
+      "total_R": -98.69610780535383
+     },
+     "final_unfiltered": {
+      "n": 601,
+      "mean_R": -0.3322552152106392,
+      "total_R": -199.6853843415942
+     },
+     "blocked_final_from_unfiltered_path": {
+      "n": 260,
+      "mean_R": -0.39178705636254907,
+      "total_R": -101.86463465426276
+     },
+     "allowed_final_from_unfiltered_path": {
+      "n": 341,
+      "mean_R": -0.2868643685845496,
+      "total_R": -97.82074968733141
+     },
+     "blocked_share_of_all_trades_final": 0.43261231281198004,
+     "winners_blocked_final": {
+      "n": 107,
+      "of_all_winners": 239,
+      "sum_positive_R_blocked": 46.066836767421755,
+      "sum_positive_R_all": 153.25407946162338
+     },
+     "gross_R_mean_blocked_final": -0.0614239881206747,
+     "cost_R_mean_blocked_final": 0.3303630682418745,
+     "cost_R_mean_allowed_final": 0.1972738908437439
+    },
+    "3": {
+     "dev_filtered": {
+      "n": 691,
+      "mean_R": -0.18924670180326458,
+      "total_R": -130.76947094605583
+     },
+     "final_filtered": {
+      "n": 132,
+      "mean_R": -0.2487588777686267,
+      "total_R": -32.836171865458724
+     },
+     "final_unfiltered": {
+      "n": 601,
+      "mean_R": -0.3322552152106392,
+      "total_R": -199.6853843415942
+     },
+     "blocked_final_from_unfiltered_path": {
+      "n": 473,
+      "mean_R": -0.34949252512473455,
+      "total_R": -165.30996438399944
+     },
+     "allowed_final_from_unfiltered_path": {
+      "n": 128,
+      "mean_R": -0.2685579684187097,
+      "total_R": -34.37541995759484
+     },
+     "blocked_share_of_all_trades_final": 0.7870216306156406,
+     "winners_blocked_final": {
+      "n": 192,
+      "of_all_winners": 239,
+      "sum_positive_R_blocked": 108.35684042776761,
+      "sum_positive_R_all": 153.25407946162338
+     },
+     "gross_R_mean_blocked_final": -0.06612992924023776,
+     "cost_R_mean_blocked_final": 0.2833625958844967,
+     "cost_R_mean_allowed_final": 0.1494866145877897
+    },
+    "4": {
+     "dev_filtered": {
+      "n": 421,
+      "mean_R": -0.18035432081712705,
+      "total_R": -75.92916906401048
+     },
+     "final_filtered": {
+      "n": 64,
+      "mean_R": -0.3400376428819986,
+      "total_R": -21.76240914444791
+     },
+     "final_unfiltered": {
+      "n": 601,
+      "mean_R": -0.3322552152106392,
+      "total_R": -199.6853843415942
+     },
+     "blocked_final_from_unfiltered_path": {
+      "n": 539,
+      "mean_R": -0.33726282187941165,
+      "total_R": -181.7846609930029
+     },
+     "allowed_final_from_unfiltered_path": {
+      "n": 62,
+      "mean_R": -0.28872134433211727,
+      "total_R": -17.90072334859127
+     },
+     "blocked_share_of_all_trades_final": 0.8968386023294509,
+     "winners_blocked_final": {
+      "n": 218,
+      "of_all_winners": 239,
+      "sum_positive_R_blocked": 131.87493528883257,
+      "sum_positive_R_all": 153.25407946162338
+     },
+     "gross_R_mean_blocked_final": -0.06719624161189669,
+     "cost_R_mean_blocked_final": 0.270066580267515,
+     "cost_R_mean_allowed_final": 0.12256302832924894
+    },
+    "5": {
+     "dev_filtered": {
+      "n": 253,
+      "mean_R": -0.1867616371753715,
+      "total_R": -47.25069420536899
+     },
+     "final_filtered": {
+      "n": 34,
+      "mean_R": -0.3436997882146211,
+      "total_R": -11.685792799297118
+     },
+     "final_unfiltered": {
+      "n": 601,
+      "mean_R": -0.3322552152106392,
+      "total_R": -199.6853843415942
+     },
+     "blocked_final_from_unfiltered_path": {
+      "n": 569,
+      "mean_R": -0.3260303288465881,
+      "total_R": -185.51125711370864
+     },
+     "allowed_final_from_unfiltered_path": {
+      "n": 32,
+      "mean_R": -0.4429414758714232,
+      "total_R": -14.174127227885542
+     },
+     "blocked_share_of_all_trades_final": 0.9467554076539102,
+     "winners_blocked_final": {
+      "n": 231,
+      "of_all_winners": 239,
+      "sum_positive_R_blocked": 145.1495227728973,
+      "sum_positive_R_all": 153.25407946162338
+     },
+     "gross_R_mean_blocked_final": -0.06275611026051303,
+     "cost_R_mean_blocked_final": 0.263274218586075,
+     "cost_R_mean_allowed_final": 0.1050551295352284
+    },
+    "6": {
+     "dev_filtered": {
+      "n": 163,
+      "mean_R": -0.15884596946820978,
+      "total_R": -25.891893023318193
+     },
+     "final_filtered": {
+      "n": 17,
+      "mean_R": -0.24458031704061178,
+      "total_R": -4.1578653896904
+     },
+     "final_unfiltered": {
+      "n": 601,
+      "mean_R": -0.3322552152106392,
+      "total_R": -199.6853843415942
+     },
+     "blocked_final_from_unfiltered_path": {
+      "n": 583,
+      "mean_R": -0.3265358762433161,
+      "total_R": -190.3704158498533
+     },
+     "allowed_final_from_unfiltered_path": {
+      "n": 18,
+      "mean_R": -0.5174982495411605,
+      "total_R": -9.31496849174089
+     },
+     "blocked_share_of_all_trades_final": 0.9700499168053245,
+     "winners_blocked_final": {
+      "n": 235,
+      "of_all_winners": 239,
+      "sum_positive_R_blocked": 149.2914562327476,
+      "sum_positive_R_all": 153.25407946162338
+     },
+     "gross_R_mean_blocked_final": -0.06671232333951686,
+     "cost_R_mean_blocked_final": 0.2598235529037992,
+     "cost_R_mean_allowed_final": 0.09375906542716893
+    }
+   }
+  }
+ }
+}

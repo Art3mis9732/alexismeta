@@ -23,7 +23,7 @@ cd C:\Users\ASUS\Projects\crypto-monitor-local
 git remote -v                         # expect: origin https://github.com/Art3mis9732/alexismeta
 git status                            # note any local changes; do not discard them
 git branch --show-current
-git pull origin main                  # only if git status is clean; otherwise tell me what it shows
+git pull --ff-only origin main      # only if git status shows nothing to commit; it refuses rather than overwrite anything
 node --version                        # need v22.23.0 or later
 npm.cmd --version
 Get-Content package.json -TotalCount 12

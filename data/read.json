@@ -1,0 +1,327 @@
+{
+ "generated_at_utc": "2026-11-21 15:34:36",
+ "symbols": {
+  "BTCUSDT": {
+   "last_closed_bar": "2026-11-21 15:30 UTC / 2026-11-21 21:00 IST",
+   "price": 59953.1,
+   "verdict": "NO TRADE",
+   "reasons": [
+    "1-hour trend: FLAT / mixed",
+    "Price is above today's VWAP"
+   ],
+   "trend_1h": 0,
+   "vwap": 57932.48698224324,
+   "atr15m_pct": 0.774394209189648,
+   "hi20": 60972,
+   "lo20": 57805,
+   "session_high": 60972,
+   "session_low": 55098.5,
+   "watching": null,
+   "change_4h_pct": 3.490353195433893,
+   "change_24h_pct": -0.694358174195786,
+   "liq100_pct": 0.5424954792043413,
+   "atr_vs_liq100": 1.427466658939581,
+   "long_accounts_pct": 77.97,
+   "taker_buy_share_1h": 0.5051694822341268,
+   "taker_buy_share_6h": 0.5228876142453632,
+   "ticker": {
+    "ts": 1795275277144,
+    "last": 59775.9,
+    "mark": 59782.9,
+    "index": 59819.427826086954,
+    "bid": 59775.9,
+    "ask": 59776,
+    "spread_bps": 0.017,
+    "funding_rate": 0.000006,
+    "open_interest": 34200.09449999998,
+    "quote_volume_24h": 6786416634.64363,
+    "change_24h": -0.0074
+   },
+   "setup_history": null,
+   "last_events": [
+    {
+     "time": "2026-11-21 17:30 IST",
+     "name": "Spinning top",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-21 18:15 IST",
+     "name": "Breakout up",
+     "dir": 1,
+     "level": 58625.4,
+     "stop": 58451.17689984249,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-21 18:30 IST",
+     "name": "Bearish harami",
+     "dir": -1,
+     "level": null,
+     "stop": 59139,
+     "trend": 0
+    },
+    {
+     "time": "2026-11-21 18:45 IST",
+     "name": "Breakout up",
+     "dir": 1,
+     "level": 59139,
+     "stop": 58957.520388129495,
+     "trend": 0
+    },
+    {
+     "time": "2026-11-21 19:00 IST",
+     "name": "Retest held (long)",
+     "dir": 1,
+     "level": 59139,
+     "stop": 58957.520388129495,
+     "trend": 0
+    },
+    {
+     "time": "2026-11-21 19:45 IST",
+     "name": "Bearish engulfing",
+     "dir": -1,
+     "level": null,
+     "stop": 60972,
+     "trend": 0
+    },
+    {
+     "time": "2026-11-21 20:15 IST",
+     "name": "Spinning top",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": 0
+    },
+    {
+     "time": "2026-11-21 20:30 IST",
+     "name": "Spinning top",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": 0
+    }
+   ],
+   "vs_btc_24h_pct": 0,
+   "vs_btc_4h_pct": 0
+  },
+  "ETHUSDT": {
+   "last_closed_bar": "2026-11-21 15:30 UTC / 2026-11-21 21:00 IST",
+   "price": 1681.9,
+   "verdict": "NO TRADE",
+   "reasons": [
+    "1-hour trend: FLAT / mixed",
+    "Price is above today's VWAP"
+   ],
+   "trend_1h": 0,
+   "vwap": 1613.748848674988,
+   "atr15m_pct": 0.8158515874126286,
+   "hi20": 1715.89,
+   "lo20": 1636.05,
+   "session_high": 1715.89,
+   "session_low": 1536.67,
+   "watching": {
+    "dir": 1,
+    "level": 1680.77,
+    "barsLeft": 5
+   },
+   "change_4h_pct": 2.557379448279229,
+   "change_24h_pct": 0.009513955783901906,
+   "liq100_pct": 0.5424954792043413,
+   "atr_vs_liq100": 1.5038864261306084,
+   "long_accounts_pct": 82.53,
+   "taker_buy_share_1h": 0.5259281568826372,
+   "taker_buy_share_6h": 0.520215512644352,
+   "ticker": {
+    "ts": 1795275277144,
+    "last": 1678.28,
+    "mark": 1678.61,
+    "index": 1679.6304347826087,
+    "bid": 1678.24,
+    "ask": 1678.25,
+    "spread_bps": 0.06,
+    "funding_rate": -0.000044,
+    "open_interest": 718818.2000000008,
+    "quote_volume_24h": 3197373251.7227,
+    "change_24h": 0.00032
+   },
+   "setup_history": null,
+   "last_events": [
+    {
+     "time": "2026-11-21 15:30 IST",
+     "name": "Spinning top",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": 0
+    },
+    {
+     "time": "2026-11-21 17:30 IST",
+     "name": "Doji",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": 0
+    },
+    {
+     "time": "2026-11-21 18:30 IST",
+     "name": "Bearish harami",
+     "dir": -1,
+     "level": null,
+     "stop": 1677.76,
+     "trend": 0
+    },
+    {
+     "time": "2026-11-21 19:15 IST",
+     "name": "Breakout up",
+     "dir": 1,
+     "level": 1680.77,
+     "stop": 1674.614081046467,
+     "trend": 0
+    },
+    {
+     "time": "2026-11-21 19:30 IST",
+     "name": "Shooting star",
+     "dir": -1,
+     "level": null,
+     "stop": 1708.99,
+     "trend": 0
+    },
+    {
+     "time": "2026-11-21 19:45 IST",
+     "name": "Bearish engulfing",
+     "dir": -1,
+     "level": null,
+     "stop": 1712.33,
+     "trend": 0
+    },
+    {
+     "time": "2026-11-21 20:00 IST",
+     "name": "Spinning top",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": 0
+    },
+    {
+     "time": "2026-11-21 21:00 IST",
+     "name": "Bearish engulfing",
+     "dir": -1,
+     "level": null,
+     "stop": 1697.12,
+     "trend": 0
+    }
+   ],
+   "vs_btc_24h_pct": 0.703872129979688,
+   "vs_btc_4h_pct": -0.932973747154664
+  },
+  "XRPUSDT": {
+   "last_closed_bar": "2026-11-21 15:30 UTC / 2026-11-21 21:00 IST",
+   "price": 0.9224,
+   "verdict": "NO TRADE",
+   "reasons": [
+    "1-hour trend: FLAT / mixed",
+    "Price is above today's VWAP"
+   ],
+   "trend_1h": 0,
+   "vwap": 0.8952503491469225,
+   "atr15m_pct": 0.7641785735843244,
+   "hi20": 0.9342,
+   "lo20": 0.8912,
+   "session_high": 0.9342,
+   "session_low": 0.8593,
+   "watching": null,
+   "change_4h_pct": 2.6828453745964653,
+   "change_24h_pct": 0.5888767720828803,
+   "liq100_pct": 0.5424954792043413,
+   "atr_vs_liq100": 1.4086358373071013,
+   "long_accounts_pct": 85.3,
+   "taker_buy_share_1h": 0.4078663861896877,
+   "taker_buy_share_6h": 0.48675839325339126,
+   "ticker": {
+    "ts": 1795275277144,
+    "last": 0.9225,
+    "mark": 0.9225,
+    "index": 0.9229873913043478,
+    "bid": 0.9223,
+    "ask": 0.9224,
+    "spread_bps": 1.084,
+    "funding_rate": 0.000032,
+    "open_interest": 167548027,
+    "quote_volume_24h": 177115961.4912,
+    "change_24h": 0.00853
+   },
+   "setup_history": null,
+   "last_events": [
+    {
+     "time": "2026-11-21 13:45 IST",
+     "name": "Doji",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-21 14:15 IST",
+     "name": "Hanging man",
+     "dir": -1,
+     "level": null,
+     "stop": 0.8861,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-21 15:15 IST",
+     "name": "Spinning top",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-21 15:30 IST",
+     "name": "Spinning top",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-21 17:45 IST",
+     "name": "Spinning top",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-21 19:00 IST",
+     "name": "Breakout up",
+     "dir": 1,
+     "level": 0.9126,
+     "stop": 0.9094441248683225,
+     "trend": 0
+    },
+    {
+     "time": "2026-11-21 19:15 IST",
+     "name": "Retest held (long)",
+     "dir": 1,
+     "level": 0.9126,
+     "stop": 0.9094441248683225,
+     "trend": 0
+    },
+    {
+     "time": "2026-11-21 21:00 IST",
+     "name": "Bearish engulfing",
+     "dir": -1,
+     "level": null,
+     "stop": 0.9337,
+     "trend": 0
+    }
+   ],
+   "vs_btc_24h_pct": 1.2832349462786663,
+   "vs_btc_4h_pct": -0.8075078208374276
+  }
+ }
+}

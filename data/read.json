@@ -1,0 +1,326 @@
+{
+ "generated_at_utc": "2026-11-28 13:19:09",
+ "symbols": {
+  "BTCUSDT": {
+   "last_closed_bar": "2026-11-28 13:15 UTC / 2026-11-28 18:45 IST",
+   "price": 59206.3,
+   "verdict": "WAIT",
+   "reasons": [
+    "1-hour trend: DOWN",
+    "Price is below today's VWAP",
+    "No fresh trigger in the last 2 bars"
+   ],
+   "trend_1h": -1,
+   "vwap": 59595.988160018605,
+   "atr15m_pct": 0.24202664610745642,
+   "hi20": 59686.1,
+   "lo20": 59016.1,
+   "session_high": 60238.2,
+   "session_low": 59016.1,
+   "watching": null,
+   "change_4h_pct": -0.6220531783291849,
+   "change_24h_pct": -3.6880932434300906,
+   "liq100_pct": 0.5424954792043413,
+   "atr_vs_liq100": 0.4461357843247436,
+   "long_accounts_pct": 81.21000000000001,
+   "taker_buy_share_1h": 0.40261819142856325,
+   "taker_buy_share_6h": 0.47376462090345106,
+   "ticker": {
+    "ts": 1795871949350,
+    "last": 59145.9,
+    "mark": 59157.3,
+    "index": 59183.09260869565,
+    "bid": 59145.8,
+    "ask": 59145.9,
+    "spread_bps": 0.017,
+    "funding_rate": 0.000025,
+    "open_interest": 37999.885100000094,
+    "quote_volume_24h": 2505092563.07783,
+    "change_24h": -0.03634
+   },
+   "setup_history": null,
+   "last_events": [
+    {
+     "time": "2026-11-28 11:15 IST",
+     "name": "Retest held (short)",
+     "dir": -1,
+     "level": 59801.5,
+     "stop": 59859.964551483994,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-28 11:30 IST",
+     "name": "Bullish harami",
+     "dir": 1,
+     "level": null,
+     "stop": 59574.5,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-28 12:15 IST",
+     "name": "Spinning top",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-28 12:45 IST",
+     "name": "Hammer",
+     "dir": 1,
+     "level": null,
+     "stop": 59155.8,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-28 13:00 IST",
+     "name": "Doji",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-28 13:45 IST",
+     "name": "VWAP pullback (short)",
+     "dir": -1,
+     "level": 59784.9140800737,
+     "stop": 59845.06164381641,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-28 16:30 IST",
+     "name": "Doji",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-28 17:00 IST",
+     "name": "Doji",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": -1
+    }
+   ],
+   "vs_btc_24h_pct": 0,
+   "vs_btc_4h_pct": 0
+  },
+  "ETHUSDT": {
+   "last_closed_bar": "2026-11-28 13:15 UTC / 2026-11-28 18:45 IST",
+   "price": 1647.3,
+   "verdict": "WAIT",
+   "reasons": [
+    "1-hour trend: DOWN",
+    "Price is below today's VWAP",
+    "No fresh trigger in the last 2 bars"
+   ],
+   "trend_1h": -1,
+   "vwap": 1654.1534193936418,
+   "atr15m_pct": 0.2804228554322108,
+   "hi20": 1656.17,
+   "lo20": 1640.41,
+   "session_high": 1672.16,
+   "session_low": 1639,
+   "watching": null,
+   "change_4h_pct": -0.16968668565541245,
+   "change_24h_pct": -4.271825477536739,
+   "liq100_pct": 0.5424954792043413,
+   "atr_vs_liq100": 0.5169127968467073,
+   "long_accounts_pct": 84.57000000000001,
+   "taker_buy_share_1h": 0.3691329379063487,
+   "taker_buy_share_6h": 0.4576174120651942,
+   "ticker": {
+    "ts": 1795871949350,
+    "last": 1644.66,
+    "mark": 1645.02,
+    "index": 1645.8623913043477,
+    "bid": 1644.72,
+    "ask": 1644.73,
+    "spread_bps": 0.061,
+    "funding_rate": 0.000022,
+    "open_interest": 740027.0900000004,
+    "quote_volume_24h": 1035476080.0814,
+    "change_24h": -0.04325
+   },
+   "setup_history": null,
+   "last_events": [
+    {
+     "time": "2026-11-28 11:30 IST",
+     "name": "Bullish harami",
+     "dir": 1,
+     "level": null,
+     "stop": 1645.84,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-28 12:30 IST",
+     "name": "VWAP pullback (short)",
+     "dir": -1,
+     "level": 1660.2202927276608,
+     "stop": 1661.2588851306982,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-28 12:45 IST",
+     "name": "Hammer",
+     "dir": 1,
+     "level": null,
+     "stop": 1639,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-28 14:00 IST",
+     "name": "Doji",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-28 14:30 IST",
+     "name": "Spinning top",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-28 15:30 IST",
+     "name": "Bullish engulfing",
+     "dir": 1,
+     "level": null,
+     "stop": 1647.55,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-28 16:00 IST",
+     "name": "Spinning top",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-28 17:00 IST",
+     "name": "Spinning top",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": -1
+    }
+   ],
+   "vs_btc_24h_pct": -0.5837322341066482,
+   "vs_btc_4h_pct": 0.4523664926737725
+  },
+  "XRPUSDT": {
+   "last_closed_bar": "2026-11-28 13:15 UTC / 2026-11-28 18:45 IST",
+   "price": 0.939,
+   "verdict": "WAIT",
+   "reasons": [
+    "1-hour trend: DOWN",
+    "Price is below today's VWAP",
+    "No fresh trigger in the last 2 bars"
+   ],
+   "trend_1h": -1,
+   "vwap": 0.9441841935560885,
+   "atr15m_pct": 0.259704324141216,
+   "hi20": 0.9428,
+   "lo20": 0.9355,
+   "session_high": 0.9551,
+   "session_low": 0.9355,
+   "watching": null,
+   "change_4h_pct": -0.1807164877219103,
+   "change_24h_pct": -3.2457496136012454,
+   "liq100_pct": 0.5424954792043413,
+   "atr_vs_liq100": 0.47872163750030705,
+   "long_accounts_pct": null,
+   "taker_buy_share_1h": null,
+   "taker_buy_share_6h": null,
+   "ticker": {
+    "ts": 1795871949350,
+    "last": 0.9382,
+    "mark": 0.9382,
+    "index": 0.9386769565217391,
+    "bid": 0.9381,
+    "ask": 0.9382,
+    "spread_bps": 1.066,
+    "funding_rate": 0.000074,
+    "open_interest": 168565387,
+    "quote_volume_24h": 91664824.6337,
+    "change_24h": -0.03278
+   },
+   "setup_history": null,
+   "last_events": [
+    {
+     "time": "2026-11-28 12:45 IST",
+     "name": "Doji",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": 0
+    },
+    {
+     "time": "2026-11-28 13:30 IST",
+     "name": "Spinning top",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": 0
+    },
+    {
+     "time": "2026-11-28 14:30 IST",
+     "name": "Bullish harami",
+     "dir": 1,
+     "level": null,
+     "stop": 0.9384,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-28 15:30 IST",
+     "name": "Spinning top",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-28 16:30 IST",
+     "name": "Breakdown",
+     "dir": -1,
+     "level": 0.9383,
+     "stop": 0.939601030854806,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-28 16:45 IST",
+     "name": "Doji",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-28 16:45 IST",
+     "name": "Retest held (short)",
+     "dir": -1,
+     "level": 0.9383,
+     "stop": 0.939601030854806,
+     "trend": -1
+    },
+    {
+     "time": "2026-11-28 18:30 IST",
+     "name": "Spinning top",
+     "dir": 0,
+     "level": null,
+     "stop": null,
+     "trend": -1
+    }
+   ],
+   "vs_btc_24h_pct": 0.44234362982884523,
+   "vs_btc_4h_pct": 0.44133669060727465
+  }
+ }
+}
